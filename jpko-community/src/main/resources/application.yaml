@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: jpko-community
+  profiles:
+    active: dev
+
+server:
+  port: 8080
