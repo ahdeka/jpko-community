@@ -2,6 +2,8 @@ package com.jpkocommunity.domain.user.service;
 
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.repository.UserRepository;
+import com.jpkocommunity.global.exception.CustomException;
+import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,12 +17,12 @@ public class UserService {
 
     public User findById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
     public boolean existsByEmail(String email) {

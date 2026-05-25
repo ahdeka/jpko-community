@@ -35,12 +35,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
 
-    // refresh: 만료된 accessToken으로 요청이 오므로 필터에서 제외 필수
+    // refresh/logout: 만료된 accessToken으로 요청이 오므로 필터에서 제외 필수
     // login/signup: 토큰 없어도 무해하지만 명시적으로 제외
     private static final Set<String> EXCLUDED_PATHS = Set.of(
             "/api/auth/login",
             "/api/auth/signup",
-            "/api/auth/refresh"
+            "/api/auth/refresh",
+            "/api/auth/logout"
     );
 
     // EXCLUDED_PATHS 요청은 필터 자체를 건너뜀

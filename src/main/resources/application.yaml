@@ -9,4 +9,4 @@ server:
 
 jwt:
   access-token-expiration: 3600000      # 1시간 (ms)
-  refresh-token-expiration: 1209600000  # 14일 (ms)
+  refresh-token-expiration: 604800000   # 7일 (ms)
