@@ -22,11 +22,11 @@ public class Tag extends BaseEntity {
     // true: 운영자가 만든 고정 태그 → 사용자가 삭제 불가
     // false: 사용자가 게시글 작성 시 생성한 태그
     @Column(nullable = false)
-    private boolean isFixed;
+    private boolean fixed;
 
     @Builder
-    public Tag(String name, boolean isFixed) {
+    public Tag(String name, boolean fixed) {
         this.name = name;
-        this.isFixed = isFixed;
+        this.fixed = fixed;
     }
 }

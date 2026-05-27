@@ -5,7 +5,7 @@ import com.jpkocommunity.domain.tag.entity.Tag;
 public record TagResponse(
         Long id,
         String name,
-        boolean isFixed
+        boolean fixed
 ) {
     public static TagResponse from(Tag tag) {
         return new TagResponse(
