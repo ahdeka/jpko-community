@@ -46,7 +46,7 @@ public class PostService {
 
     @Transactional
     public PostResponse getPost(Long postId) {
-        Post post = findActivePost(postId);
+        Post post = findActivePostById(postId);
         post.increaseViewCount();
         return PostResponse.from(post);
     }
@@ -73,7 +73,7 @@ public class PostService {
 
     @Transactional
     public PostResponse updatePost(Long userId, Long postId, PostUpdateRequest request) {
-        Post post = findActivePost(postId);
+        Post post = findActivePostById(postId);
         validateAuthor(post, userId);
 
         post.update(request.title(), request.content(), request.anonymous());
@@ -86,14 +86,12 @@ public class PostService {
 
     @Transactional
     public void deletePost(Long userId, Long postId) {
-        Post post = findActivePost(postId);
+        Post post = findActivePostById(postId);
         validateAuthor(post, userId);
         post.delete();
     }
 
-    // ========== private 메서드 ==========
-
-    private Post findActivePost(Long postId) {
+    public Post findActivePostById(Long postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
         if (post.isDeleted()) {
@@ -101,6 +99,8 @@ public class PostService {
         }
         return post;
     }
+
+    // ========== private 메서드 ==========
 
     private void validateAuthor(Post post, Long userId) {
         if (!post.getUser().getId().equals(userId)) {

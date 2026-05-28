@@ -56,6 +56,15 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    // 201 - 메시지만 커스텀
+    public static ApiResponse<Void> created(String message) {
+        return ApiResponse.<Void>builder()
+                .status(201)
+                .code("CREATED")
+                .message(message)
+                .build();
+    }
+
     // 201 - 메시지 커스텀
     public static <T> ApiResponse<T> created(String message, T data) {
         return ApiResponse.<T>builder()

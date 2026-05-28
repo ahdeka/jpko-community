@@ -36,7 +36,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> signup(@Valid @RequestBody SignupRequest request) {
         authService.signup(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok("회원가입이 완료되었습니다."));
+                .body(ApiResponse.created("회원가입이 완료되었습니다."));
     }
 
     @PostMapping("/login")

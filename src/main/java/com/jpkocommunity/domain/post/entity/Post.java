@@ -88,6 +88,12 @@ public class Post extends BaseEntity {
     // 익명 게시글에서 ㅇㅇ(118.235) 형태로 표시
     public String getMaskedIp() {
         if (ipAddress == null || ipAddress.isBlank()) return "알 수 없음";
+
+        // IPv6 로컬 주소 처리
+        if (ipAddress.equals("0:0:0:0:0:0:0:1") || ipAddress.equals("::1")) {
+            return "127.0";
+        }
+
         String[] parts = ipAddress.split("\\.");
         if (parts.length >= 2) {
             return parts[0] + "." + parts[1];

@@ -28,7 +28,7 @@ public class PostController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<PostSummaryResponse>>> getAllPosts(
-            @PageableDefault(size = 20, sort = "createAt", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(ApiResponse.ok(postService.getAllPosts(pageable)));
     }
@@ -36,7 +36,7 @@ public class PostController {
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<ApiResponse<Page<PostSummaryResponse>>> getPostsByCategory(
             @PathVariable Long categoryId,
-            @PageableDefault(size = 20, sort = "createAt", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(ApiResponse.ok(postService.getPostsByCategory(categoryId, pageable)));
     }
@@ -55,6 +55,7 @@ public class PostController {
         String ipAddress = getClientIp(servletRequest);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(
+                        "게시글이 생성되었습니다.",
                         postService.createPost(authUser.userId(), request, ipAddress)
                 ));
     }
