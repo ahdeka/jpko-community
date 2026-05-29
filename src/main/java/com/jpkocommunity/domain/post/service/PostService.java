@@ -2,8 +2,11 @@ package com.jpkocommunity.domain.post.service;
 
 import com.jpkocommunity.domain.category.entity.Category;
 import com.jpkocommunity.domain.category.service.CategoryService;
+import com.jpkocommunity.domain.like.entity.LikeType;
+import com.jpkocommunity.domain.like.repository.LikeRepository;
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
 import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
+import com.jpkocommunity.domain.post.dto.response.PostDetailResponse;
 import com.jpkocommunity.domain.post.dto.response.PostResponse;
 import com.jpkocommunity.domain.post.dto.response.PostSummaryResponse;
 import com.jpkocommunity.domain.post.entity.Post;
@@ -30,6 +33,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final PostTagRepository postTagRepository;
+    private final LikeRepository likeRepository;
     private final UserService userService;
     private final CategoryService categoryService;
     private final TagService tagService;
@@ -45,10 +49,14 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponse getPost(Long postId) {
+    public PostDetailResponse getPost(Long postId) {
         Post post = findActivePostById(postId);
         post.increaseViewCount();
-        return PostResponse.from(post);
+
+        long likeCount    = likeRepository.countByPostIdAndType(postId, LikeType.LIKE);
+        long dislikeCount = likeRepository.countByPostIdAndType(postId, LikeType.DISLIKE);
+
+        return PostDetailResponse.from(post, likeCount, dislikeCount);
     }
 
     @Transactional
@@ -68,7 +76,7 @@ public class PostService {
         postRepository.save(post);
         saveTags(post, request.tags());
 
-        return PostResponse.from(post);
+        return PostResponse.from(post.getId());
     }
 
     @Transactional
@@ -76,12 +84,13 @@ public class PostService {
         Post post = findActivePostById(postId);
         validateAuthor(post, userId);
 
-        post.update(request.title(), request.content(), request.anonymous());
+        post.update(request.title(), request.content());
 
-        postTagRepository.deleteByPostId(postId);
+        post.getPostTags().clear();
+        postTagRepository.flush();
         saveTags(post, request.tags());
 
-        return PostResponse.from(post);
+        return PostResponse.from(post.getId());
     }
 
     @Transactional

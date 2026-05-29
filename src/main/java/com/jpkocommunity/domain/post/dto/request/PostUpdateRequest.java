@@ -14,7 +14,5 @@ public record PostUpdateRequest(
         @NotBlank(message = "내용을 입력해주세요.")
         String content,
 
-        boolean anonymous,
-
         List<String> tags
 ) {}

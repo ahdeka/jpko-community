@@ -2,6 +2,7 @@ package com.jpkocommunity.domain.post.controller;
 
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
 import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
+import com.jpkocommunity.domain.post.dto.response.PostDetailResponse;
 import com.jpkocommunity.domain.post.dto.response.PostResponse;
 import com.jpkocommunity.domain.post.dto.response.PostSummaryResponse;
 import com.jpkocommunity.domain.post.service.PostService;
@@ -42,7 +43,7 @@ public class PostController {
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<ApiResponse<PostResponse>> getPost(@PathVariable Long postId) {
+    public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(@PathVariable Long postId) {
         return ResponseEntity.ok(ApiResponse.ok(postService.getPost(postId)));
     }
 

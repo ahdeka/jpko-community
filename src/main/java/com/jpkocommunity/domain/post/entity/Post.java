@@ -67,10 +67,9 @@ public class Post extends BaseEntity {
 
     // ========== 비즈니스 메서드 ==========
 
-    public void update(String title, String content, boolean anonymous) {
+    public void update(String title, String content) {
         this.title = title;
         this.content = content;
-        this.anonymous = anonymous;
     }
 
     public void increaseViewCount() {
