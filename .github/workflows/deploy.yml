@@ -21,11 +21,15 @@ jobs:
           java-version: '21'
           distribution: 'corretto'
 
-      # 3. bootJar 빌드
+      # 3. gradlew에 실행 권한 부여
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 4. bootJar 빌드
       - name: Build with Gradle
         run: ./gradlew bootJar -x test
 
-      # 4. EC2에 jar 전송
+      # 5. EC2에 jar 전송
       - name: Copy jar to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -36,7 +40,7 @@ jobs:
           target: "~/jpko-community/"
           strip_components: 2
 
-      # 5. EC2에서 이미지 재빌드 + 컨테이너 재시작
+      # 6. EC2에서 이미지 재빌드 + 컨테이너 재시작
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
