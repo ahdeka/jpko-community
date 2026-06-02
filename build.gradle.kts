@@ -30,6 +30,9 @@ dependencies {
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 
+	// AWS S3
+	implementation("software.amazon.awssdk:s3:2.25.60")
+
 	// DB
 	runtimeOnly("org.postgresql:postgresql")
 

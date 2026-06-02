@@ -111,7 +111,7 @@ public class PostService {
 
     // ========== private 메서드 ==========
 
-    private void validateAuthor(Post post, Long userId) {
+    void validateAuthor(Post post, Long userId) {
         if (!post.getUser().getId().equals(userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
