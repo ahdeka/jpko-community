@@ -49,6 +49,42 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd ~/jpko-community
+            
+            JWT_SECRET=$(aws ssm get-parameter \
+              --name "/jpko/prod/JWT_SECRET" \
+              --with-decryption \
+              --query "Parameter.Value" \
+              --output text \
+              --region ap-northeast-2)
+            
+            DB_USER=$(aws ssm get-parameter \
+              --name "/jpko/prod/DB_USER" \
+              --with-decryption \
+              --query "Parameter.Value" \
+              --output text \
+              --region ap-northeast-2)
+            
+            DB_PASSWORD=$(aws ssm get-parameter \
+              --name "/jpko/prod/DB_PASSWORD" \
+              --with-decryption \
+              --query "Parameter.Value" \
+              --output text \
+              --region ap-northeast-2)
+            
+            S3_BUCKET=$(aws ssm get-parameter \
+              --name "/jpko/prod/S3_BUCKET" \
+              --with-decryption \
+              --query "Parameter.Value" \
+              --output text \
+              --region ap-northeast-2)
+            
+            cat > .env << EOF
+            JWT_SECRET=${JWT_SECRET}
+            DB_USER=${DB_USER}
+            DB_PASSWORD=${DB_PASSWORD}
+            S3_BUCKET=${S3_BUCKET}
+            EOF
+            
             docker build -t jpko-community:latest .
             docker compose -f docker-compose.prod.yml down
             docker compose -f docker-compose.prod.yml up -d

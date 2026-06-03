@@ -23,6 +23,7 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      S3_BUCKET: ${S3_BUCKET}
     depends_on:
       - postgres
     restart: always

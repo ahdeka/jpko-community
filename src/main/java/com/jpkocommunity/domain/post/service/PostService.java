@@ -80,9 +80,8 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponse updatePost(Long userId, Long postId, PostUpdateRequest request) {
+    public PostResponse updatePost(Long postId, PostUpdateRequest request) {
         Post post = findActivePostById(postId);
-        validateAuthor(post, userId);
 
         post.update(request.title(), request.content());
 

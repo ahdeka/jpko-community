@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -62,13 +63,13 @@ public class PostController {
     }
 
     @PutMapping("/{postId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PostResponse>> updatePost(
-            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long postId,
             @Valid @RequestBody PostUpdateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
-                postService.updatePost(authUser.userId(), postId, request)
+                postService.updatePost(postId, request)
         ));
     }
 
