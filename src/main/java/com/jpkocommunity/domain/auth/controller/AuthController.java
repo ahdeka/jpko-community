@@ -3,10 +3,14 @@ package com.jpkocommunity.domain.auth.controller;
 import com.jpkocommunity.domain.auth.dto.request.LoginRequest;
 import com.jpkocommunity.domain.auth.dto.request.SignupRequest;
 import com.jpkocommunity.domain.auth.dto.response.LoginResponse;
+import com.jpkocommunity.domain.auth.dto.response.UserInfoResponse;
 import com.jpkocommunity.domain.auth.service.AuthService;
+import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
+import com.jpkocommunity.global.security.auth.AuthUser;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,6 +18,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,6 +37,15 @@ public class AuthController {
     private static final int REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 7; // 7일
 
     private final AuthService authService;
+    private final UserService userService;
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> me(@AuthenticationPrincipal AuthUser authUser) {
+        User user = userService.findById(authUser.userId());
+        return ResponseEntity.ok(ApiResponse.ok(
+                new UserInfoResponse(user.getId(), user.getEmail(), user.getNickname(), user.getRole())
+        ));
+    }
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<Void>> signup(@Valid @RequestBody SignupRequest request) {
