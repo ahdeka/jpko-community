@@ -11,12 +11,13 @@ public record PostDetailResponse(
         String content,
         String author,
         boolean anonymous,
+        boolean isOwner,
         int viewCount,
         long likeCount,
         long dislikeCount,
         LocalDateTime createdAt
 ) {
-    public static PostDetailResponse from(Post post, long likeCount, long dislikeCount) {
+    public static PostDetailResponse from(Post post, long likeCount, long dislikeCount, Long currentUserId) {
         return new PostDetailResponse(
                 post.getId(),
                 post.getCategory().getName(),
@@ -24,6 +25,7 @@ public record PostDetailResponse(
                 post.getContent(),
                 resolveAuthor(post),
                 post.isAnonymous(),
+                isOwner(post, currentUserId),
                 post.getViewCount(),
                 likeCount,
                 dislikeCount,
@@ -34,5 +36,10 @@ public record PostDetailResponse(
     private static String resolveAuthor(Post post) {
         if (post.isAnonymous()) return "ㅇㅇ(" + post.getMaskedIp() + ")";
         return post.getUser().getNickname();
+    }
+
+    // 익명 글이라도 실제 작성자 본인이면 true
+    private static boolean isOwner(Post post, Long currentUserId) {
+        return currentUserId != null && post.getUser().getId().equals(currentUserId);
     }
 }

@@ -42,14 +42,14 @@ public class PostService {
     }
 
     @Transactional
-    public PostDetailResponse getPost(Long postId) {
+    public PostDetailResponse getPost(Long postId, Long currentUserId) {
         Post post = findActivePostById(postId);
         post.increaseViewCount();
 
         long likeCount    = likeRepository.countByPostIdAndType(postId, LikeType.LIKE);
         long dislikeCount = likeRepository.countByPostIdAndType(postId, LikeType.DISLIKE);
 
-        return PostDetailResponse.from(post, likeCount, dislikeCount);
+        return PostDetailResponse.from(post, likeCount, dislikeCount, currentUserId);
     }
 
     @Transactional

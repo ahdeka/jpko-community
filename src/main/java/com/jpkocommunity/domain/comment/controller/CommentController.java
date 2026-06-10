@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,9 +25,11 @@ public class CommentController {
 
     @GetMapping("/api/posts/{postId}/comments")
     public ResponseEntity<ApiResponse<List<CommentResponse>>> getComments(
-            @PathVariable Long postId
+            @PathVariable Long postId,
+            @AuthenticationPrincipal AuthUser authUser
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(commentService.getComments(postId)));
+        Long currentUserId = authUser != null ? authUser.userId() : null;
+        return ResponseEntity.ok(ApiResponse.ok(commentService.getComments(postId, currentUserId)));
     }
 
     @PostMapping("/api/posts/{postId}/comments")
@@ -43,6 +46,7 @@ public class CommentController {
     }
 
     @PutMapping("/api/comments/{commentId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long commentId,

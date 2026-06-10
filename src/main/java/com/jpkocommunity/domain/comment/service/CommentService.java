@@ -26,11 +26,11 @@ public class CommentService {
     private final PostService postService;
     private final UserService userService;
 
-    public List<CommentResponse> getComments(Long postId) {
+    public List<CommentResponse> getComments(Long postId, Long currentUserId) {
         postService.findActivePostById(postId);
         return commentRepository.findTopLevelWithRepliesByPostId(postId)
                 .stream()
-                .map(CommentResponse::from)
+                .map(comment -> CommentResponse.from(comment, currentUserId))
                 .toList();
     }
 
@@ -52,18 +52,17 @@ public class CommentService {
                 .build();
 
         return request.parentId() == null
-                ? CommentResponse.from(commentRepository.save(comment))
-                : CommentResponse.fromReply(commentRepository.save(comment));
+                ? CommentResponse.from(commentRepository.save(comment), userId)
+                : CommentResponse.fromReply(commentRepository.save(comment), userId);
     }
 
     @Transactional
     public CommentResponse updateComment(Long userId, Long commentId,
                                          CommentUpdateRequest request) {
         Comment comment = findActiveComment(commentId);
-        validateAuthor(comment, userId);
 
         comment.update(request.content());
-        return CommentResponse.from(comment);
+        return CommentResponse.from(comment, userId);
     }
 
     @Transactional

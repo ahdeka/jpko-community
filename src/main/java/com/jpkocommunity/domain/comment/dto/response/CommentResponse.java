@@ -9,32 +9,35 @@ public record CommentResponse(
         Long id,
         String author,
         boolean anonymous,
+        boolean isOwner,
         String content,
         boolean deleted,
         LocalDateTime createdAt,
         List<CommentResponse> replies  // 대댓글은 항상 빈 리스트
 ) {
     // 최상위 댓글 (replies 포함)
-    public static CommentResponse from(Comment comment) {
+    public static CommentResponse from(Comment comment, Long currentUserId) {
         return new CommentResponse(
                 comment.getId(),
                 resolveAuthor(comment),
                 comment.isAnonymous(),
+                isOwner(comment, currentUserId),
                 resolveContent(comment),
                 comment.isDeleted(),
                 comment.getCreatedAt(),
                 comment.getReplies().stream()
-                        .map(CommentResponse::fromReply)
+                        .map(reply -> CommentResponse.fromReply(reply, currentUserId))
                         .toList()
         );
     }
 
     // 대댓글 (replies 없음 - 1단계만 지원)
-    public static CommentResponse fromReply(Comment comment) {
+    public static CommentResponse fromReply(Comment comment, Long currentUserId) {
         return new CommentResponse(
                 comment.getId(),
                 resolveAuthor(comment),
                 comment.isAnonymous(),
+                isOwner(comment, currentUserId),
                 resolveContent(comment),
                 comment.isDeleted(),
                 comment.getCreatedAt(),
@@ -51,5 +54,10 @@ public record CommentResponse(
         if (comment.isDeleted()) return "(삭제됨)";
         if (comment.isAnonymous()) return "ㅇㅇ(" + comment.getMaskedIp() + ")";
         return comment.getUser().getNickname();
+    }
+
+    // 익명 댓글이라도 실제 작성자 본인이면 true
+    private static boolean isOwner(Comment comment, Long currentUserId) {
+        return currentUserId != null && comment.getUser().getId().equals(currentUserId);
     }
 }

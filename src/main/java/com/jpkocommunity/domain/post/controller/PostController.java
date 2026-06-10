@@ -44,8 +44,12 @@ public class PostController {
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(@PathVariable Long postId) {
-        return ResponseEntity.ok(ApiResponse.ok(postService.getPost(postId)));
+    public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal AuthUser authUser
+    ) {
+        Long currentUserId = authUser != null ? authUser.userId() : null;
+        return ResponseEntity.ok(ApiResponse.ok(postService.getPost(postId, currentUserId)));
     }
 
     @PostMapping
