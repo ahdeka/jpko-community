@@ -3,8 +3,6 @@ package com.jpkocommunity.domain.post.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-import java.util.List;
-
 public record PostUpdateRequest(
 
         @NotBlank(message = "제목을 입력해주세요.")
@@ -12,7 +10,5 @@ public record PostUpdateRequest(
         String title,
 
         @NotBlank(message = "내용을 입력해주세요.")
-        String content,
-
-        List<String> tags
+        String content
 ) {}

@@ -5,10 +5,7 @@ import com.jpkocommunity.domain.category.repository.CategoryRepository;
 import com.jpkocommunity.domain.comment.entity.Comment;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.post.entity.Post;
-import com.jpkocommunity.domain.post.entity.PostTag;
 import com.jpkocommunity.domain.post.repository.PostRepository;
-import com.jpkocommunity.domain.tag.entity.Tag;
-import com.jpkocommunity.domain.tag.repository.TagRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +26,6 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
-    private final TagRepository tagRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final PasswordEncoder passwordEncoder;
@@ -41,8 +37,7 @@ public class DevDataInitializer implements CommandLineRunner {
 
         List<User> users           = initUsers();
         List<Category> categories  = initCategories();
-        List<Tag> tags             = initTags();
-        List<Post> posts           = initPosts(users, categories, tags);
+        List<Post> posts           = initPosts(users, categories);
         initComments(users, posts);
 
         log.info("===== 개발용 초기 데이터 삽입 완료 =====");
@@ -88,59 +83,36 @@ public class DevDataInitializer implements CommandLineRunner {
         return categories;
     }
 
-    // ========== 태그 ==========
-
-    private List<Tag> initTags() {
-        List<Tag> tags = tagRepository.saveAll(List.of(
-                Tag.builder().name("일본취업").fixed(true).build(),
-                Tag.builder().name("워킹홀리데이").fixed(true).build(),
-                Tag.builder().name("비자").fixed(true).build(),
-                Tag.builder().name("일본어").fixed(true).build(),
-                Tag.builder().name("도쿄").fixed(false).build(),
-                Tag.builder().name("오사카").fixed(false).build()
-        ));
-
-        log.info("태그 {}개 생성", tags.size());
-        return tags;
-    }
-
     // ========== 게시글 ==========
 
-    private List<Post> initPosts(List<User> users, List<Category> categories, List<Tag> tags) {
+    private List<Post> initPosts(List<User> users, List<Category> categories) {
         User user1    = users.get(1);
         User user2    = users.get(2);
-        Category employment    = categories.get(0); // 취업
+        Category employment     = categories.get(0); // 취업
         Category workingHoliday = categories.get(1); // 워킹홀리데이
-        Category travel        = categories.get(4); // 여행
-        Tag tagEmployment = tags.get(0); // 일본취업
-        Tag tagWhv        = tags.get(1); // 워킹홀리데이
-        Tag tagTokyo      = tags.get(4); // 도쿄
-        Tag tagOsaka      = tags.get(5); // 오사카
+        Category travel         = categories.get(4); // 여행
 
         Post post1 = createPost(user1, employment,
                 "일본 IT 취업 준비 어떻게 하셨나요?",
                 "저는 현재 백엔드 개발자로 일본 취업을 준비 중입니다. 포트폴리오나 언어 준비 관련해서 조언 부탁드립니다.",
-                false, "118.235.1.1",
-                List.of(tagEmployment));
+                false, "118.235.1.1");
 
         Post post2 = createPost(user2, workingHoliday,
                 "오사카 워홀 비자 준비 후기",
                 "드디어 워킹홀리데이 비자 받았습니다! 준비 과정 공유해요. 영사관 예약부터 서류까지 정리했어요.",
-                false, "121.130.2.2",
-                List.of(tagWhv, tagOsaka));
+                false, "121.130.2.2");
 
         Post post3 = createPost(user1, travel,
                 "도쿄 3박4일 여행 코스 추천해줘요",
                 "다음달 도쿄 여행 예정인데 처음이라 아무것도 모릅니다. 꼭 가봐야 할 곳 추천 부탁해요!",
-                true, "118.235.1.1",  // 익명 게시글
-                List.of(tagTokyo));
+                true, "118.235.1.1");
 
         log.info("게시글 {}개 생성", 3);
         return List.of(post1, post2, post3);
     }
 
     private Post createPost(User user, Category category, String title, String content,
-                            boolean anonymous, String ip, List<Tag> tags) {
+                            boolean anonymous, String ip) {
         Post post = Post.builder()
                 .user(user)
                 .category(category)
@@ -150,14 +122,7 @@ public class DevDataInitializer implements CommandLineRunner {
                 .ipAddress(ip)
                 .build();
 
-        postRepository.save(post);
-
-        // 태그 연결
-        tags.forEach(tag -> post.getPostTags().add(
-                PostTag.builder().post(post).tag(tag).build()
-        ));
-
-        return post;
+        return postRepository.save(post);
     }
 
     // ========== 댓글 ==========

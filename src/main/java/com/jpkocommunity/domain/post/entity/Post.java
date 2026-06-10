@@ -9,8 +9,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 import static lombok.AccessLevel.PROTECTED;
 
@@ -49,9 +47,6 @@ public class Post extends BaseEntity {
 
     @Column
     private LocalDateTime deletedAt;
-
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PostTag> postTags = new ArrayList<>();
 
     @Builder
     public Post(User user, Category category, String title, String content,

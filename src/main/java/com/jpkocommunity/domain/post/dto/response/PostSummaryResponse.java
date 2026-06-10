@@ -1,10 +1,8 @@
 package com.jpkocommunity.domain.post.dto.response;
 
 import com.jpkocommunity.domain.post.entity.Post;
-import com.jpkocommunity.domain.tag.dto.response.TagResponse;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 public record PostSummaryResponse(
         Long id,
@@ -13,7 +11,6 @@ public record PostSummaryResponse(
         String author,
         boolean anonymous,
         int viewCount,
-        List<TagResponse> tags,
         LocalDateTime createdAt
 ) {
     public static PostSummaryResponse from(Post post) {
@@ -24,9 +21,6 @@ public record PostSummaryResponse(
                 resolveAuthor(post),
                 post.isAnonymous(),
                 post.getViewCount(),
-                post.getPostTags().stream()
-                        .map(pt -> TagResponse.from(pt.getTag()))
-                        .toList(),
                 post.getCreatedAt()
         );
     }

@@ -10,10 +10,7 @@ import com.jpkocommunity.domain.post.dto.response.PostDetailResponse;
 import com.jpkocommunity.domain.post.dto.response.PostResponse;
 import com.jpkocommunity.domain.post.dto.response.PostSummaryResponse;
 import com.jpkocommunity.domain.post.entity.Post;
-import com.jpkocommunity.domain.post.entity.PostTag;
 import com.jpkocommunity.domain.post.repository.PostRepository;
-import com.jpkocommunity.domain.post.repository.PostTagRepository;
-import com.jpkocommunity.domain.tag.service.TagService;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
@@ -24,19 +21,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PostService {
 
     private final PostRepository postRepository;
-    private final PostTagRepository postTagRepository;
     private final LikeRepository likeRepository;
     private final UserService userService;
     private final CategoryService categoryService;
-    private final TagService tagService;
 
     public Page<PostSummaryResponse> getPostsByCategory(Long categoryId, Pageable pageable) {
         return postRepository.findByCategoryId(categoryId, pageable)
@@ -74,7 +67,6 @@ public class PostService {
                 .build();
 
         postRepository.save(post);
-        saveTags(post, request.tags());
 
         return PostResponse.from(post.getId());
     }
@@ -84,10 +76,6 @@ public class PostService {
         Post post = findActivePostById(postId);
 
         post.update(request.title(), request.content());
-
-        post.getPostTags().clear();
-        postTagRepository.flush();
-        saveTags(post, request.tags());
 
         return PostResponse.from(post.getId());
     }
@@ -114,16 +102,5 @@ public class PostService {
         if (!post.getUser().getId().equals(userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
-    }
-
-    // 태그 저장 공통 메서드
-    // null이나 빈 리스트면 태그 없이 저장
-    private void saveTags(Post post, List<String> tagNames) {
-        if (tagNames == null || tagNames.isEmpty()) return;
-
-        tagNames.stream()
-                .map(tagService::findOrCreate)  // 없으면 생성, 있으면 조회
-                .map(tag -> PostTag.builder().post(post).tag(tag).build())
-                .forEach(postTag -> post.getPostTags().add(postTag));
     }
 }
