@@ -11,9 +11,10 @@ public record PostSummaryResponse(
         String author,
         boolean anonymous,
         int viewCount,
+        long commentCount,
         LocalDateTime createdAt
 ) {
-    public static PostSummaryResponse from(Post post) {
+    public static PostSummaryResponse from(Post post, long commentCount) {
         return new PostSummaryResponse(
                 post.getId(),
                 post.getCategory().getName(),
@@ -21,6 +22,7 @@ public record PostSummaryResponse(
                 resolveAuthor(post),
                 post.isAnonymous(),
                 post.getViewCount(),
+                commentCount,
                 post.getCreatedAt()
         );
     }

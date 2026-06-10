@@ -2,6 +2,8 @@ package com.jpkocommunity.domain.post.service;
 
 import com.jpkocommunity.domain.category.entity.Category;
 import com.jpkocommunity.domain.category.service.CategoryService;
+import com.jpkocommunity.domain.comment.repository.CommentRepository;
+import com.jpkocommunity.domain.comment.repository.PostCommentCount;
 import com.jpkocommunity.domain.like.entity.LikeType;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
@@ -21,24 +23,39 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PostService {
 
     private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
     private final UserService userService;
     private final CategoryService categoryService;
 
     public Page<PostSummaryResponse> getPostsByCategory(Long categoryId, Pageable pageable) {
-        return postRepository.findByCategoryId(categoryId, pageable)
-                .map(PostSummaryResponse::from);
+        return toSummaryPage(postRepository.findByCategoryId(categoryId, pageable));
     }
 
     public Page<PostSummaryResponse> getAllPosts(Pageable pageable) {
-        return postRepository.findAllActive(pageable)
-                .map(PostSummaryResponse::from);
+        return toSummaryPage(postRepository.findAllActive(pageable));
+    }
+
+    // 게시글 목록에 댓글 수를 함께 채워서 반환 (post당 쿼리 1번이 아닌, 페이지 전체 댓글 수를 한 번에 조회)
+    private Page<PostSummaryResponse> toSummaryPage(Page<Post> posts) {
+        List<Long> postIds = posts.getContent().stream().map(Post::getId).toList();
+
+        Map<Long, Long> commentCounts = postIds.isEmpty()
+                ? Map.of()
+                : commentRepository.countByPostIdIn(postIds).stream()
+                        .collect(Collectors.toMap(PostCommentCount::getPostId, PostCommentCount::getCommentCount));
+
+        return posts.map(post -> PostSummaryResponse.from(post, commentCounts.getOrDefault(post.getId(), 0L)));
     }
 
     @Transactional

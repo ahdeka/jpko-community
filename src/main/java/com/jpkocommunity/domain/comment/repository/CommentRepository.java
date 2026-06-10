@@ -16,4 +16,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             "WHERE c.post.id = :postId AND c.parent IS NULL " +
             "ORDER BY c.createdAt ASC")
     List<Comment> findTopLevelWithRepliesByPostId(@Param("postId") Long postId);
+
+    // 게시글 목록용 - 게시글별 댓글 수를 한 번의 쿼리로 집계
+    @Query("SELECT c.post.id AS postId, COUNT(c) AS commentCount FROM Comment c " +
+            "WHERE c.post.id IN :postIds GROUP BY c.post.id")
+    List<PostCommentCount> countByPostIdIn(@Param("postIds") List<Long> postIds);
 }
