@@ -81,7 +81,7 @@ public class SecurityConfig {
 
         config.setAllowedOrigins(List.of(
                 "http://localhost:3000",       // 로컬 개발
-                "https://your-domain.vercel.app" // 배포 도메인 (나중에 교체)
+                "https://www.jpkocommunity.site" // 배포 도메인
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));

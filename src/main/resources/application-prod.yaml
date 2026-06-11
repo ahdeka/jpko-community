@@ -11,6 +11,10 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
 
+cookie:
+  secure: true
+  same-site: None
+
 cloud:
   aws:
     s3:
