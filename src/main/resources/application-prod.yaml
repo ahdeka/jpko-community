@@ -14,6 +14,7 @@ jwt:
 cookie:
   secure: true
   same-site: None
+  domain: "jpkocommunity.site"
 
 cloud:
   aws:

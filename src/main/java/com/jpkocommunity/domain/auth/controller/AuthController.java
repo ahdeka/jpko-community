@@ -48,6 +48,9 @@ public class AuthController {
     @Value("${cookie.same-site}")
     private String cookieSameSite;
 
+    @Value("${cookie.domain}")
+    private String cookieDomain;
+
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserInfoResponse>> me(@AuthenticationPrincipal AuthUser authUser) {
         User user = userService.findById(authUser.userId());
@@ -71,11 +74,11 @@ public class AuthController {
     ) {
         // device_info: User-Agent 헤더, ip_address: X-Forwarded-For 또는 RemoteAddr
         String deviceInfo = servletRequest.getHeader("User-Agent");
-        String ipAddress  = getClientIp(servletRequest);
+        String ipAddress = getClientIp(servletRequest);
 
         AuthService.LoginResult result = authService.login(request, deviceInfo, ipAddress);
 
-        addCookie(response, "accessToken",  result.accessToken(),  ACCESS_TOKEN_MAX_AGE);
+        addCookie(response, "accessToken", result.accessToken(), ACCESS_TOKEN_MAX_AGE);
         addCookie(response, "refreshToken", result.refreshToken(), REFRESH_TOKEN_MAX_AGE);
 
         return ResponseEntity.ok(ApiResponse.ok(result.response()));
@@ -107,25 +110,33 @@ public class AuthController {
     // ========== 쿠키 유틸 메서드 ==========
 
     private void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        ResponseCookie cookie = ResponseCookie.from(name, value)
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite(cookieSameSite)
                 .path("/")
-                .maxAge(maxAge)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                .maxAge(maxAge);
+
+        if (!cookieDomain.isBlank()) {
+            builder.domain(cookieDomain);
+        }
+
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
     }
 
     private void deleteCookie(HttpServletResponse response, String name) {
-        ResponseCookie cookie = ResponseCookie.from(name, "")
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, "")
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite(cookieSameSite)
                 .path("/")
-                .maxAge(0)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                .maxAge(0);
+
+        if (!cookieDomain.isBlank()) {
+            builder.domain(cookieDomain);
+        }
+
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
     }
 
     private Optional<String> extractCookieOptional(HttpServletRequest request, String name) {
