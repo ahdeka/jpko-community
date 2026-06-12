@@ -72,11 +72,12 @@ public class DevDataInitializer implements CommandLineRunner {
 
     private List<Category> initCategories() {
         List<Category> categories = categoryRepository.saveAll(List.of(
-                Category.builder().name("취업").slug("employment").displayOrder(1).build(),
-                Category.builder().name("워킹홀리데이").slug("working-holiday").displayOrder(2).build(),
-                Category.builder().name("문화").slug("culture").displayOrder(3).build(),
-                Category.builder().name("상담").slug("consulting").displayOrder(4).build(),
-                Category.builder().name("여행").slug("travel").displayOrder(5).build()
+                Category.builder().name("취업").slug("employment").displayOrder(2).build(),
+                Category.builder().name("워킹홀리데이").slug("working-holiday").displayOrder(3).build(),
+                Category.builder().name("문화").slug("culture").displayOrder(4).build(),
+                Category.builder().name("상담").slug("consulting").displayOrder(5).build(),
+                Category.builder().name("여행").slug("travel").displayOrder(6).build(),
+                Category.builder().name("잡담").slug("chat").displayOrder(1).build()
         ));
 
         log.info("카테고리 {}개 생성", categories.size());
