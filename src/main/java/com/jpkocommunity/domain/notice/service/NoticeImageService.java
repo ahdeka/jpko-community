@@ -32,7 +32,7 @@ public class NoticeImageService {
 
     @Transactional
     public NoticeImageResponse upload(Long noticeId, MultipartFile file, int displayOrder) {
-        Notice notice = noticeService.findActiveById(noticeId);
+        Notice notice = noticeService.findById(noticeId);
 
         if (noticeImageRepository.findByNoticeIdOrderByDisplayOrderAsc(noticeId).size() >= MAX_IMAGES_PER_NOTICE) {
             throw new CustomException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
@@ -65,7 +65,7 @@ public class NoticeImageService {
     @Transactional
     public void delete(Long noticeId, Long imageId) {
         // 공지 존재 여부 확인
-        noticeService.findActiveById(noticeId);
+        noticeService.findById(noticeId);
 
         NoticeImage noticeImage = noticeImageRepository.findById(imageId)
                 .orElseThrow(() -> new CustomException(ErrorCode.IMAGE_NOT_FOUND));

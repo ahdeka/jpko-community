@@ -11,11 +11,14 @@ import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
+import com.jpkocommunity.global.infra.s3.S3ImageUploader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -26,9 +29,10 @@ public class NoticeService {
 
     private final NoticeRepository noticeRepository;
     private final UserService userService;
+    private final S3ImageUploader s3ImageUploader;
 
     public Page<NoticeSummaryResponse> getNotices(Pageable pageable) {
-        return noticeRepository.findAllActive(pageable)
+        return noticeRepository.findAll(pageable)
                 .map(NoticeSummaryResponse::from);
     }
 
@@ -41,7 +45,7 @@ public class NoticeService {
 
     @Transactional
     public NoticeDetailResponse getNotice(Long noticeId) {
-        Notice notice = findActiveById(noticeId);
+        Notice notice = findById(noticeId);
         notice.increaseViewCount();
         return NoticeDetailResponse.from(notice);
     }
@@ -64,7 +68,7 @@ public class NoticeService {
 
     @Transactional
     public NoticeResponse updateNotice(Long noticeId, NoticeUpdateRequest request) {
-        Notice notice = findActiveById(noticeId);
+        Notice notice = findById(noticeId);
 
         notice.update(request.title(), request.content(), request.pinned());
 
@@ -73,19 +77,26 @@ public class NoticeService {
 
     @Transactional
     public void deleteNotice(Long noticeId) {
-        Notice notice = findActiveById(noticeId);
-        notice.delete();
+        Notice notice = findById(noticeId);
+
+        List<String> s3Keys = notice.getImages().stream()
+                .map(image -> image.getS3Key())
+                .toList();
+
+        noticeRepository.delete(notice);
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                s3Keys.forEach(s3ImageUploader::delete);
+            }
+        });
     }
 
     // ========== private 메서드 ==========
 
-    Notice findActiveById(Long noticeId) {
-        Notice notice = noticeRepository.findById(noticeId)
+    Notice findById(Long noticeId) {
+        return noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
-
-        if (notice.isDeleted()) {
-            throw new CustomException(ErrorCode.NOTICE_NOT_FOUND);
-        }
-        return notice;
     }
 }

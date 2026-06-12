@@ -7,7 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import static lombok.AccessLevel.PROTECTED;
 
@@ -35,8 +36,9 @@ public class Notice extends BaseEntity {
     @Column(nullable = false)
     private boolean pinned;
 
-    @Column
-    private LocalDateTime deletedAt;
+    @OneToMany(mappedBy = "notice", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OrderBy("displayOrder ASC")
+    private List<NoticeImage> images = new ArrayList<>();
 
     @Builder
     public Notice(User user, String title, String content, boolean pinned) {
@@ -57,13 +59,5 @@ public class Notice extends BaseEntity {
 
     public void increaseViewCount() {
         this.viewCount++;
-    }
-
-    public void delete() {
-        this.deletedAt = LocalDateTime.now();
-    }
-
-    public boolean isDeleted() {
-        return this.deletedAt != null;
     }
 }

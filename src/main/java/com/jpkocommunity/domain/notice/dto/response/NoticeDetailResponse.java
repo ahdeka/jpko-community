@@ -3,6 +3,7 @@ package com.jpkocommunity.domain.notice.dto.response;
 import com.jpkocommunity.domain.notice.entity.Notice;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record NoticeDetailResponse(
         Long id,
@@ -11,6 +12,7 @@ public record NoticeDetailResponse(
         String author,
         int viewCount,
         boolean pinned,
+        List<NoticeImageResponse> images,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -22,6 +24,9 @@ public record NoticeDetailResponse(
                 notice.getUser().getNickname(),
                 notice.getViewCount(),
                 notice.isPinned(),
+                notice.getImages().stream()
+                        .map(NoticeImageResponse::from)
+                        .toList(),
                 notice.getCreatedAt(),
                 notice.getUpdatedAt()
         );
