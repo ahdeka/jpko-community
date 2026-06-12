@@ -13,6 +13,7 @@ import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
 import com.jpkocommunity.domain.post.dto.response.*;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostImageRepository;
+import com.jpkocommunity.domain.like.repository.PostLikeCount;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
@@ -24,8 +25,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +43,32 @@ public class PostService {
     private final UserService userService;
     private final CategoryService categoryService;
     private final NoticeService noticeService;
+
+    private Page<PostSummaryResponse> toSummaryPage(Page<Post> posts) {
+        List<Long> postIds = posts.getContent().stream().map(Post::getId).toList();
+
+        if (postIds.isEmpty()) {
+            return posts.map(post -> PostSummaryResponse.from(post, 0L, 0L, false));
+        }
+
+        // 댓글 수 (기존)
+        Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(PostCommentCount::getPostId, PostCommentCount::getCommentCount));
+
+        // 좋아요 수 (추가)
+        Map<Long, Long> likeCounts = likeRepository.countLikesByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(PostLikeCount::getPostId, PostLikeCount::getLikeCount));
+
+        // 이미지 보유 여부 (추가) — Set으로 O(1) 조회
+        Set<Long> postIdsWithImage = new HashSet<>(postImageRepository.findPostIdsHavingImages(postIds));
+
+        return posts.map(post -> PostSummaryResponse.from(
+                post,
+                commentCounts.getOrDefault(post.getId(), 0L),
+                likeCounts.getOrDefault(post.getId(), 0L),
+                postIdsWithImage.contains(post.getId())
+        ));
+    }
 
     public PostListResponse getPostsByCategory(Long categoryId, Pageable pageable) {
         List<NoticeSummaryResponse> pinnedNotices = pageable.getPageNumber() == 0
@@ -61,18 +90,6 @@ public class PostService {
                 postRepository.findAllActive(pageable)
         );
         return PostListResponse.of(pinnedNotices, posts);
-    }
-
-    // 게시글 목록에 댓글 수를 함께 채워서 반환 (post당 쿼리 1번이 아닌, 페이지 전체 댓글 수를 한 번에 조회)
-    private Page<PostSummaryResponse> toSummaryPage(Page<Post> posts) {
-        List<Long> postIds = posts.getContent().stream().map(Post::getId).toList();
-
-        Map<Long, Long> commentCounts = postIds.isEmpty()
-                ? Map.of()
-                : commentRepository.countByPostIdIn(postIds).stream()
-                  .collect(Collectors.toMap(PostCommentCount::getPostId, PostCommentCount::getCommentCount));
-
-        return posts.map(post -> PostSummaryResponse.from(post, commentCounts.getOrDefault(post.getId(), 0L)));
     }
 
     @Transactional

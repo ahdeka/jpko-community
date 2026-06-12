@@ -3,7 +3,10 @@ package com.jpkocommunity.domain.like.repository;
 import com.jpkocommunity.domain.like.entity.Like;
 import com.jpkocommunity.domain.like.entity.LikeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface LikeRepository extends JpaRepository<Like, Long> {
@@ -13,4 +16,10 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
 
     // COUNT 쿼리 방식 - 타입별 집계
     long countByPostIdAndType(Long postId, LikeType type);
+
+    @Query("SELECT l.post.id AS postId, COUNT(l) AS likeCount " +
+            "FROM Like l " +
+            "WHERE l.post.id IN :postIds AND l.type = com.jpkocommunity.domain.like.entity.LikeType.LIKE " +
+            "GROUP BY l.post.id")
+    List<PostLikeCount> countLikesByPostIdIn(@Param("postIds") List<Long> postIds);
 }

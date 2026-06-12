@@ -12,9 +12,11 @@ public record PostSummaryResponse(
         boolean anonymous,
         int viewCount,
         long commentCount,
+        long likeCount,
+        boolean hasImage,
         LocalDateTime createdAt
 ) {
-    public static PostSummaryResponse from(Post post, long commentCount) {
+    public static PostSummaryResponse from(Post post, long commentCount, long likeCount, boolean hasImage) {
         return new PostSummaryResponse(
                 post.getId(),
                 post.getCategory().getName(),
@@ -23,6 +25,8 @@ public record PostSummaryResponse(
                 post.isAnonymous(),
                 post.getViewCount(),
                 commentCount,
+                likeCount,
+                hasImage,
                 post.getCreatedAt()
         );
     }

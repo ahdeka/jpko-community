@@ -1,4 +1,4 @@
-package com.jpkocommunity.domain.post.repository;
+package com.jpkocommunity.domain.like.repository;
 
 public interface PostLikeCount {
     Long getPostId();
