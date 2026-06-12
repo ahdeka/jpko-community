@@ -32,6 +32,9 @@ public enum ErrorCode {
     // Like
     DUPLICATE_LIKE(HttpStatus.CONFLICT, "이미 좋아요/싫어요를 누른 게시글입니다."),
 
+    // Notice
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 공지사항입니다."),
+
     // Image
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 이미지입니다."),
     IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "게시글당 이미지는 최대 5장까지 업로드할 수 있습니다."),
