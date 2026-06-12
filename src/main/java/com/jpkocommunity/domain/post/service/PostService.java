@@ -6,12 +6,13 @@ import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.comment.repository.PostCommentCount;
 import com.jpkocommunity.domain.like.entity.LikeType;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
+import com.jpkocommunity.domain.notice.dto.response.NoticeSummaryResponse;
+import com.jpkocommunity.domain.notice.service.NoticeService;
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
 import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
-import com.jpkocommunity.domain.post.dto.response.PostDetailResponse;
-import com.jpkocommunity.domain.post.dto.response.PostResponse;
-import com.jpkocommunity.domain.post.dto.response.PostSummaryResponse;
+import com.jpkocommunity.domain.post.dto.response.*;
 import com.jpkocommunity.domain.post.entity.Post;
+import com.jpkocommunity.domain.post.repository.PostImageRepository;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
@@ -33,17 +34,33 @@ import java.util.stream.Collectors;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final PostImageRepository postImageRepository;
     private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
     private final UserService userService;
     private final CategoryService categoryService;
+    private final NoticeService noticeService;
 
-    public Page<PostSummaryResponse> getPostsByCategory(Long categoryId, Pageable pageable) {
-        return toSummaryPage(postRepository.findByCategoryId(categoryId, pageable));
+    public PostListResponse getPostsByCategory(Long categoryId, Pageable pageable) {
+        List<NoticeSummaryResponse> pinnedNotices = pageable.getPageNumber() == 0
+                ? noticeService.getPinnedNotices()
+                : List.of();
+
+        Page<PostSummaryResponse> posts = toSummaryPage(
+                postRepository.findByCategoryId(categoryId, pageable)
+        );
+        return PostListResponse.of(pinnedNotices, posts);
     }
 
-    public Page<PostSummaryResponse> getAllPosts(Pageable pageable) {
-        return toSummaryPage(postRepository.findAllActive(pageable));
+    public PostListResponse getAllPosts(Pageable pageable) {
+        List<NoticeSummaryResponse> pinnedNotices = pageable.getPageNumber() == 0
+                ? noticeService.getPinnedNotices()
+                : List.of();
+
+        Page<PostSummaryResponse> posts = toSummaryPage(
+                postRepository.findAllActive(pageable)
+        );
+        return PostListResponse.of(pinnedNotices, posts);
     }
 
     // 게시글 목록에 댓글 수를 함께 채워서 반환 (post당 쿼리 1번이 아닌, 페이지 전체 댓글 수를 한 번에 조회)
@@ -53,7 +70,7 @@ public class PostService {
         Map<Long, Long> commentCounts = postIds.isEmpty()
                 ? Map.of()
                 : commentRepository.countByPostIdIn(postIds).stream()
-                        .collect(Collectors.toMap(PostCommentCount::getPostId, PostCommentCount::getCommentCount));
+                  .collect(Collectors.toMap(PostCommentCount::getPostId, PostCommentCount::getCommentCount));
 
         return posts.map(post -> PostSummaryResponse.from(post, commentCounts.getOrDefault(post.getId(), 0L)));
     }
@@ -63,10 +80,16 @@ public class PostService {
         Post post = findActivePostById(postId);
         post.increaseViewCount();
 
-        long likeCount    = likeRepository.countByPostIdAndType(postId, LikeType.LIKE);
+        long likeCount = likeRepository.countByPostIdAndType(postId, LikeType.LIKE);
         long dislikeCount = likeRepository.countByPostIdAndType(postId, LikeType.DISLIKE);
 
-        return PostDetailResponse.from(post, likeCount, dislikeCount, currentUserId);
+        List<PostImageResponse> images = postImageRepository
+                .findByPostIdOrderByDisplayOrderAsc(postId)
+                .stream()
+                .map(PostImageResponse::from)
+                .toList();
+
+        return PostDetailResponse.from(post, likeCount, dislikeCount, currentUserId, images);
     }
 
     @Transactional

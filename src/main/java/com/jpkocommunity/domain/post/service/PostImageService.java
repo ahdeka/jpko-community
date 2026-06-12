@@ -16,8 +16,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -55,13 +53,6 @@ public class PostImageService {
             s3ImageUploader.delete(result.s3Key());
             throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
         }
-    }
-
-    public List<PostImageResponse> getImages(Long postId) {
-        return postImageRepository.findByPostIdOrderByDisplayOrderAsc(postId)
-                .stream()
-                .map(PostImageResponse::from)
-                .toList();
     }
 
     @Transactional
