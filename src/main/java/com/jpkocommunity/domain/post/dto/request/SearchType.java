@@ -1,4 +1,6 @@
 package com.jpkocommunity.domain.post.dto.request;
 
-public record SearchType() {
+public enum SearchType {
+    TITLE,
+    TITLE_CONTENT
 }

@@ -6,14 +6,15 @@ import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.comment.repository.PostCommentCount;
 import com.jpkocommunity.domain.like.entity.LikeType;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
+import com.jpkocommunity.domain.like.repository.PostLikeCount;
 import com.jpkocommunity.domain.notice.dto.response.NoticeSummaryResponse;
 import com.jpkocommunity.domain.notice.service.NoticeService;
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
 import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
+import com.jpkocommunity.domain.post.dto.request.SearchType;
 import com.jpkocommunity.domain.post.dto.response.*;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostImageRepository;
-import com.jpkocommunity.domain.like.repository.PostLikeCount;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
@@ -21,10 +22,13 @@ import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +40,10 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class PostService {
 
+    private static final int MIN_KEYWORD_LENGTH = 2;
+    private static final int MAX_POPULAR_LIMIT = 50;
+    private static final int MAX_POPULAR_DAYS = 30;
+
     private final PostRepository postRepository;
     private final PostImageRepository postImageRepository;
     private final CommentRepository commentRepository;
@@ -44,30 +52,34 @@ public class PostService {
     private final CategoryService categoryService;
     private final NoticeService noticeService;
 
-    private Page<PostSummaryResponse> toSummaryPage(Page<Post> posts) {
-        List<Long> postIds = posts.getContent().stream().map(Post::getId).toList();
+    private List<PostSummaryResponse> toSummaryList(List<Post> posts) {
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
 
         if (postIds.isEmpty()) {
-            return posts.map(post -> PostSummaryResponse.from(post, 0L, 0L, false));
+            return List.of();
         }
 
-        // 댓글 수 (기존)
         Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(postIds).stream()
                 .collect(Collectors.toMap(PostCommentCount::getPostId, PostCommentCount::getCommentCount));
 
-        // 좋아요 수 (추가)
         Map<Long, Long> likeCounts = likeRepository.countLikesByPostIdIn(postIds).stream()
                 .collect(Collectors.toMap(PostLikeCount::getPostId, PostLikeCount::getLikeCount));
 
-        // 이미지 보유 여부 (추가) — Set으로 O(1) 조회
         Set<Long> postIdsWithImage = new HashSet<>(postImageRepository.findPostIdsHavingImages(postIds));
 
-        return posts.map(post -> PostSummaryResponse.from(
-                post,
-                commentCounts.getOrDefault(post.getId(), 0L),
-                likeCounts.getOrDefault(post.getId(), 0L),
-                postIdsWithImage.contains(post.getId())
-        ));
+        return posts.stream()
+                .map(post -> PostSummaryResponse.from(
+                        post,
+                        commentCounts.getOrDefault(post.getId(), 0L),
+                        likeCounts.getOrDefault(post.getId(), 0L),
+                        postIdsWithImage.contains(post.getId())
+                ))
+                .toList();
+    }
+
+    private Page<PostSummaryResponse> toSummaryPage(Page<Post> posts) {
+        List<PostSummaryResponse> content = toSummaryList(posts.getContent());
+        return new PageImpl<>(content, posts.getPageable(), posts.getTotalElements());
     }
 
     public PostListResponse getPostsByCategory(Long categoryId, Pageable pageable) {
@@ -90,6 +102,36 @@ public class PostService {
                 postRepository.findAllActive(pageable)
         );
         return PostListResponse.of(pinnedNotices, posts);
+    }
+
+    public PostListResponse searchPosts(String keyword, SearchType type, Long categoryId, Pageable pageable) {
+        String trimmed = keyword == null ? "" : keyword.trim();
+        if (trimmed.length() < MIN_KEYWORD_LENGTH) {
+            // 전용 에러 코드로 프론트가 정확히 분기할 수 있게
+            throw new CustomException(ErrorCode.SEARCH_KEYWORD_TOO_SHORT);
+        }
+
+        Page<Post> result = (type == SearchType.TITLE)
+                ? postRepository.searchByTitle(categoryId, trimmed, pageable)
+                : postRepository.searchByTitleAndContent(categoryId, trimmed, pageable);
+
+        return PostListResponse.of(List.of(), toSummaryPage(result));
+    }
+
+
+    /**
+     * 인기 게시글 조회
+     * @param days  최근 N일 (1=실시간, 7=주간)
+     * @param limit 노출 개수
+     */
+    public List<PostSummaryResponse> getPopularPosts(int days, int limit) {
+        // 잘못된 파라미터로 500 떨어지는 걸 막기 위해 clamp
+        int safeDays = Math.clamp(days, 1, MAX_POPULAR_DAYS);
+        int safeLimit = Math.clamp(limit, 1, MAX_POPULAR_LIMIT);
+
+        LocalDateTime since = LocalDateTime.now().minusDays(safeDays);
+        List<Post> posts = postRepository.findPopularPosts(since, PageRequest.of(0, safeLimit));
+        return toSummaryList(posts);
     }
 
     @Transactional
