@@ -1,6 +1,5 @@
 package com.jpkocommunity.domain.post.service;
 
-import com.jpkocommunity.domain.post.dto.response.PostImageResponse;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.entity.PostImage;
 import com.jpkocommunity.domain.post.repository.PostImageRepository;
@@ -12,9 +11,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -25,59 +25,66 @@ public class PostImageService {
     private static final int MAX_IMAGES_PER_POST = 5;
 
     private final S3ImageUploader s3ImageUploader;
-    private final PostService postService;
     private final PostImageRepository postImageRepository;
 
-    @Transactional
-    public PostImageResponse upload(Long userId, Long postId, MultipartFile file, int displayOrder) {
-        Post post = postService.findActivePostById(postId);
-        postService.validateAuthor(post, userId);
-
-        if (postImageRepository.findByPostIdOrderByDisplayOrderAsc(postId).size() >= MAX_IMAGES_PER_POST) {
+    /**
+     * 게시글 생성 시 이미지 여러장 업로드
+     * PostService.createPost()에서 @Transactional 안에서 호출함
+     */
+    public void uploadAll(Post post, List<MultipartFile> files) {
+        if (files.size() > MAX_IMAGES_PER_POST) {
             throw new CustomException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
         }
 
-        String prefix = "posts/" + postId;
-        S3UploadResult result = s3ImageUploader.upload(file, prefix);
+        List<String> uploadedKeys = new ArrayList<>();
 
         try {
-            PostImage saved = postImageRepository.save(PostImage.builder()
-                    .post(post)
-                    .s3Key(result.s3Key())
-                    .imageUrl(result.imageUrl())
-                    .displayOrder(displayOrder)
-                    .build());
-            return PostImageResponse.from(saved);
+            for (int i = 0; i < files.size(); i++) {
+                MultipartFile file = files.get(i);
+
+                // 빈 파일은 건너뛰기
+                if (file == null || file.isEmpty()) continue;
+
+                String prefix = "posts/" + post.getId();
+                S3UploadResult result = s3ImageUploader.upload(file, prefix);
+                uploadedKeys.add(result.s3Key());  // 롤백 추적용
+
+                postImageRepository.save(PostImage.builder()
+                        .post(post)
+                        .s3Key(result.s3Key())
+                        .imageUrl(result.imageUrl())
+                        .displayOrder(i)
+                        .build());
+            }
         } catch (Exception e) {
-            log.error("DB 저장 실패, S3 보상 삭제 - key: {}", result.s3Key(), e);
-            s3ImageUploader.delete(result.s3Key());
-            throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
+            // S3 업로드는 성공했지만 DB 저장에서 예외 발생 시, 업로드된 S3 객체들 삭제 (보상 트랜잭션)
+            log.error("이미지 업로드 중 오류 발생, S3 보상 삭제 시작 - {}개", uploadedKeys.size());
+            uploadedKeys.forEach(key -> {
+                try {
+                    s3ImageUploader.delete(key);
+                } catch (Exception deleteEx) {
+                    log.error("S3 보상 삭제 실패 (수동 정리 필요) - key: {}", key);
+                }
+            });
+            throw e;  // 원래 예외를 다시 던져서 트랜잭션 롤백 유도
         }
     }
 
+    /**
+     * 게시글 이미지 삭제
+     * PostController.deleteImage() 엔드포인트에서 사용
+     */
     @Transactional
     public void delete(Long userId, Long postId, Long imageId) {
-        Post post = postService.findActivePostById(postId);
-        postService.validateAuthor(post, userId);
-
-        PostImage postImage = postImageRepository.findById(imageId)
+        PostImage image = postImageRepository.findById(imageId)
                 .orElseThrow(() -> new CustomException(ErrorCode.IMAGE_NOT_FOUND));
 
-        if (!postImage.getPost().getId().equals(postId)) {
-            throw new CustomException(ErrorCode.IMAGE_NOT_FOUND);
+        if (!image.getPost().getId().equals(postId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
         }
 
-        String s3Key = postImage.getS3Key();
-        postImageRepository.delete(postImage);
-
-        // DB 커밋 성공 후에만 S3 삭제
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                s3ImageUploader.delete(s3Key);
-            }
-        });
+        s3ImageUploader.delete(image.getS3Key());
+        postImageRepository.delete(image);
     }
-
 
 }

@@ -27,6 +27,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -51,6 +52,7 @@ public class PostService {
     private final UserService userService;
     private final CategoryService categoryService;
     private final NoticeService noticeService;
+    private final PostImageService postImageService;
 
     private List<PostSummaryResponse> toSummaryList(List<Post> posts) {
         List<Long> postIds = posts.stream().map(Post::getId).toList();
@@ -154,18 +156,25 @@ public class PostService {
     @Transactional
     public PostResponse createPost(Long userId, PostCreateRequest request, String ipAddress) {
         User user = userService.findById(userId);
-        Category category = categoryService.findById(request.categoryId());
+        Category category = categoryService.findById(request.getCategoryId());
 
         Post post = Post.builder()
                 .user(user)
                 .category(category)
-                .title(request.title())
-                .content(request.content())
-                .anonymous(request.anonymous())
+                .title(request.getTitle())
+                .content(request.getContent())
+                .anonymous(request.isAnonymous())
                 .ipAddress(ipAddress)
                 .build();
 
+        // post 생성을 통해 Id값 확정
         postRepository.save(post);
+
+        List<MultipartFile> images = request.getImages();
+        if (images != null && !images.isEmpty()) {
+            // 같은 트랜잭션 에서 실행
+            postImageService.uploadAll(post, images);
+        }
 
         return PostResponse.from(post.getId());
     }
