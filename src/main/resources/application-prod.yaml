@@ -13,8 +13,8 @@ jwt:
 
 cookie:
   secure: true
-  same-site: None
-  domain: "jpkocommunity.site"
+  same-site: Lax
+  domain: ""
 
 cloud:
   aws:
