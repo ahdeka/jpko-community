@@ -75,10 +75,10 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.ok(postService.getPost(postId, currentUserId)));
     }
 
-    @PostMapping(consumes = "multipart/form-data")
+    @PostMapping
     public ResponseEntity<ApiResponse<PostResponse>> createPost(
             @AuthenticationPrincipal AuthUser authUser,
-            @Valid @ModelAttribute PostCreateRequest request,
+            @Valid @RequestBody PostCreateRequest request,
             HttpServletRequest servletRequest  // IP 추출용
     ) {
         String ipAddress = getClientIp(servletRequest);
