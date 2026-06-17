@@ -1,0 +1,79 @@
+package com.jpkocommunity.domain.image.service;
+
+import com.jpkocommunity.domain.image.dto.ImageUploadResponse;
+import com.jpkocommunity.global.infra.s3.S3ImageUploader;
+import com.jpkocommunity.global.infra.s3.S3UploadResult;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ImageService {
+
+    private final S3ImageUploader s3ImageUploader;
+
+    private static final String TEMP_PREFIX = "temp/";
+    private static final String POSTS_PREFIX = "posts/";
+
+    // content HTML에서 임시 이미지 URL 추출을 위한 패턴
+    private static final Pattern TEMP_URL_PATTERN =
+            Pattern.compile("https?://[^/]+/(temp/[^\"\\s>]+)");
+
+    // 에디터에서 이미지 즉시 S3 업로드
+    public ImageUploadResponse uploadTemp(MultipartFile file) {
+        S3UploadResult result = s3ImageUploader.upload(file, TEMP_PREFIX);
+        return new ImageUploadResponse(result.imageUrl());
+    }
+
+    /**
+     * 게시글 저장 시 temp/ -> posts/{postId}/로 이동
+     * S3 copyObject는 네트워크 전송이 아닌 S3 내부 처리여서 빠름
+     */
+    public String moveTempImagesToPost(String content, Long postId) {
+        Matcher matcher = TEMP_URL_PATTERN.matcher(content);
+        List<String[]> replacements = new ArrayList<>();
+
+        while (matcher.find()) {
+            String originalUrl = matcher.group(0);           // 전체 URL
+            String tempKey = matcher.group(1);               // "temp/uuid.jpg"
+            String filename = tempKey.substring(TEMP_PREFIX.length()); // "uuid.jpg"
+            String newKey = POSTS_PREFIX + postId + "/" + filename;    // "posts/1/uuid.jpg"
+
+            try {
+                String newUrl = s3ImageUploader.copy(tempKey, newKey);
+                replacements.add(new String[]{originalUrl, newUrl, tempKey});
+            } catch (Exception e) {
+                log.error("S3 copy 실패 - tempKey: {}, postId: {}", tempKey, postId);
+                // copy 실패한 이미지는 temp URL 유지, 나중에 Lifecycle이 삭제
+            }
+        }
+
+        String updatedContent = content;
+        for (String[] r : replacements) {
+            updatedContent = updatedContent.replace(r[0], r[1]); // URL 치환
+            try {
+                s3ImageUploader.delete(r[2]); // temp 원본 삭제
+            } catch (Exception e) {
+                log.warn("temp 파일 삭제 실패 (Lifecycle이 처리) - key: {}", r[2]);
+            }
+        }
+
+        return updatedContent;
+    }
+
+    // HTML content 저장 전 악성 태그 제거 -> 안전한 HTML만 DB에 저장 *XSS 방어
+    public String sanitize(String html) {
+        return Jsoup.clean(html, Safelist.relaxed());
+    }
+
+}

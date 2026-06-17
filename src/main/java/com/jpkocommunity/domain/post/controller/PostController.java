@@ -7,7 +7,6 @@ import com.jpkocommunity.domain.post.dto.response.PostDetailResponse;
 import com.jpkocommunity.domain.post.dto.response.PostListResponse;
 import com.jpkocommunity.domain.post.dto.response.PostResponse;
 import com.jpkocommunity.domain.post.dto.response.PostSummaryResponse;
-import com.jpkocommunity.domain.post.service.PostImageService;
 import com.jpkocommunity.domain.post.service.PostService;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
@@ -31,7 +30,6 @@ import java.util.List;
 public class PostController {
 
     private final PostService postService;
-    private final PostImageService postImageService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<PostListResponse>> getAllPosts(
@@ -107,19 +105,6 @@ public class PostController {
     ) {
         postService.deletePost(authUser.userId(), postId);
         return ResponseEntity.ok(ApiResponse.ok("게시글이 삭제되었습니다."));
-    }
-
-    // ========== 이미지 단건 삭제(관리자용) ==========
-
-    @DeleteMapping("/{postId}/images/{imageId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteImage(
-            @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long postId,
-            @PathVariable Long imageId
-    ) {
-        postImageService.delete(authUser.userId(), postId, imageId);
-        return ResponseEntity.ok(ApiResponse.ok("이미지가 삭제되었습니다."));
     }
 
     // AuthController와 동일한 IP 추출 로직

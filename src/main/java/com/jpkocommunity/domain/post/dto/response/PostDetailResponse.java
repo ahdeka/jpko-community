@@ -3,7 +3,6 @@ package com.jpkocommunity.domain.post.dto.response;
 import com.jpkocommunity.domain.post.entity.Post;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 public record PostDetailResponse(
         Long id,
@@ -16,12 +15,10 @@ public record PostDetailResponse(
         int viewCount,
         long likeCount,
         long dislikeCount,
-        List<PostImageResponse> images,
         LocalDateTime createdAt
 ) {
     public static PostDetailResponse from(
-            Post post, long likeCount, long dislikeCount,
-            Long currentUserId, List<PostImageResponse> images) {
+            Post post, long likeCount, long dislikeCount, Long currentUserId) {
         return new PostDetailResponse(
                 post.getId(),
                 post.getCategory().getName(),
@@ -33,7 +30,6 @@ public record PostDetailResponse(
                 post.getViewCount(),
                 likeCount,
                 dislikeCount,
-                images,
                 post.getCreatedAt()
         );
     }

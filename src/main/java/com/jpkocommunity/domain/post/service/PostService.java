@@ -4,6 +4,7 @@ import com.jpkocommunity.domain.category.entity.Category;
 import com.jpkocommunity.domain.category.service.CategoryService;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.comment.repository.PostCommentCount;
+import com.jpkocommunity.domain.image.service.ImageService;
 import com.jpkocommunity.domain.like.entity.LikeType;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
 import com.jpkocommunity.domain.like.repository.PostLikeCount;
@@ -51,6 +52,7 @@ public class PostService {
     private final UserService userService;
     private final CategoryService categoryService;
     private final NoticeService noticeService;
+    private final ImageService imageService;
 
     private List<PostSummaryResponse> toSummaryList(List<Post> posts) {
         List<Long> postIds = posts.stream().map(Post::getId).toList();
@@ -142,13 +144,7 @@ public class PostService {
         long likeCount = likeRepository.countByPostIdAndType(postId, LikeType.LIKE);
         long dislikeCount = likeRepository.countByPostIdAndType(postId, LikeType.DISLIKE);
 
-        List<PostImageResponse> images = postImageRepository
-                .findByPostIdOrderByDisplayOrderAsc(postId)
-                .stream()
-                .map(PostImageResponse::from)
-                .toList();
-
-        return PostDetailResponse.from(post, likeCount, dislikeCount, currentUserId, images);
+        return PostDetailResponse.from(post, likeCount, dislikeCount, currentUserId);
     }
 
     @Transactional
@@ -156,16 +152,21 @@ public class PostService {
         User user = userService.findById(userId);
         Category category = categoryService.findById(request.categoryId());
 
-        Post post = Post.builder()
+        // content HTML 에서 악성 태그 제거
+        String sanitizedContent = imageService.sanitize(request.content());
+
+        // 게시글 저장 -> postId 생성
+        Post post = postRepository.save(Post.builder()
                 .user(user)
                 .category(category)
                 .title(request.title())
                 .content(request.content())
                 .anonymous(request.anonymous())
                 .ipAddress(ipAddress)
-                .build();
+                .build());
 
-        postRepository.save(post);
+
+        String movedContent = imageService.moveTempImagesToPost(sanitizedContent, post.getId());
         return PostResponse.from(post.getId());
     }
 

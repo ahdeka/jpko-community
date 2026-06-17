@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
@@ -52,6 +53,25 @@ public class S3ImageUploader {
         putObject(file, s3Key, extension);
 
         return new S3UploadResult(s3Key, buildUrl(s3Key));
+    }
+
+    public String copy(String sourceKey, String destinationKey) {
+        try {
+            CopyObjectRequest copyRequest = CopyObjectRequest.builder()
+                    .sourceBucket(bucket)
+                    .sourceKey(sourceKey)
+                    .destinationBucket(bucket)
+                    .destinationKey(destinationKey)
+                    .build();
+
+            s3Client.copyObject(copyRequest);
+
+            return "https://" + bucket + ".s3." + region + ".amazonaws.com/" + destinationKey;
+
+        } catch (SdkException e) {
+            log.error("S3 copy 실패 - source: {}, dest: {}", sourceKey, destinationKey);
+            throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
     }
 
     public void delete(String s3Key) {
