@@ -1,6 +1,8 @@
 package com.jpkocommunity.domain.image.service;
 
 import com.jpkocommunity.domain.image.dto.ImageUploadResponse;
+import com.jpkocommunity.global.exception.CustomException;
+import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.infra.s3.S3ImageUploader;
 import com.jpkocommunity.global.infra.s3.S3UploadResult;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +24,9 @@ public class ImageService {
 
     private final S3ImageUploader s3ImageUploader;
 
-    private static final String TEMP_PREFIX = "temp/";
-    private static final String POSTS_PREFIX = "posts/";
+    private static final int MAX_IMAGES_PER_POST = 5;
+    private static final String TEMP_PREFIX = "temp";
+    private static final String POSTS_PREFIX = "posts";
 
     // content HTML에서 임시 이미지 URL 추출을 위한 패턴
     private static final Pattern TEMP_URL_PATTERN =
@@ -76,4 +79,11 @@ public class ImageService {
         return Jsoup.clean(html, Safelist.relaxed());
     }
 
+    // 게시글당 이미지 수 제한 검증 -> PostService.createPost() 에서 사용
+    public void validateImageCount(String content) {
+        int count = Jsoup.parse(content).select("img").size();
+        if (count > MAX_IMAGES_PER_POST) {
+            throw new CustomException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
+        }
+    }
 }

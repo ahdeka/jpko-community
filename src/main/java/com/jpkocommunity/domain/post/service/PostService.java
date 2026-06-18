@@ -152,8 +152,9 @@ public class PostService {
         User user = userService.findById(userId);
         Category category = categoryService.findById(request.categoryId());
 
-        // content HTML 에서 악성 태그 제거
+        // content HTML에서 악성 태그 제거
         String sanitizedContent = imageService.sanitize(request.content());
+        imageService.validateImageCount(sanitizedContent); // 개수 검증
 
         // 게시글 저장 -> postId 생성
         Post post = postRepository.save(Post.builder()
