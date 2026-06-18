@@ -57,6 +57,7 @@ public class S3ImageUploader {
 
     public String copy(String sourceKey, String destinationKey) {
         try {
+            // S3 copyObject는 네트워크 전송이 아닌 S3 내부 처리여서 빠름
             CopyObjectRequest copyRequest = CopyObjectRequest.builder()
                     .sourceBucket(bucket)
                     .sourceKey(sourceKey)

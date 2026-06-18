@@ -38,10 +38,7 @@ public class ImageService {
         return new ImageUploadResponse(result.imageUrl());
     }
 
-    /**
-     * 게시글 저장 시 temp/ -> posts/{postId}/로 이동
-     * S3 copyObject는 네트워크 전송이 아닌 S3 내부 처리여서 빠름
-     */
+    // 게시글 저장 시 임시 이미지들을 posts/{postId}로 이동
     public String moveTempImagesToPost(String content, Long postId) {
         Matcher matcher = TEMP_URL_PATTERN.matcher(content);
         List<String[]> replacements = new ArrayList<>();
