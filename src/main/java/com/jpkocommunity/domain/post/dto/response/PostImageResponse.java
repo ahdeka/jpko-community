@@ -1,7 +1,5 @@
 package com.jpkocommunity.domain.post.dto.response;
 
-import com.jpkocommunity.domain.post.entity.PostImage;
-
 public record PostImageResponse(
         Long id,
         String imageUrl,
