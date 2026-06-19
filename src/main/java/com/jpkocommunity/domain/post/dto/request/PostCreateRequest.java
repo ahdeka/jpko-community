@@ -14,7 +14,7 @@ public record PostCreateRequest(
         String title,
 
         @NotBlank(message = "내용을 입력해주세요.")
-        String content,  // Tiptap이 생성한 HTML
+        String content,
 
         boolean anonymous
 ) {}
