@@ -14,5 +14,6 @@ public record PostUpdateRequest(
         String title,
 
         @NotBlank(message = "내용을 입력해주세요.")
+        @Size(max = 20000, message = "본문은 20,000자 이하여야 합니다.")
         String content
 ) {}
