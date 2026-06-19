@@ -15,7 +15,6 @@ import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
 import com.jpkocommunity.domain.post.dto.request.SearchType;
 import com.jpkocommunity.domain.post.dto.response.*;
 import com.jpkocommunity.domain.post.entity.Post;
-import com.jpkocommunity.domain.post.repository.PostImageRepository;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
@@ -30,10 +29,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,7 +43,6 @@ public class PostService {
     private static final int MAX_POPULAR_DAYS = 30;
 
     private final PostRepository postRepository;
-    private final PostImageRepository postImageRepository;
     private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
     private final UserService userService;
@@ -67,14 +63,12 @@ public class PostService {
         Map<Long, Long> likeCounts = likeRepository.countLikesByPostIdIn(postIds).stream()
                 .collect(Collectors.toMap(PostLikeCount::getPostId, PostLikeCount::getLikeCount));
 
-        Set<Long> postIdsWithImage = new HashSet<>(postImageRepository.findPostIdsHavingImages(postIds));
-
         return posts.stream()
                 .map(post -> PostSummaryResponse.from(
                         post,
                         commentCounts.getOrDefault(post.getId(), 0L),
                         likeCounts.getOrDefault(post.getId(), 0L),
-                        postIdsWithImage.contains(post.getId())
+                        post.getContent() != null && post.getContent().contains("<img")
                 ))
                 .toList();
     }
@@ -161,13 +155,13 @@ public class PostService {
                 .user(user)
                 .category(category)
                 .title(request.title())
-                .content(request.content())
+                .content(sanitizedContent)
                 .anonymous(request.anonymous())
                 .ipAddress(ipAddress)
                 .build());
 
-
         String movedContent = imageService.moveTempImagesToPost(sanitizedContent, post.getId());
+        post.updateContent(movedContent);
         return PostResponse.from(post.getId());
     }
 

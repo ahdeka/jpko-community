@@ -42,6 +42,7 @@ public class ImageService {
     public String moveTempImagesToPost(String content, Long postId) {
         Matcher matcher = TEMP_URL_PATTERN.matcher(content);
         List<String[]> replacements = new ArrayList<>();
+        List<String> copiedKeys = new ArrayList<>(); // 성공한 S3 키 추적
 
         while (matcher.find()) {
             String originalUrl = matcher.group(0);           // 전체 URL
@@ -52,12 +53,15 @@ public class ImageService {
             try {
                 String newUrl = s3ImageUploader.copy(tempKey, newKey);
                 replacements.add(new String[]{originalUrl, newUrl, tempKey});
+                copiedKeys.add(newKey); // copy 성공한 시점만 기록
             } catch (Exception e) {
                 log.error("S3 copy 실패 - tempKey: {}, postId: {}", tempKey, postId);
-                // copy 실패한 이미지는 temp URL 유지, 나중에 Lifecycle이 삭제
+                compensate(copiedKeys);
+                throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
             }
         }
 
+        // 여기 도달 = 모든 copy 성공
         String updatedContent = content;
         for (String[] r : replacements) {
             updatedContent = updatedContent.replace(r[0], r[1]); // URL 치환
@@ -81,6 +85,13 @@ public class ImageService {
         int count = Jsoup.parse(content).select("img").size();
         if (count > MAX_IMAGES_PER_POST) {
             throw new CustomException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
+        }
+    }
+
+    // 게시글 저장 실패 시 S3에 복사된 이미지 삭제 (보상 처리)
+    private void compensate(List<String> copiedKeys) {
+        for (String key : copiedKeys) {
+            s3ImageUploader.delete(key);
         }
     }
 }
