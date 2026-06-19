@@ -47,8 +47,8 @@ public class ImageService {
         while (matcher.find()) {
             String originalUrl = matcher.group(0);           // 전체 URL
             String tempKey = matcher.group(1);               // "temp/uuid.jpg"
-            String filename = tempKey.substring(TEMP_PREFIX.length()); // "uuid.jpg"
-            String newKey = POSTS_PREFIX + postId + "/" + filename;    // "posts/1/uuid.jpg"
+            String filename = tempKey.substring(TEMP_PREFIX.length() + 1); // "uuid.jpg"
+            String newKey = POSTS_PREFIX + "/" + postId + "/" + filename; // "posts/1/uuid.jpg"
 
             try {
                 String newUrl = s3ImageUploader.copy(tempKey, newKey);

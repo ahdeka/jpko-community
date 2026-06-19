@@ -66,7 +66,7 @@ public class Post extends BaseEntity {
         this.content = content;
     }
 
-    public void updateContent(String content) {
+    public void confirmContent(String content) {
         this.content = content;
     }
 

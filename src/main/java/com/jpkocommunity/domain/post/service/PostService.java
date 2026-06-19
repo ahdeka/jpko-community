@@ -161,7 +161,7 @@ public class PostService {
                 .build());
 
         String movedContent = imageService.moveTempImagesToPost(sanitizedContent, post.getId());
-        post.updateContent(movedContent);
+        post.confirmContent(movedContent);
         return PostResponse.from(post.getId());
     }
 
