@@ -83,4 +83,13 @@ public class ApiResponse<T> {
                 .message(errorCode.getMessage())
                 .build();
     }
+
+    // 에러 - 메시지 커스텀
+    public static ApiResponse<Void> error(ErrorCode errorCode, String message) {
+        return ApiResponse.<Void>builder()
+                .status(errorCode.getStatus().value())
+                .code(errorCode.name())
+                .message(message)
+                .build();
+    }
 }
