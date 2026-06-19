@@ -61,7 +61,8 @@ public class Post extends BaseEntity {
 
     // ========== 비즈니스 메서드 ==========
 
-    public void update(String title, String content) {
+    public void update(Category category, String title, String content) {
+        this.category = category;
         this.title = title;
         this.content = content;
     }

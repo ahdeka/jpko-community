@@ -18,7 +18,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -88,14 +87,13 @@ public class PostController {
     }
 
     @PutMapping("/{postId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PostResponse>> updatePost(
+            @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long postId,
             @Valid @RequestBody PostUpdateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
-                postService.updatePost(postId, request)
-        ));
+                postService.updatePost(authUser, postId, request)));
     }
 
     @DeleteMapping("/{postId}")
@@ -103,7 +101,7 @@ public class PostController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long postId
     ) {
-        postService.deletePost(authUser.userId(), postId);
+        postService.deletePost(authUser, postId);
         return ResponseEntity.ok(ApiResponse.ok("게시글이 삭제되었습니다."));
     }
 

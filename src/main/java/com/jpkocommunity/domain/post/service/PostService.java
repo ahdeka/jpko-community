@@ -13,13 +13,18 @@ import com.jpkocommunity.domain.notice.service.NoticeService;
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
 import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
 import com.jpkocommunity.domain.post.dto.request.SearchType;
-import com.jpkocommunity.domain.post.dto.response.*;
+import com.jpkocommunity.domain.post.dto.response.PostDetailResponse;
+import com.jpkocommunity.domain.post.dto.response.PostListResponse;
+import com.jpkocommunity.domain.post.dto.response.PostResponse;
+import com.jpkocommunity.domain.post.dto.response.PostSummaryResponse;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
+import com.jpkocommunity.global.security.auth.AuthUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -41,6 +46,7 @@ public class PostService {
     private static final int MIN_KEYWORD_LENGTH = 2;
     private static final int MAX_POPULAR_LIMIT = 50;
     private static final int MAX_POPULAR_DAYS = 30;
+    private static final int EDIT_ALLOWED_MINUTES = 30;
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
@@ -146,9 +152,7 @@ public class PostService {
         User user = userService.findById(userId);
         Category category = categoryService.findById(request.categoryId());
 
-        // content HTML에서 악성 태그 제거
-        String sanitizedContent = imageService.sanitize(request.content());
-        imageService.validateImageCount(sanitizedContent); // 개수 검증
+        String sanitizedContent = validateContent(request.content());
 
         // 게시글 저장 -> postId 생성
         Post post = postRepository.save(Post.builder()
@@ -166,18 +170,32 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponse updatePost(Long postId, PostUpdateRequest request) {
+    public PostResponse updatePost(AuthUser authUser, Long postId, PostUpdateRequest request) {
         Post post = findActivePostById(postId);
+        validateAuthor(post, authUser);
 
-        post.update(request.title(), request.content());
+        // 시간 제한 체크, ADMIN은 우회
+        boolean isAdmin = authUser.role() == UserRole.ADMIN;
+        if (!isAdmin && post.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(EDIT_ALLOWED_MINUTES))) {
+            throw new CustomException(ErrorCode.POST_EDIT_EXPIRED);
+        }
+
+        Category category = categoryService.findById(request.categoryId());
+
+        String oldContent = post.getContent(); // 삭제된 이미지 비교용
+        String sanitizedContent = validateContent(request.content());
+        String movedContent = imageService.moveTempImagesToPost(sanitizedContent, postId);
+        imageService.deleteOrphanedImages(oldContent, movedContent, postId);
+
+        post.update(category, request.title(), movedContent);
 
         return PostResponse.from(post.getId());
     }
 
     @Transactional
-    public void deletePost(Long userId, Long postId) {
+    public void deletePost(AuthUser authUser, Long postId) {
         Post post = findActivePostById(postId);
-        validateAuthor(post, userId);
+        validateAuthor(post, authUser);
         post.delete();
     }
 
@@ -192,9 +210,18 @@ public class PostService {
 
     // ========== private 메서드 ==========
 
-    void validateAuthor(Post post, Long userId) {
-        if (!post.getUser().getId().equals(userId)) {
+    void validateAuthor(Post post, AuthUser authUser) {
+        boolean isOwner = post.getUser().getId().equals(authUser.userId());
+        boolean isAdmin = authUser.role() == UserRole.ADMIN;
+        if (!isOwner && !isAdmin) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
     }
+
+    private String validateContent(String content) {
+        String sanitizedContent = imageService.sanitize(content);
+        imageService.validateImageCount(sanitizedContent);
+        return sanitizedContent;
+    }
+
 }
