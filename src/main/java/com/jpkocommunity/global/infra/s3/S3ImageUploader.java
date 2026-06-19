@@ -14,6 +14,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
@@ -75,10 +76,14 @@ public class S3ImageUploader {
                     .build();
 
             s3Client.copyObject(copyRequest);
-
             return buildUrl(destinationKey);
 
+        } catch (NoSuchKeyException e) {
+            // 원본이 아예 없음 - 클라이언트가 만료/잘못된 이미지 URL을 보낸 경우
+            log.warn("S3 copy 실패 - 원본 없음: {}", sourceKey);
+            throw new CustomException(ErrorCode.TEMP_IMAGE_NOT_FOUND);
         } catch (SdkException e) {
+            // 그 외 진짜 인프라 실패 (네트워크, 권한 등)
             log.error("S3 copy 실패 - source: {}, dest: {}", sourceKey, destinationKey);
             throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
         }

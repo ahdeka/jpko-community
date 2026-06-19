@@ -74,7 +74,7 @@ public class PostService {
                         post,
                         commentCounts.getOrDefault(post.getId(), 0L),
                         likeCounts.getOrDefault(post.getId(), 0L),
-                        post.getContent() != null && post.getContent().contains("<img")
+                        imageService.hasImage(post.getContent())
                 ))
                 .toList();
     }

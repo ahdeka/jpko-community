@@ -12,6 +12,7 @@ import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
@@ -110,6 +111,15 @@ public class ImageService {
                 oldKeys.forEach(s3ImageUploader::delete);
             }
         });
+    }
+
+    // 목록 화면에서 게시글에 이미지가 포함되어 있는지 여부 확인
+    public boolean hasImage(String content) {
+        if (content == null) {
+            return false;
+        }
+        return Jsoup.parse(content).select("img").stream()
+                .anyMatch(img -> StringUtils.hasText(img.attr("src")));
     }
 
     // ========== private 메서드 ==========
