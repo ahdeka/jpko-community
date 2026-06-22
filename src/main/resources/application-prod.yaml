@@ -14,7 +14,7 @@ jwt:
 cookie:
   secure: true
   same-site: Lax
-  domain: ""
+  domain: jpkocommunity.site
 
 cloud:
   aws:
