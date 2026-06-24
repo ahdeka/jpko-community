@@ -119,12 +119,12 @@ public class DevDataInitializer implements CommandLineRunner {
         List<Category> categories = categoryRepository.saveAll(List.of(
                 Category.builder().name("취업").slug("employment").displayOrder(1).build(),
                 Category.builder().name("워킹홀리데이").slug("working-holiday").displayOrder(2).build(),
-                Category.builder().name("문화").slug("culture").displayOrder(3).build(),
-                Category.builder().name("상담").slug("consulting").displayOrder(4).build(),
+                Category.builder().name("유학").slug("study-abroad").displayOrder(3).build(),
+                Category.builder().name("일본생활").slug("life").displayOrder(4).build(),
                 Category.builder().name("여행").slug("travel").displayOrder(5).build(),
-                Category.builder().name("잡담").slug("chat").displayOrder(6).build()
+                Category.builder().name("자유게시판").slug("free").displayOrder(6).build()
         ));
-        // 인덱스: 0=취업, 1=워홀, 2=문화, 3=상담, 4=여행, 5=잡담
+        // 인덱스: 0=취업, 1=워홀, 2=유학, 3=일본생활, 4=여행, 5=자유게시판
         log.info("카테고리 {}개 생성", categories.size());
         return categories;
     }
@@ -161,23 +161,23 @@ public class DevDataInitializer implements CommandLineRunner {
     // =====================================================================
     // 게시글 (100개)
     // 잡담(0~39=40개), 취업(40~54=15개), 워홀(55~69=15개),
-    // 문화(70~79=10개), 상담(80~89=10개), 여행(90~99=10개)
+    // 유학(70~79=10개), 일본생활(80~89=10개), 여행(90~99=10개)
     // =====================================================================
 
     private List<Post> initPosts(List<User> users, List<Category> categories) {
         Category employment      = categories.get(0);
         Category workingHoliday  = categories.get(1);
-        Category culture         = categories.get(2);
-        Category consulting      = categories.get(3);
+        Category studyAbroad     = categories.get(2);
+        Category life            = categories.get(3);
         Category travel          = categories.get(4);
-        Category chat            = categories.get(5);
+        Category free            = categories.get(5);
 
         List<Post> posts = new ArrayList<>();
-        posts.addAll(initChatPosts(users, chat));                       // index 0~39
+        posts.addAll(initChatPosts(users, free));                       // index 0~39
         posts.addAll(initEmploymentPosts(users, employment));           // index 40~54
         posts.addAll(initWorkingHolidayPosts(users, workingHoliday));  // index 55~69
-        posts.addAll(initCulturePosts(users, culture));                 // index 70~79
-        posts.addAll(initConsultingPosts(users, consulting));           // index 80~89
+        posts.addAll(initCulturePosts(users, studyAbroad));                 // index 70~79
+        posts.addAll(initConsultingPosts(users, life));           // index 80~89
         posts.addAll(initTravelPosts(users, travel));                   // index 90~99
 
         log.info("게시글 {}개 생성", posts.size());
@@ -309,7 +309,7 @@ public class DevDataInitializer implements CommandLineRunner {
         return posts;
     }
 
-    // -------------------- 문화 (10개) --------------------
+    // -------------------- 유학 (10개) --------------------
 
     private List<Post> initCulturePosts(List<User> users, Category category) {
         List<Post> posts = new ArrayList<>();
@@ -333,7 +333,7 @@ public class DevDataInitializer implements CommandLineRunner {
         return posts;
     }
 
-    // -------------------- 상담 (10개) --------------------
+    // -------------------- 일본생활 (10개) --------------------
 
     private List<Post> initConsultingPosts(List<User> users, Category category) {
         List<Post> posts = new ArrayList<>();
