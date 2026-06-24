@@ -1,10 +1,20 @@
 package com.jpkocommunity.domain.user.service;
 
+import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
+import com.jpkocommunity.domain.comment.repository.CommentRepository;
+import com.jpkocommunity.domain.post.repository.PostRepository;
+import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
+import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
+import com.jpkocommunity.domain.user.dto.response.MyCommentResponse;
+import com.jpkocommunity.domain.user.dto.response.MyPostResponse;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public User findById(Long id) {
         return userRepository.findById(id)
@@ -31,5 +45,54 @@ public class UserService {
 
     public boolean existsByNickname(String nickname) {
         return userRepository.existsByNickname(nickname);
+    }
+
+    // =========== 마이페이지 기능 ==========
+
+    public Page<MyPostResponse> getMyPosts(Long userId, Pageable pageable) {
+        return postRepository.findByUserIdWithCategory(userId, pageable)
+                .map(MyPostResponse::from);
+    }
+
+    public Page<MyCommentResponse> getMyComments(Long userId, Pageable pageable) {
+        return commentRepository.findByUserIdWithPost(userId, pageable)
+                .map(MyCommentResponse::from);
+    }
+
+    @Transactional
+    public void updateNickname(Long userId, UpdateNicknameRequest request) {
+        User user = findById(userId);
+
+        if (user.getNickname().equals(request.nickname())) {
+            throw new CustomException(ErrorCode.SAME_AS_CURRENT_NICKNAME);
+        }
+
+        if (userRepository.existsByNickname(request.nickname())) {
+            throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+        }
+
+        user.updateNickname(request.nickname());
+    }
+
+    @Transactional
+    public void updatePassword(Long userId, UpdatePasswordRequest request) {
+        User user = findById(userId);
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new CustomException(ErrorCode.WRONG_PASSWORD);
+        }
+
+        if (!request.newPassword().equals(request.newPasswordConfirm())) {
+            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
+        }
+
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new CustomException(ErrorCode.SAME_AS_CURRENT_PASSWORD);
+        }
+
+        user.updatePassword(passwordEncoder.encode(request.newPassword()));
+
+        // 사용자 비밀번호 변경 시, 기존 refresh token 삭제
+        refreshTokenRepository.deleteByUserId(userId);
     }
 }

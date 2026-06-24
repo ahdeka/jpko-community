@@ -39,4 +39,14 @@ public class User extends BaseEntity {
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
     }
+
+    // ========== 비즈니스 메서드 ==========
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
 }

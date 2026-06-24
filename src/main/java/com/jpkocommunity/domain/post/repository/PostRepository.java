@@ -45,4 +45,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             "GROUP BY p " +
             "ORDER BY COUNT(l) DESC, p.viewCount DESC, p.createdAt DESC")
     List<Post> findPopularPosts(@Param("since") LocalDateTime since, Pageable pageable);
+
+    // 사용자별 게시글 조회 (삭제 제외)
+    @Query("SELECT p FROM Post p JOIN FETCH p.category WHERE p.user.id = :userId AND p.deletedAt IS NULL")
+    Page<Post> findByUserIdWithCategory(@Param("userId") Long userId, Pageable pageable);
+
 }
