@@ -33,6 +33,9 @@ public class AuthService {
 
     @Transactional
     public void signup(SignupRequest request) {
+        if (!request.password().equals(request.passwordConfirm())) {
+            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
+        }
         if (userRepository.existsByEmail(request.email())) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
