@@ -152,7 +152,7 @@ public class PostService {
         User user = userService.findById(userId);
         Category category = categoryService.findById(request.categoryId());
 
-        String sanitizedContent = validateContent(request.content());
+        String sanitizedContent = imageService.sanitizeAndValidate(request.content());
 
         // 게시글 저장 -> postId 생성
         Post post = postRepository.save(Post.builder()
@@ -183,7 +183,7 @@ public class PostService {
         Category category = categoryService.findById(request.categoryId());
 
         String oldContent = post.getContent(); // 삭제된 이미지 비교용
-        String sanitizedContent = validateContent(request.content());
+        String sanitizedContent = imageService.sanitizeAndValidate(request.content());
         String movedContent = imageService.moveTempImagesToPost(sanitizedContent, postId);
         imageService.deleteOrphanedImages(oldContent, movedContent, postId);
 
@@ -216,12 +216,6 @@ public class PostService {
         if (!isOwner && !isAdmin) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
-    }
-
-    private String validateContent(String content) {
-        String sanitizedContent = imageService.sanitize(content);
-        imageService.validateImageCount(sanitizedContent);
-        return sanitizedContent;
     }
 
 }
