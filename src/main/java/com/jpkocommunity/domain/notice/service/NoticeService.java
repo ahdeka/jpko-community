@@ -1,5 +1,6 @@
 package com.jpkocommunity.domain.notice.service;
 
+import com.jpkocommunity.domain.image.service.ImageService;
 import com.jpkocommunity.domain.notice.dto.request.NoticeCreateRequest;
 import com.jpkocommunity.domain.notice.dto.request.NoticeUpdateRequest;
 import com.jpkocommunity.domain.notice.dto.response.NoticeDetailResponse;
@@ -11,14 +12,11 @@ import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
-import com.jpkocommunity.global.infra.s3.S3ImageUploader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -29,16 +27,23 @@ public class NoticeService {
 
     private final NoticeRepository noticeRepository;
     private final UserService userService;
-    private final S3ImageUploader s3ImageUploader;
+    private final ImageService imageService;
 
     public Page<NoticeSummaryResponse> getNotices(Pageable pageable) {
         return noticeRepository.findAll(pageable)
                 .map(NoticeSummaryResponse::from);
     }
 
-    // 게시판 목록 상단에 고정 노출할 pinned 공지 목록
+    // 게시판 목록 상단 고정용
     public List<NoticeSummaryResponse> getPinnedNotices() {
         return noticeRepository.findAllPinned().stream()
+                .map(NoticeSummaryResponse::from)
+                .toList();
+    }
+
+    // 메인 상단 중요 공지용
+    public List<NoticeSummaryResponse> getFeaturedNotices() {
+        return noticeRepository.findAllFeatured().stream()
                 .map(NoticeSummaryResponse::from)
                 .toList();
     }
@@ -54,14 +59,18 @@ public class NoticeService {
     public NoticeResponse createNotice(Long userId, NoticeCreateRequest request) {
         User user = userService.findById(userId);
 
-        Notice notice = Notice.builder()
+        String sanitizedContent = imageService.sanitizeAndValidate(request.content());
+
+        Notice notice = noticeRepository.save(Notice.builder()
                 .user(user)
                 .title(request.title())
-                .content(request.content())
+                .content(sanitizedContent)
                 .pinned(request.pinned())
-                .build();
+                .featured(request.featured())
+                .build());
 
-        noticeRepository.save(notice);
+        String movedContent = imageService.moveTempImagesToNotice(sanitizedContent, notice.getId());
+        notice.confirmContent(movedContent);
 
         return NoticeResponse.from(notice.getId());
     }
@@ -70,7 +79,12 @@ public class NoticeService {
     public NoticeResponse updateNotice(Long noticeId, NoticeUpdateRequest request) {
         Notice notice = findById(noticeId);
 
-        notice.update(request.title(), request.content(), request.pinned());
+        String oldContent = notice.getContent();
+        String sanitizedContent = imageService.sanitizeAndValidate(request.content());
+        String movedContent = imageService.moveTempImagesToNotice(sanitizedContent, noticeId);
+        imageService.deleteOrphanedImagesForNotice(oldContent, movedContent, noticeId);
+
+        notice.update(request.title(), movedContent, request.pinned(), request.featured());
 
         return NoticeResponse.from(notice.getId());
     }
@@ -78,19 +92,8 @@ public class NoticeService {
     @Transactional
     public void deleteNotice(Long noticeId) {
         Notice notice = findById(noticeId);
-
-        List<String> s3Keys = notice.getImages().stream()
-                .map(image -> image.getS3Key())
-                .toList();
-
+        imageService.deleteAllNoticeImages(notice.getContent(), noticeId);
         noticeRepository.delete(notice);
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                s3Keys.forEach(s3ImageUploader::delete);
-            }
-        });
     }
 
     // ========== private 메서드 ==========

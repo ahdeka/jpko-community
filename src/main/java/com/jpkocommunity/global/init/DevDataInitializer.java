@@ -141,18 +141,21 @@ public class DevDataInitializer implements CommandLineRunner {
                         .title("[공지] JPKO 커뮤니티 이용 규칙 안내")
                         .content("안녕하세요. JPKO 커뮤니티 운영진입니다.\n\n1. 타인 비방·혐오 게시글은 삭제됩니다.\n2. 광고·스팸은 즉시 삭제 및 이용 제한 조치합니다.\n3. 개인정보(연락처, 주소 등)는 게시물에 기재하지 마세요.\n\n즐거운 커뮤니티 활동 되세요!")
                         .pinned(true)
+                        .featured(true)
                         .build(),
                 Notice.builder()
                         .user(admin)
                         .title("[공지] 게시판 카테고리 개편 안내")
                         .content("더 편리한 이용을 위해 게시판 카테고리를 개편하였습니다.\n\n■ 신설: 잡담(일상), 상담(비자·취업·생활)\n■ 변경: 기존 자유게시판 → 잡담으로 통합\n\n이용에 불편함이 없으시길 바랍니다.")
                         .pinned(true)
+                        .featured(true)
                         .build(),
                 Notice.builder()
                         .user(admin)
                         .title("여름 이벤트: 일본 여행 후기 공모전")
                         .content("이번 여름을 맞아 일본 여행 후기 공모전을 개최합니다.\n\n■ 응모 기간: 7월 1일 ~ 7월 31일\n■ 응모 방법: 여행 카테고리에 후기 작성 후 댓글로 신청\n■ 대상(1명): 일본 왕복 항공권\n■ 우수상(3명): 여행 상품권 10만원\n\n많은 참여 부탁드립니다!")
                         .pinned(false)
+                        .featured(false)
                         .build()
         ));
         log.info("공지사항 3개 생성");

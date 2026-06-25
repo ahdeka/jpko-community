@@ -8,8 +8,11 @@ import java.util.List;
 
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
-    // 다른 게시판 목록 상단에 붙일 pinned 공지 목록
-    // pinned 공지는 소량이므로 Page 없이 List로 조회
+    // 게시글 목록 상단 고정
     @Query("SELECT n FROM Notice n WHERE n.pinned = true ORDER BY n.createdAt DESC")
     List<Notice> findAllPinned();
+
+    // 메인 상단 중요 공지
+    @Query("SELECT n FROM Notice n WHERE n.featured = true ORDER BY n.createdAt DESC")
+    List<Notice> findAllFeatured();
 }

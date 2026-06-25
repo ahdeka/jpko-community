@@ -7,9 +7,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import static lombok.AccessLevel.PROTECTED;
 
 @Getter
@@ -25,36 +22,41 @@ public class Notice extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String title;
 
-    @Lob
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @Column(nullable = false)
     private int viewCount;
 
-    // true면 모든 게시판 목록 상단에 고정 노출
+    // 게시글 목록 상단 공지
     @Column(nullable = false)
     private boolean pinned;
 
-    @OneToMany(mappedBy = "notice", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    @OrderBy("displayOrder ASC")
-    private List<NoticeImage> images = new ArrayList<>();
+    // 메인 상단 중요 공지
+    @Column(nullable = false)
+    private boolean featured;
 
     @Builder
-    public Notice(User user, String title, String content, boolean pinned) {
+    public Notice(User user, String title, String content, boolean pinned, boolean featured) {
         this.user = user;
         this.title = title;
         this.content = content;
         this.pinned = pinned;
+        this.featured = featured;
         this.viewCount = 0;
     }
 
     // ========== 비즈니스 메서드 ==========
 
-    public void update(String title, String content, boolean pinned) {
+    public void update(String title, String content, boolean pinned, boolean featured) {
         this.title = title;
         this.content = content;
         this.pinned = pinned;
+        this.featured = featured;
+    }
+
+    public void confirmContent(String content) {
+        this.content = content;
     }
 
     public void increaseViewCount() {
