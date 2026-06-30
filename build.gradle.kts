@@ -37,6 +37,10 @@ dependencies {
 	// DB
 	runtimeOnly("org.postgresql:postgresql")
 
+	// Flyway (DB 마이그레이션)
+	implementation("org.flywaydb:flyway-core")
+	implementation("org.flywaydb:flyway-database-postgresql")
+
 	// Util
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
