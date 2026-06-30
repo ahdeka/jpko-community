@@ -112,20 +112,12 @@ public class DevDataInitializer implements CommandLineRunner {
     }
 
     // =====================================================================
-    // 카테고리 (6개)
+    // 카테고리 (Flyway 시드)
     // =====================================================================
 
     private List<Category> initCategories() {
-        List<Category> categories = categoryRepository.saveAll(List.of(
-                Category.builder().name("취업").slug("employment").displayOrder(1).build(),
-                Category.builder().name("워킹홀리데이").slug("working-holiday").displayOrder(2).build(),
-                Category.builder().name("유학").slug("study-abroad").displayOrder(3).build(),
-                Category.builder().name("일본생활").slug("life").displayOrder(4).build(),
-                Category.builder().name("여행").slug("travel").displayOrder(5).build(),
-                Category.builder().name("자유게시판").slug("free").displayOrder(6).build()
-        ));
-        // 인덱스: 0=취업, 1=워홀, 2=유학, 3=일본생활, 4=여행, 5=자유게시판
-        log.info("카테고리 {}개 생성", categories.size());
+        List<Category> categories = categoryRepository.findAll();
+        log.info("카테고리 {}개 로드 (Flyway 시드)", categories.size());
         return categories;
     }
 
