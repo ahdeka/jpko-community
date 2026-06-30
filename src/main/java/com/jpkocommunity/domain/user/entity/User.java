@@ -5,6 +5,9 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.cglib.core.Local;
+
+import java.time.LocalDateTime;
 
 import static lombok.AccessLevel.PROTECTED;
 
@@ -31,6 +34,14 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 20)
     private UserStatus status;
 
+    // 이용약관
+    @Column(nullable = false)
+    private LocalDateTime termsAgreedAt;
+
+    // 개인정보처리방침
+    @Column(nullable = false)
+    private LocalDateTime privacyAgreedAt;
+
     @Builder
     public User(String email, String password, String nickname) {
         this.email = email;
@@ -38,6 +49,9 @@ public class User extends BaseEntity {
         this.nickname = nickname;
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
+        LocalDateTime now = LocalDateTime.now();
+        this.termsAgreedAt = now;
+        this.privacyAgreedAt = now;
     }
 
     // ========== 비즈니스 메서드 ==========

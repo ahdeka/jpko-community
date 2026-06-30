@@ -1,8 +1,6 @@
 package com.jpkocommunity.domain.auth.dto.request;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 public record SignupRequest(
 
@@ -19,5 +17,13 @@ public record SignupRequest(
         String password,
 
         @NotBlank(message = "비밀번호 확인을 입력해주세요.")
-        String passwordConfirm
+        String passwordConfirm,
+
+        @AssertTrue(message = "이용약관에 동의해주세요.")
+        @NotNull(message = "이용약관 동의 여부를 입력해주세요.")
+        Boolean termsAgreed,
+
+        @AssertTrue(message = "개인정보처리방침에 동의해주세요.")
+        @NotNull(message = "개인정보처리방침 동의 여부를 입력해주세요.")
+        Boolean privacyAgreed
 ) {}
