@@ -1,3 +1,6 @@
 /gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
+
+# Flyway 마이그레이션 파일은 줄바꿈을 LF로 고정 (체크섬 안정성)
+src/main/resources/db/migration/*.sql text eol=lf
