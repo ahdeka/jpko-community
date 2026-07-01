@@ -99,9 +99,9 @@ public class ImageService {
 
     // ========== private 메서드 ==========
 
-    // HTML content 저장 전 악성 태그 제거 *XSS 방어
+    // HTML content 저장 전 악성 태그 제거 *XSS 방어 (hr 태그 허용)
     private String sanitize(String html) {
-        return Jsoup.clean(html, Safelist.relaxed());
+        return Jsoup.clean(html, Safelist.relaxed().addTags("hr"));
     }
 
     private void validateImageCount(String content) {
