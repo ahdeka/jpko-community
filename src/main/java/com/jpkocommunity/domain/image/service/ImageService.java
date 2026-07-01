@@ -8,6 +8,7 @@ import com.jpkocommunity.global.infra.s3.S3UploadResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -99,9 +100,11 @@ public class ImageService {
 
     // ========== private 메서드 ==========
 
-    // HTML content 저장 전 악성 태그 제거 *XSS 방어 (hr 태그 허용)
+    // HTML content 저장 전 악성 태그 제거 *XSS 방어
     private String sanitize(String html) {
-        return Jsoup.clean(html, Safelist.relaxed().addTags("hr"));
+        Safelist safelist = Safelist.relaxed().addTags("hr"); // hr 태그 허용
+        Document.OutputSettings settings = new Document.OutputSettings().prettyPrint(false); // 연속 공백 보존
+        return Jsoup.clean(html, "", safelist, settings);
     }
 
     private void validateImageCount(String content) {
