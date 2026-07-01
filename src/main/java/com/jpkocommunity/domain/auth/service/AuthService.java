@@ -55,7 +55,7 @@ public class AuthService {
     @Transactional
     public LoginResult login(LoginRequest request, String deviceInfo, String ipAddress) {
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.WRONG_PASSWORD));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new CustomException(ErrorCode.WRONG_PASSWORD);
