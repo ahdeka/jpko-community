@@ -49,10 +49,20 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<Void>> signup(@Valid @RequestBody SignupRequest request) {
-        authService.signup(request);
+    public ResponseEntity<ApiResponse<LoginResponse>> signup(
+            @Valid @RequestBody SignupRequest request,
+            HttpServletRequest servletRequest,
+            HttpServletResponse response) {
+        String deviceInfo = ipUtils.getDeviceInfo(servletRequest);
+        String ipAddress = ipUtils.getClientIp(servletRequest);
+
+        AuthService.LoginResult result = authService.signup(request, deviceInfo, ipAddress);
+
+        cookieUtils.add(response, "accessToken", result.accessToken(), jwtProperties.accessTokenMaxAgeSeconds());
+        cookieUtils.add(response, "refreshToken", result.refreshToken(), jwtProperties.refreshTokenMaxAgeSeconds());
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created("회원가입이 완료되었습니다."));
+                .body(ApiResponse.created("회원가입이 완료되었습니다.", result.response()));
     }
 
     @PostMapping("/login")
@@ -61,8 +71,7 @@ public class AuthController {
             HttpServletRequest servletRequest,
             HttpServletResponse response
     ) {
-        // device_info: User-Agent 헤더, ip_address: X-Forwarded-For 또는 RemoteAddr
-        String deviceInfo = Optional.ofNullable(servletRequest.getHeader("User-Agent")).orElse("unknown");
+        String deviceInfo = ipUtils.getDeviceInfo(servletRequest);
         String ipAddress = ipUtils.getClientIp(servletRequest);
 
         AuthService.LoginResult result = authService.login(request, deviceInfo, ipAddress);

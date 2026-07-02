@@ -15,4 +15,9 @@ public class IpUtils {
         }
         return request.getRemoteAddr();
     }
+
+    public String getDeviceInfo(HttpServletRequest request) {
+        String userAgent = request.getHeader("User-Agent");
+        return (userAgent != null && !userAgent.isBlank()) ? userAgent : "unknown";
+    }
 }

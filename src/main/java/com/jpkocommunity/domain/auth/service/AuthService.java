@@ -30,7 +30,7 @@ public class AuthService {
     private final JwtProperties jwtProperties;
 
     @Transactional
-    public void signup(SignupRequest request) {
+    public LoginResult signup(SignupRequest request, String deviceInfo, String ipAddress) {
         if (!request.password().equals(request.passwordConfirm())) {
             throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
         }
@@ -48,6 +48,8 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+
+        return issueTokens(user, deviceInfo, ipAddress);
     }
 
     @Transactional
@@ -59,6 +61,11 @@ public class AuthService {
             throw new CustomException(ErrorCode.WRONG_PASSWORD);
         }
 
+        return issueTokens(user, deviceInfo, ipAddress);
+    }
+
+    // 토큰 발급 공통 로직
+    private LoginResult issueTokens(User user, String deviceInfo, String ipAddress) {
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtProvider.generateRefreshToken(user.getId());
 
