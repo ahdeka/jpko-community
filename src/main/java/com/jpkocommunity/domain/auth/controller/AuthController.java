@@ -7,19 +7,18 @@ import com.jpkocommunity.domain.auth.dto.response.UserInfoResponse;
 import com.jpkocommunity.domain.auth.service.AuthService;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
+import com.jpkocommunity.global.config.JwtProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
-import jakarta.servlet.http.Cookie;
+import com.jpkocommunity.global.util.CookieUtils;
+import com.jpkocommunity.global.util.IpUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Arrays;
 import java.util.Optional;
 
 @RestController
@@ -36,20 +34,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private static final int ACCESS_TOKEN_MAX_AGE = 60 * 60;           // 1시간
-    private static final int REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 7; // 7일
-
     private final AuthService authService;
     private final UserService userService;
-
-    @Value("${cookie.secure}")
-    private boolean cookieSecure;
-
-    @Value("${cookie.same-site}")
-    private String cookieSameSite;
-
-    @Value("${cookie.domain}")
-    private String cookieDomain;
+    private final CookieUtils cookieUtils;
+    private final IpUtils ipUtils;
+    private final JwtProperties jwtProperties;
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserInfoResponse>> me(@AuthenticationPrincipal AuthUser authUser) {
@@ -73,13 +62,13 @@ public class AuthController {
             HttpServletResponse response
     ) {
         // device_info: User-Agent 헤더, ip_address: X-Forwarded-For 또는 RemoteAddr
-        String deviceInfo = servletRequest.getHeader("User-Agent");
-        String ipAddress = getClientIp(servletRequest);
+        String deviceInfo = Optional.ofNullable(servletRequest.getHeader("User-Agent")).orElse("unknown");
+        String ipAddress = ipUtils.getClientIp(servletRequest);
 
         AuthService.LoginResult result = authService.login(request, deviceInfo, ipAddress);
 
-        addCookie(response, "accessToken", result.accessToken(), ACCESS_TOKEN_MAX_AGE);
-        addCookie(response, "refreshToken", result.refreshToken(), REFRESH_TOKEN_MAX_AGE);
+        cookieUtils.add(response, "accessToken", result.accessToken(), jwtProperties.accessTokenMaxAgeSeconds());
+        cookieUtils.add(response, "refreshToken", result.refreshToken(), jwtProperties.refreshTokenMaxAgeSeconds());
 
         return ResponseEntity.ok(ApiResponse.ok(result.response()));
     }
@@ -89,10 +78,11 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        String refreshToken = extractCookie(request, "refreshToken");
+        String refreshToken = cookieUtils.extract(request, "refreshToken")
+                .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
         String newAccessToken = authService.refresh(refreshToken);
 
-        addCookie(response, "accessToken", newAccessToken, ACCESS_TOKEN_MAX_AGE);
+        cookieUtils.add(response, "accessToken", newAccessToken, jwtProperties.accessTokenMaxAgeSeconds());
         return ResponseEntity.ok(ApiResponse.ok("토큰이 갱신되었습니다."));
     }
 
@@ -101,64 +91,10 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        extractCookieOptional(request, "refreshToken").ifPresent(authService::logout);
-        deleteCookie(response, "accessToken");
-        deleteCookie(response, "refreshToken");
+        cookieUtils.extract(request, "refreshToken").ifPresent(authService::logout);
+        cookieUtils.delete(response, "accessToken");
+        cookieUtils.delete(response, "refreshToken");
         return ResponseEntity.ok(ApiResponse.ok("로그아웃이 완료되었습니다."));
     }
 
-    // ========== 쿠키 유틸 메서드 ==========
-
-    private void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/")
-                .maxAge(maxAge);
-
-        if (!cookieDomain.isBlank()) {
-            builder.domain(cookieDomain);
-        }
-
-        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
-    }
-
-    private void deleteCookie(HttpServletResponse response, String name) {
-        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/")
-                .maxAge(0);
-
-        if (!cookieDomain.isBlank()) {
-            builder.domain(cookieDomain);
-        }
-
-        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
-    }
-
-    private Optional<String> extractCookieOptional(HttpServletRequest request, String name) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) return Optional.empty();
-        return Arrays.stream(cookies)
-                .filter(c -> name.equals(c.getName()))
-                .map(Cookie::getValue)
-                .findFirst();
-    }
-
-    private String extractCookie(HttpServletRequest request, String name) {
-        return extractCookieOptional(request, name)
-                .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
-    }
-
-    // 프록시(Nginx, AWS ALB) 뒤에서도 실제 클라이언트 IP 추출
-    private String getClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim(); // 여러 프록시 경유 시 첫 번째가 원본 IP
-        }
-        return request.getRemoteAddr();
-    }
 }

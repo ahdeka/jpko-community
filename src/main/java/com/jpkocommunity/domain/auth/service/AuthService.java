@@ -7,11 +7,11 @@ import com.jpkocommunity.domain.auth.entity.RefreshToken;
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.repository.UserRepository;
+import com.jpkocommunity.global.config.JwtProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,9 +27,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
-
-    @Value("${jwt.refresh-token-expiration}")
-    private long refreshTokenExpiration;
+    private final JwtProperties jwtProperties;
 
     @Transactional
     public void signup(SignupRequest request) {
@@ -64,14 +62,14 @@ public class AuthService {
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtProvider.generateRefreshToken(user.getId());
 
-        // 재로그인 시 기존 토큰 삭제 후 새 토큰 저장
-        refreshTokenRepository.deleteByUserId(user.getId());
+        // 같은 기기 재로그인 시 기존 토큰만 교체
+        refreshTokenRepository.deleteByUserIdAndDeviceInfo(user.getId(), deviceInfo);
         refreshTokenRepository.save(RefreshToken.builder()
                 .userId(user.getId())
                 .token(refreshToken)
                 .deviceInfo(deviceInfo)
                 .ipAddress(ipAddress)
-                .expiresAt(LocalDateTime.now().plusSeconds(refreshTokenExpiration / 1000))
+                .expiresAt(LocalDateTime.now().plusSeconds(jwtProperties.refreshTokenMaxAgeSeconds()))
                 .build());
 
         return new LoginResult(
@@ -103,7 +101,7 @@ public class AuthService {
     @Transactional
     public void logout(String refreshToken) {
         refreshTokenRepository.findByToken(refreshToken)
-                .ifPresent(stored -> refreshTokenRepository.deleteByUserId(stored.getUserId()));
+                .ifPresent(refreshTokenRepository::delete);
     }
 
     public record LoginResult(LoginResponse response, String accessToken, String refreshToken) {}

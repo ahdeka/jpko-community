@@ -1,20 +1,16 @@
 package com.jpkocommunity.global.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
 
-@ConfigurationProperties(prefix = "jwt")
-public record JwtProperties(
-        String secret,
-        long accessTokenExpiration,
-        long refreshTokenExpiration
-) {
-
-    // 쿠키 Max-Age는 초 단위라 ms로 변환
-    public int accessTokenMaxAgeSeconds() {
-        return (int) (accessTokenExpiration / 1000);
-    }
-
-    public int refreshTokenMaxAgeSeconds() {
-        return (int) (refreshTokenExpiration / 1000);
-    }
+/**
+ * @ConfigurationProperties를 활성화하기 위한 설정 클래스
+ *  - JwtProperties를 @ConfigurationProperties로 등록
+ *  - @EnableConfigurationProperties를 통해 JwtProperties를 스프링 컨테이너에 등록
+ *  - JwtProperties는 application.yml의 jwt 설정을 바인딩
+ */
+@Configuration
+@EnableConfigurationProperties(JwtProperties.class)
+public class PropertiesConfig {
 }

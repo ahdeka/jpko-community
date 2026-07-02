@@ -1,11 +1,14 @@
 package com.jpkocommunity.global.security.jwt;
 
 import com.jpkocommunity.domain.user.entity.UserRole;
+import com.jpkocommunity.global.config.JwtProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -21,17 +24,12 @@ public class JwtProvider {
     private final long accessTokenExpiration;
     private final long refreshTokenExpiration;
 
-    // 설정값을 생성자에서 주입받음 → 객체 생성 시점에 모든 값이 확정됨
-    public JwtProvider(
-            @Value("${jwt.secret}") String secret,
-            @Value("${jwt.access-token-expiration}") long accessTokenExpiration,
-            @Value("${jwt.refresh-token-expiration}") long refreshTokenExpiration
-    ) {
-
+    // JwtProperties를 주입받아 secretKey와 만료 시간을 초기화
+    public JwtProvider(JwtProperties jwtProperties) {
         // UTF_8 명시: OS 환경에 따른 기본 인코딩 차이 방지
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.accessTokenExpiration = accessTokenExpiration;
-        this.refreshTokenExpiration = refreshTokenExpiration;
+        this.secretKey = Keys.hmacShaKeyFor(jwtProperties.secret().getBytes(StandardCharsets.UTF_8));
+        this.accessTokenExpiration = jwtProperties.accessTokenExpiration();
+        this.refreshTokenExpiration = jwtProperties.refreshTokenExpiration();
     }
 
     /**

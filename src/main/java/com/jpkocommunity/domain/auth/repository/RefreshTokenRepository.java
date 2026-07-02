@@ -13,7 +13,10 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     Optional<RefreshToken> findByToken(String token);
 
-    // 로그아웃・재로그인 시 기존 토큰 삭제
+    // 로그인 시 "같은 기기"의 토큰만 삭제
+    void deleteByUserIdAndDeviceInfo(Long userId, String deviceInfo);
+
+    // 전체 기기 로그아웃
     void deleteByUserId(Long userId);
 
     /**
