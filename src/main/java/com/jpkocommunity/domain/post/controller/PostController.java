@@ -10,7 +10,10 @@ import com.jpkocommunity.domain.post.dto.response.PostSummaryResponse;
 import com.jpkocommunity.domain.post.service.PostService;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
+import com.jpkocommunity.global.util.CookieUtils;
+import com.jpkocommunity.global.util.IpUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -28,7 +31,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PostController {
 
+    // 조회수 중복 방지 쿠키 유효시간
+    private static final int VIEW_COOKIE_MAX_AGE = 60 * 60 * 24;
+
     private final PostService postService;
+    private final CookieUtils cookieUtils;
+    private final IpUtils ipUtils;
 
     @GetMapping
     public ResponseEntity<ApiResponse<PostListResponse>> getAllPosts(
@@ -66,10 +74,22 @@ public class PostController {
     @GetMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(
             @PathVariable Long postId,
-            @AuthenticationPrincipal AuthUser authUser
+            @AuthenticationPrincipal AuthUser authUser,
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse
     ) {
         Long currentUserId = authUser != null ? authUser.userId() : null;
-        return ResponseEntity.ok(ApiResponse.ok(postService.getPost(postId, currentUserId)));
+
+        String cookieName = "viewed_" + postId;
+        boolean alreadyViewed = cookieUtils.exists(servletRequest, cookieName);
+
+        PostDetailResponse response = postService.getPost(postId, currentUserId, !alreadyViewed);
+
+        if (!alreadyViewed) {
+            cookieUtils.add(servletResponse, cookieName, "1", VIEW_COOKIE_MAX_AGE);
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @PostMapping
@@ -78,7 +98,7 @@ public class PostController {
             @Valid @RequestBody PostCreateRequest request,
             HttpServletRequest servletRequest  // IP 추출용
     ) {
-        String ipAddress = getClientIp(servletRequest);
+        String ipAddress = ipUtils.getClientIp(servletRequest);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(
                         "게시글이 생성되었습니다.",
@@ -105,13 +125,4 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.ok("게시글이 삭제되었습니다."));
     }
 
-    // AuthController와 동일한 IP 추출 로직
-    // TODO: 나중에 공통 유틸 클래스로 분리 가능
-    private String getClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
 }

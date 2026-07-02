@@ -6,6 +6,7 @@ import com.jpkocommunity.domain.comment.dto.response.CommentResponse;
 import com.jpkocommunity.domain.comment.service.CommentService;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
+import com.jpkocommunity.global.util.IpUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.util.List;
 public class CommentController {
 
     private final CommentService commentService;
+    private final IpUtils ipUtils;
 
     @GetMapping("/api/posts/{postId}/comments")
     public ResponseEntity<ApiResponse<List<CommentResponse>>> getComments(
@@ -39,7 +41,7 @@ public class CommentController {
             @Valid @RequestBody CommentCreateRequest request,
             HttpServletRequest servletRequest
     ) {
-        String ipAddress = getClientIp(servletRequest);
+        String ipAddress = ipUtils.getClientIp(servletRequest);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("댓글이 등록되었습니다.",
                         commentService.createComment(authUser.userId(), postId, request, ipAddress)));
@@ -65,11 +67,4 @@ public class CommentController {
         return ResponseEntity.ok(ApiResponse.ok("댓글이 삭제되었습니다."));
     }
 
-    private String getClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
 }

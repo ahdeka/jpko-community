@@ -137,9 +137,11 @@ public class PostService {
     }
 
     @Transactional
-    public PostDetailResponse getPost(Long postId, Long currentUserId) {
+    public PostDetailResponse getPost(Long postId, Long currentUserId, boolean shouldIncreaseView) {
         Post post = findActivePostById(postId);
-        post.increaseViewCount();
+        if (shouldIncreaseView) {
+            post.increaseViewCount();
+        }
 
         long likeCount = likeRepository.countByPostIdAndType(postId, LikeType.LIKE);
         long dislikeCount = likeRepository.countByPostIdAndType(postId, LikeType.DISLIKE);
