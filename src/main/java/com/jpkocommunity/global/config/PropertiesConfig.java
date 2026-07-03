@@ -6,11 +6,14 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * @ConfigurationProperties를 활성화하기 위한 설정 클래스
- *  - JwtProperties를 @ConfigurationProperties로 등록
- *  - @EnableConfigurationProperties를 통해 JwtProperties를 스프링 컨테이너에 등록
- *  - JwtProperties는 application.yml의 jwt 설정을 바인딩
+ * - @EnableConfigurationProperties를 통해 JwtProperties를 스프링 컨테이너에 등록
+ * - @EnableConfigurationProperties를 통해 VerificationTokenProperties를 스프링 컨테이너에 등록
  */
 @Configuration
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({
+        JwtProperties.class,
+        VerificationTokenProperties.class,
+        MailProperties.class
+})
 public class PropertiesConfig {
 }

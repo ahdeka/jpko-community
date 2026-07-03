@@ -47,6 +47,13 @@ public enum ErrorCode {
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "지원하지 않는 파일 형식입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
 
+    // Email Verification
+    INVALID_VERIFICATION_TOKEN(HttpStatus.BAD_REQUEST, "유효하지 않은 토큰입니다."),
+    EXPIRED_VERIFICATION_TOKEN(HttpStatus.BAD_REQUEST, "만료된 토큰입니다. 다시 요청해주세요."),
+    ALREADY_VERIFIED_EMAIL(HttpStatus.CONFLICT, "이미 인증된 이메일입니다."),
+    INVALID_EMAIL_DOMAIN(HttpStatus.BAD_REQUEST, "존재하지 않는 이메일 도메인입니다."),
+    EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이메일 발송에 실패했습니다."),
+
     // Common
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "잘못된 입력입니다."),
     SEARCH_KEYWORD_TOO_SHORT(HttpStatus.BAD_REQUEST, "검색어는 2자 이상 입력해주세요."),

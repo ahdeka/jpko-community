@@ -24,3 +24,6 @@ cloud:
       domain: d1q5c7pfmil9a2.cloudfront.net
     region:
       static: ap-northeast-2
+
+mail:
+  base-url: https://www.jpkocommunity.site

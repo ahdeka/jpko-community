@@ -31,8 +31,9 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.jsoup:jsoup:1.18.3")
 
-	// AWS S3
-	implementation("software.amazon.awssdk:s3:2.25.60")
+	// AWS
+	implementation("software.amazon.awssdk:s3:2.25.60") // S3
+	implementation("software.amazon.awssdk:ses:2.25.60") // SES
 
 	// DB
 	runtimeOnly("org.postgresql:postgresql")

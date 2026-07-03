@@ -13,6 +13,14 @@ spring:
 server:
   port: 8080
 
+mail:
+  from: no-reply@jpkocommunity.site
+  from-name: JPKO Community
+
 jwt:
   access-token-expiration: 3600000      # 1시간 (ms)
   refresh-token-expiration: 604800000   # 7일 (ms)
+
+verification-token:
+  email-verification-expiration: 86400000   # 24시간 (ms)
+  password-reset-expiration: 1800000        # 30분 (ms)
