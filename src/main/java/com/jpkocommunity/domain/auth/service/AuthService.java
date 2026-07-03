@@ -4,19 +4,27 @@ import com.jpkocommunity.domain.auth.dto.request.LoginRequest;
 import com.jpkocommunity.domain.auth.dto.request.SignupRequest;
 import com.jpkocommunity.domain.auth.dto.response.LoginResponse;
 import com.jpkocommunity.domain.auth.entity.RefreshToken;
+import com.jpkocommunity.domain.auth.event.VerificationEmailEvent;
+import com.jpkocommunity.domain.auth.entity.VerificationToken;
+import com.jpkocommunity.domain.auth.entity.VerificationTokenType;
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
+import com.jpkocommunity.domain.auth.repository.VerificationTokenRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.config.JwtProperties;
+import com.jpkocommunity.global.config.VerificationTokenProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.jwt.JwtProvider;
+import com.jpkocommunity.global.util.EmailDomainValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +36,11 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final JwtProperties jwtProperties;
+    private final VerificationTokenRepository verificationTokenRepository;
+    private final EmailService emailService;
+    private final EmailDomainValidator emailDomainValidator;
+    private final VerificationTokenProperties verificationTokenProperties;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public LoginResult signup(SignupRequest request, String deviceInfo, String ipAddress) {
@@ -109,6 +122,127 @@ public class AuthService {
     public void logout(String refreshToken) {
         refreshTokenRepository.findByToken(refreshToken)
                 .ifPresent(refreshTokenRepository::delete);
+    }
+
+    // ========== 헬퍼 메서드 ===========
+
+    // 토큰 저장까지만 트랜잭션 안에서 수행 (발송은 이벤트로 커밋 후 비동기 처리)
+    private String issueToken(Long userId, VerificationTokenType type, long expirationMillis) {
+        verificationTokenRepository.deleteByUserIdAndType(userId, type);
+
+        String token = UUID.randomUUID().toString();
+        verificationTokenRepository.save(VerificationToken.builder()
+                .userId(userId)
+                .token(token)
+                .type(type)
+                .expiresAt(LocalDateTime.now().plusSeconds(expirationMillis / 1000))
+                .build());
+        return token;
+    }
+
+    // ========== 이메일 인증 ==========
+
+    @Transactional
+    public void sendVerificationEmail(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.isEmailVerified()) {
+            throw new CustomException(ErrorCode.ALREADY_VERIFIED_EMAIL);
+        }
+
+        // 최초 인증 요첨 시점에만 MX 레코드 체크
+        if (!emailDomainValidator.hasMxRecord(user.getEmail())) {
+            throw new CustomException(ErrorCode.INVALID_EMAIL_DOMAIN);
+        }
+
+        String token = issueToken(user.getId(), VerificationTokenType.EMAIL_VERIFICATION,
+                verificationTokenProperties.emailVerificationExpiration());
+
+
+        // 이메일 전송은 이벤트로 처리하여 비동기화 (트랜잭션과 분리)
+        eventPublisher.publishEvent(
+                new VerificationEmailEvent(user.getEmail(), token, VerificationTokenType.EMAIL_VERIFICATION));
+    }
+
+    @Transactional
+    public void resendVerificationEmailByEmail(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            if (user.isEmailVerified()) {
+                return;
+            }
+
+            if (!emailDomainValidator.hasMxRecord(email)) {
+                return;
+            }
+
+            String token = issueToken(user.getId(), VerificationTokenType.EMAIL_VERIFICATION,
+                    verificationTokenProperties.emailVerificationExpiration());
+
+            eventPublisher.publishEvent(
+                    new VerificationEmailEvent(user.getEmail(), token, VerificationTokenType.EMAIL_VERIFICATION));
+        });
+    }
+
+    @Transactional
+    public void verifyEmail(String token) {
+        VerificationToken verificationToken = verificationTokenRepository.findByToken(token)
+                .filter(t -> t.getType() == VerificationTokenType.EMAIL_VERIFICATION)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_VERIFICATION_TOKEN));
+
+        if (verificationToken.isExpired()) {
+            verificationTokenRepository.delete(verificationToken);
+            throw new CustomException(ErrorCode.EXPIRED_VERIFICATION_TOKEN);
+        }
+
+        User user = userRepository.findById(verificationToken.getUserId())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        user.verifyEmail();
+        verificationTokenRepository.delete(verificationToken);
+    }
+
+    // ========== 비밀번호 재설정 ==========
+
+    @Transactional
+    public void requestPasswordReset(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            if (!user.isEmailVerified()) {
+                return;
+            }
+
+            // 비밀번호 재설정은 MX 재확인 없음
+            String token = issueToken(user.getId(), VerificationTokenType.PASSWORD_RESET,
+                    verificationTokenProperties.passwordResetExpiration());
+
+            eventPublisher.publishEvent(
+                    new VerificationEmailEvent(user.getEmail(), token, VerificationTokenType.PASSWORD_RESET));
+        });
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword, String newPasswordConfirm) {
+        if (!newPassword.equals(newPasswordConfirm)) {
+            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
+        }
+
+        VerificationToken verificationToken = verificationTokenRepository.findByToken(token)
+                .filter(t -> t.getType() == VerificationTokenType.PASSWORD_RESET)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_VERIFICATION_TOKEN));
+
+        if (verificationToken.isExpired()) {
+            verificationTokenRepository.delete(verificationToken);
+            throw new CustomException(ErrorCode.EXPIRED_VERIFICATION_TOKEN);
+        }
+
+        User user = userRepository.findById(verificationToken.getUserId())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        user.updatePassword(passwordEncoder.encode(newPassword));
+        verificationTokenRepository.delete(verificationToken);
+
+        // 다른 모든 기기의 세션을 강제 로그아웃
+        refreshTokenRepository.deleteByUserId(user.getId());
     }
 
     public record LoginResult(LoginResponse response, String accessToken, String refreshToken) {}

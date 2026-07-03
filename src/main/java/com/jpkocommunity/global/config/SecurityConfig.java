@@ -3,6 +3,7 @@ package com.jpkocommunity.global.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
+import com.jpkocommunity.global.security.PublicAuthPaths;
 import com.jpkocommunity.global.security.jwt.JwtAuthenticationFilter;
 import com.jpkocommunity.global.security.jwt.JwtProvider;
 import jakarta.servlet.http.HttpServletResponse;
@@ -47,7 +48,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.POST, PublicAuthPaths.PATHS.toArray(new String[0])).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()

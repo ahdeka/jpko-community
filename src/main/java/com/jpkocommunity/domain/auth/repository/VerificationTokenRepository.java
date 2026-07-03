@@ -1,6 +1,7 @@
 package com.jpkocommunity.domain.auth.repository;
 
-import com.jpkocommunity.domain.auth.entity.RefreshToken;
+import com.jpkocommunity.domain.auth.entity.VerificationToken;
+import com.jpkocommunity.domain.auth.entity.VerificationTokenType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -9,22 +10,15 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
+public interface VerificationTokenRepository extends JpaRepository<VerificationToken, Long> {
 
-    Optional<RefreshToken> findByToken(String token);
+    Optional<VerificationToken> findByToken(String token);
 
-    // 로그인 시 "같은 기기"의 토큰만 삭제
-    void deleteByUserIdAndDeviceInfo(Long userId, String deviceInfo);
+    // 재요청 (인증 메일 재발송, 재설정 링크 재요청) 시 기존 미사용 토큰의 무효화
+    void deleteByUserIdAndType(Long userId, VerificationTokenType type);
 
-    // 전체 기기 로그아웃
-    void deleteByUserId(Long userId);
-
-    /**
-     * 만료된 RefreshToken 일괄 삭제
-     * @param now 기준 시각 (이보다 이전에 만료된 토큰 삭제)
-     * @return 삭제된 행 수
-     */
+    // 만료된 토큰 삭제
     @Modifying
-    @Query("DELETE FROM RefreshToken r WHERE r.expiresAt < :now")
-    int deleteAllExpired(@Param("now")LocalDateTime now);
+    @Query("DELETE FROM VerificationToken v WHERE v.expiresAt < :now")
+    int deleteAllExpired(@Param("now") LocalDateTime now);
 }

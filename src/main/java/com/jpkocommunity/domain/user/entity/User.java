@@ -42,6 +42,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime privacyAgreedAt;
 
+    @Column(nullable = false)
+    private boolean emailVerified;
+
     @Builder
     public User(String email, String password, String nickname) {
         this.email = email;
@@ -49,6 +52,7 @@ public class User extends BaseEntity {
         this.nickname = nickname;
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
+        this.emailVerified = false;
         LocalDateTime now = LocalDateTime.now();
         this.termsAgreedAt = now;
         this.privacyAgreedAt = now;
@@ -62,5 +66,9 @@ public class User extends BaseEntity {
 
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
+    }
+
+    public void verifyEmail() {
+        this.emailVerified = true;
     }
 }

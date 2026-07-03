@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.response.ApiResponse;
+import com.jpkocommunity.global.security.PublicAuthPaths;
 import com.jpkocommunity.global.security.auth.AuthUser;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -35,20 +36,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
 
-    // refresh/logout: 만료된 accessToken으로 요청이 오므로 필터에서 제외 필수
-    // login/signup: 토큰 없어도 무해하지만 명시적으로 제외
-    private static final Set<String> EXCLUDED_PATHS = Set.of(
-            "/api/auth/login",
-            "/api/auth/signup",
-            "/api/auth/refresh",
-            "/api/auth/logout"
-    );
-
     // EXCLUDED_PATHS 요청은 필터 자체를 건너뜀
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return EXCLUDED_PATHS.contains(path);
+        return PublicAuthPaths.PATHS.contains(request.getRequestURI());
     }
 
     // 토큰 추출 → 검증 → SecurityContext 등록 흐름

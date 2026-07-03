@@ -1,6 +1,8 @@
 package com.jpkocommunity.domain.auth.controller;
 
 import com.jpkocommunity.domain.auth.dto.request.LoginRequest;
+import com.jpkocommunity.domain.auth.dto.request.PasswordResetConfirmRequest;
+import com.jpkocommunity.domain.auth.dto.request.PasswordResetRequest;
 import com.jpkocommunity.domain.auth.dto.request.SignupRequest;
 import com.jpkocommunity.domain.auth.dto.response.LoginResponse;
 import com.jpkocommunity.domain.auth.dto.response.UserInfoResponse;
@@ -21,11 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
@@ -104,6 +102,51 @@ public class AuthController {
         cookieUtils.delete(response, "accessToken");
         cookieUtils.delete(response, "refreshToken");
         return ResponseEntity.ok(ApiResponse.ok("로그아웃이 완료되었습니다."));
+    }
+
+    @PostMapping("/email-verification/request")
+    public ResponseEntity<ApiResponse<Void>> requestEmailVerification(
+            @AuthenticationPrincipal AuthUser authUser
+    ) {
+        authService.sendVerificationEmail(authUser.userId());
+        return ResponseEntity.ok(ApiResponse.ok("인증 메일이 발송되었습니다."));
+    }
+
+    @PostMapping("/email-verification/resend")
+    public ResponseEntity<ApiResponse<Void>> resendVerificationEmail(
+            @Valid @RequestBody PasswordResetRequest request
+    ) {
+        authService.resendVerificationEmailByEmail(request.email());
+        return ResponseEntity.ok(ApiResponse.ok(
+                "입력하신 이메일이 가입되어 있고 미인증 상태라면, 인증 메일을 보내드렸습니다."
+        ));
+    }
+
+    @PostMapping("/email-verification/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmEmailVerification(
+            @RequestParam String token
+    ) {
+        authService.verifyEmail(token);
+        return ResponseEntity.ok(ApiResponse.ok("이메일 인증이 완료되었습니다."));
+    }
+
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<ApiResponse<Void>> requestPasswordReset(
+            @Valid @RequestBody PasswordResetRequest request
+    ) {
+        authService.requestPasswordReset(request.email());
+        return ResponseEntity.ok(ApiResponse.ok(
+                "입력하신 이메일이 가입되어 있고 인증된 상태라면, 재설정 링크를 보내드렸습니다." +
+                        "메일이 오지 않는다면 이메일 인증이 필요한 상태일 수 있습니다."
+        ));
+    }
+
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmPasswordReset(
+            @Valid @RequestBody PasswordResetConfirmRequest request
+    ) {
+        authService.resetPassword(request.token(), request.newPassword(), request.newPasswordConfirm());
+        return ResponseEntity.ok(ApiResponse.ok("비밀번호가 재설정되었습니다."));
     }
 
 }

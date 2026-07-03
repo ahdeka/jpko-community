@@ -15,8 +15,8 @@ import static lombok.AccessLevel.PROTECTED;
 @Entity
 @NoArgsConstructor(access = PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "refresh_tokens")
-public class RefreshToken {
+@Table(name = "verification_tokens")
+public class VerificationToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,14 +25,12 @@ public class RefreshToken {
     @Column(nullable = false)
     private Long userId;
 
-    @Column(nullable = false, unique = true, length = 500)
+    @Column(nullable = false, unique = true, length = 255)
     private String token;
 
-    @Column(length = 255)
-    private String deviceInfo;
-
-    @Column(length = 45)
-    private String ipAddress;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private VerificationTokenType type;
 
     @Column(nullable = false)
     private LocalDateTime expiresAt;
@@ -42,12 +40,10 @@ public class RefreshToken {
     private LocalDateTime createdAt;
 
     @Builder
-    public RefreshToken(Long userId, String token, String deviceInfo,
-                        String ipAddress, LocalDateTime expiresAt) {
+    public VerificationToken(Long userId, String token, VerificationTokenType type, LocalDateTime expiresAt) {
         this.userId = userId;
         this.token = token;
-        this.deviceInfo = deviceInfo;
-        this.ipAddress = ipAddress;
+        this.type = type;
         this.expiresAt = expiresAt;
     }
 
