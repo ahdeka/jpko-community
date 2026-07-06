@@ -58,8 +58,4 @@ public class Notice extends BaseEntity {
     public void confirmContent(String content) {
         this.content = content;
     }
-
-    public void increaseViewCount() {
-        this.viewCount++;
-    }
 }

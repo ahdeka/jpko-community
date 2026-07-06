@@ -51,8 +51,14 @@ public class NoticeService {
     @Transactional
     public NoticeDetailResponse getNotice(Long noticeId) {
         Notice notice = findById(noticeId);
-        notice.increaseViewCount();
-        return NoticeDetailResponse.from(notice);
+
+        // 조회수 증가는 벌크 UPDATE로 처리한다.
+        // 엔티티를 직접 수정(increaseViewCount)하면 @LastModifiedDate가 걸려 updated_at까지
+        // 갱신되므로, 조회만으로 updated_at이 오염되지 않도록 벌크 JPQL을 사용한다.
+        noticeRepository.incrementViewCount(noticeId);
+
+        // DB만 +1 됐고 로드된 엔티티엔 반영 안 되므로 응답 표시용으로만 +1
+        return NoticeDetailResponse.from(notice, notice.getViewCount() + 1);
     }
 
     @Transactional
