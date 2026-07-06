@@ -4,6 +4,7 @@ import com.jpkocommunity.domain.post.entity.Post;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -49,5 +50,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // 사용자별 게시글 조회 (삭제 제외)
     @Query("SELECT p FROM Post p JOIN FETCH p.category WHERE p.user.id = :userId AND p.deletedAt IS NULL")
     Page<Post> findByUserIdWithCategory(@Param("userId") Long userId, Pageable pageable);
+
+    // 조회수 증가를 위한 벌크 업데이트
+    @Modifying
+    @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
+    void incrementViewCount(@Param("id") Long id);
 
 }

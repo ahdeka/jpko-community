@@ -17,8 +17,11 @@ public record PostDetailResponse(
         long dislikeCount,
         LocalDateTime createdAt
 ) {
+    // viewCount는 엔티티(post.getViewCount())가 아니라 호출부에서 넘겨받는다.
+    // 조회수 증가를 벌크 UPDATE로 처리하면 로드된 엔티티에는 +1이 반영되지 않으므로,
+    // 표시용 조회수를 명시적으로 전달받아야 정확한 값이 응답된다.
     public static PostDetailResponse from(
-            Post post, long likeCount, long dislikeCount, Long currentUserId) {
+            Post post, int viewCount, long likeCount, long dislikeCount, Long currentUserId) {
         return new PostDetailResponse(
                 post.getId(),
                 post.getCategory().getName(),
@@ -27,7 +30,7 @@ public record PostDetailResponse(
                 resolveAuthor(post),
                 post.isAnonymous(),
                 isOwner(post, currentUserId),
-                post.getViewCount(),
+                viewCount,
                 likeCount,
                 dislikeCount,
                 post.getCreatedAt()
