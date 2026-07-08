@@ -80,7 +80,7 @@ public class PostController {
     ) {
         Long currentUserId = authUser != null ? authUser.userId() : null;
 
-        String cookieName = "viewed_" + postId;
+        String cookieName = "viewedPost_" + postId;
         boolean alreadyViewed = cookieUtils.exists(servletRequest, cookieName);
 
         PostDetailResponse response = postService.getPost(postId, currentUserId, !alreadyViewed);

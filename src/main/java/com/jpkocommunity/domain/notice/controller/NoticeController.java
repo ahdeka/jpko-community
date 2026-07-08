@@ -8,6 +8,9 @@ import com.jpkocommunity.domain.notice.dto.response.NoticeSummaryResponse;
 import com.jpkocommunity.domain.notice.service.NoticeService;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
+import com.jpkocommunity.global.util.CookieUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,7 +30,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NoticeController {
 
+    // 조회수 중복 방지 쿠키 유효시간
+    private static final int VIEW_COOKIE_MAX_AGE = 60 * 60 * 24;
+
     private final NoticeService noticeService;
+    private final CookieUtils cookieUtils;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<NoticeSummaryResponse>>> getNotices(
@@ -50,9 +57,21 @@ public class NoticeController {
 
     @GetMapping("/{noticeId}")
     public ResponseEntity<ApiResponse<NoticeDetailResponse>> getNotice(
-            @PathVariable Long noticeId
+            @PathVariable Long noticeId,
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(noticeService.getNotice(noticeId)));
+
+        String cookieName = "viewedNotice_" + noticeId;
+        boolean alreadyViewed = cookieUtils.exists(servletRequest, cookieName);
+
+        NoticeDetailResponse response = noticeService.getNotice(noticeId, !alreadyViewed);
+
+        if (!alreadyViewed) {
+            cookieUtils.add(servletResponse, cookieName, "1", VIEW_COOKIE_MAX_AGE);
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @PostMapping

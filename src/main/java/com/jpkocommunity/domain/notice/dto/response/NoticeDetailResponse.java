@@ -14,9 +14,7 @@ public record NoticeDetailResponse(
         boolean featured,
         LocalDateTime createdAt
 ) {
-    // viewCount는 엔티티(notice.getViewCount())가 아니라 호출부에서 넘겨받는다.
-    // 조회수 증가를 벌크 UPDATE로 처리하면 로드된 엔티티에는 +1이 반영되지 않으므로,
-    // 표시용 조회수를 명시적으로 전달받아야 정확한 값이 응답된다.
+    // viewCount는 벌크 UPDATE로 처리하기 때문에, 따로 인자로 받아서 설정
     public static NoticeDetailResponse from(Notice notice, int viewCount) {
         return new NoticeDetailResponse(
                 notice.getId(),
