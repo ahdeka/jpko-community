@@ -5,6 +5,10 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.TimeZone;
 
+/**
+ * JPA AuditEntityListener에서 LocalDateTime을 사용할 때
+ * JVM 기본값 UTC 말고, 서울 (KST, UTC+9)로 고정
+ */
 @Configuration
 public class TimeZoneConfig {
 
