@@ -10,6 +10,7 @@ public record SignupRequest(
 
         @NotBlank(message = "닉네임을 입력해주세요.")
         @Size(min = 2, max = 20, message = "닉네임은 2자 이상 20자 이하여야 합니다.")
+        @Pattern(regexp = "^[가-힣a-zA-Z0-9]+$", message = "닉네임은 한글, 영문, 숫자만 사용할 수 있습니다.")
         String nickname,
 
         @NotBlank(message = "비밀번호를 입력해주세요.")
@@ -26,4 +27,9 @@ public record SignupRequest(
         @AssertTrue(message = "개인정보처리방침에 동의해주세요.")
         @NotNull(message = "개인정보처리방침 동의 여부를 입력해주세요.")
         Boolean privacyAgreed
-) {}
+) {
+    public SignupRequest {
+        email = email == null ? null : email.trim().toLowerCase();
+        nickname = nickname == null ? null : nickname.trim();
+    }
+}
