@@ -10,6 +10,7 @@ import com.jpkocommunity.domain.auth.entity.VerificationTokenType;
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.auth.repository.VerificationTokenRepository;
 import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.config.JwtProperties;
 import com.jpkocommunity.global.config.VerificationTokenProperties;
@@ -76,6 +77,10 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new CustomException(ErrorCode.WRONG_PASSWORD);
+        }
+
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
         }
 
         return issueTokens(user, deviceInfo, ipAddress);

@@ -6,9 +6,13 @@ import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
 import com.jpkocommunity.domain.user.dto.request.WithdrawRequest;
+import com.jpkocommunity.domain.user.dto.response.AdminUserResponse;
 import com.jpkocommunity.domain.user.dto.response.MyCommentResponse;
 import com.jpkocommunity.domain.user.dto.response.MyPostResponse;
 import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.entity.UserGrade;
+import com.jpkocommunity.domain.user.entity.UserRole;
+import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.event.UserWithdrawnEvent;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.exception.CustomException;
@@ -120,4 +124,43 @@ public class UserService {
         // 사용자 탈퇴 이벤트는 탈퇴 트랜잭션 커밋 후 처리됨
         eventPublisher.publishEvent(new UserWithdrawnEvent(userId));
     }
+
+    // ========== 관리자 기능 ==========
+
+    public Page<AdminUserResponse> searchUsers(String keyword, Pageable pageable) {
+        Page<User> users = (keyword == null || keyword.isBlank())
+                ? userRepository.findAll(pageable)
+                : userRepository.findByNicknameContainingOrEmailContaining(keyword, keyword, pageable);
+        return users.map(AdminUserResponse::from);
+    }
+
+    @Transactional
+    public void updateStatus(Long userId, UserStatus status) {
+        if (status == UserStatus.DELETED) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        User user = findById(userId);
+
+        if (user.isDeleted()) {
+            throw new CustomException(ErrorCode.ALREADY_WITHDRAWN);
+        }
+
+        if (status == UserStatus.SUSPENDED) {
+            if (user.getRole() == UserRole.ADMIN) {
+                throw new CustomException(ErrorCode.CANNOT_SUSPEND_ADMIN);
+            }
+            user.suspend();
+            refreshTokenRepository.deleteByUserId(userId);
+        } else {
+            user.activate();
+        }
+    }
+
+    @Transactional
+    public void updateGrade(Long userId, UserGrade grade) {
+        User user = findById(userId);
+        user.updateGrade(grade);
+    }
+
 }

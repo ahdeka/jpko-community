@@ -33,6 +33,10 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 20)
     private UserStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserGrade grade;
+
     // 이용약관
     @Column(nullable = false)
     private LocalDateTime termsAgreedAt;
@@ -54,6 +58,7 @@ public class User extends BaseEntity {
         this.nickname = nickname;
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
+        this.grade = UserGrade.ASHIGARU;
         this.emailVerified = false;
         LocalDateTime now = LocalDateTime.now();
         this.termsAgreedAt = now;
@@ -72,6 +77,18 @@ public class User extends BaseEntity {
 
     public void verifyEmail() {
         this.emailVerified = true;
+    }
+
+    public void updateGrade(UserGrade grade) {
+        this.grade = grade;
+    }
+
+    public void suspend() {
+        this.status = UserStatus.SUSPENDED;
+    }
+
+    public void activate() {
+        this.status = UserStatus.ACTIVE;
     }
 
     public void withdraw() {
