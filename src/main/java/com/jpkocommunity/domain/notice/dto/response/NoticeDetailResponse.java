@@ -20,7 +20,7 @@ public record NoticeDetailResponse(
                 notice.getId(),
                 notice.getTitle(),
                 notice.getContent(),
-                notice.getUser().getNickname(),
+                notice.getUser().getDisplayNickname(),
                 viewCount,
                 notice.isPinned(),
                 notice.isFeatured(),

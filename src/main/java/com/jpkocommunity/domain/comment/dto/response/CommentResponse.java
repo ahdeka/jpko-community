@@ -53,7 +53,7 @@ public record CommentResponse(
         // 삭제된 댓글은 작성자 노출 안 함
         if (comment.isDeleted()) return "(삭제됨)";
         if (comment.isAnonymous()) return "ㅇㅇ(" + comment.getMaskedIp() + ")";
-        return comment.getUser().getNickname();
+        return comment.getUser().getDisplayNickname();
     }
 
     // 익명 댓글이라도 실제 작성자 본인이면 true

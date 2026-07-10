@@ -81,6 +81,10 @@ public class User extends BaseEntity {
         this.email = "deleted_" + getId() + "_" + java.util.UUID.randomUUID() + "@jpkocommunity.local";
     }
 
+    public String getDisplayNickname() {
+        return isDeleted() ? "(탈퇴한 회원)" : this.nickname;
+    }
+
     public boolean isDeleted() {
         return this.status == UserStatus.DELETED;
     }

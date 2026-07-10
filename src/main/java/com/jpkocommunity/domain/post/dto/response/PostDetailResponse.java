@@ -39,7 +39,7 @@ public record PostDetailResponse(
 
     private static String resolveAuthor(Post post) {
         if (post.isAnonymous()) return "ㅇㅇ(" + post.getMaskedIp() + ")";
-        return post.getUser().getNickname();
+        return post.getUser().getDisplayNickname();
     }
 
     // 익명 글이라도 실제 작성자 본인이면 true

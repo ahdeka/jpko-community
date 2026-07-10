@@ -32,9 +32,7 @@ public record PostSummaryResponse(
     }
 
     private static String resolveAuthor(Post post) {
-        if (post.isAnonymous()) {
-            return "ㅇㅇ(" + post.getMaskedIp() + ")";
-        }
-        return post.getUser().getNickname();
+        if (post.isAnonymous()) return "ㅇㅇ(" + post.getMaskedIp() + ")";
+        return post.getUser().getDisplayNickname();
     }
 }

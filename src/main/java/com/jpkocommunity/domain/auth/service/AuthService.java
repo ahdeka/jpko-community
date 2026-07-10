@@ -70,6 +70,10 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new CustomException(ErrorCode.WRONG_PASSWORD));
 
+        if (user.isDeleted()) {
+            throw new CustomException(ErrorCode.WRONG_PASSWORD);
+        }
+
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new CustomException(ErrorCode.WRONG_PASSWORD);
         }
@@ -245,5 +249,5 @@ public class AuthService {
         refreshTokenRepository.deleteByUserId(user.getId());
     }
 
-    public record LoginResult(LoginResponse response, String accessToken, String refreshToken) {}
+    public record LoginResult(LoginResponse response, String accessToken, String refreshToken) { }
 }
