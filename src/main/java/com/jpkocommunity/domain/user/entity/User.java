@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
 
@@ -42,6 +41,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime privacyAgreedAt;
 
+    @Column
+    private LocalDateTime deletedAt;
+
     @Column(nullable = false)
     private boolean emailVerified;
 
@@ -70,5 +72,16 @@ public class User extends BaseEntity {
 
     public void verifyEmail() {
         this.emailVerified = true;
+    }
+
+    public void withdraw() {
+        this.status = UserStatus.DELETED;
+        this.deletedAt = LocalDateTime.now();
+        this.nickname = "탈퇴회원#" + getId();
+        this.email = "deleted_" + getId() + "_" + java.util.UUID.randomUUID() + "@jpkocommunity.local";
+    }
+
+    public boolean isDeleted() {
+        return this.status == UserStatus.DELETED;
     }
 }

@@ -5,13 +5,16 @@ import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
+import com.jpkocommunity.domain.user.dto.request.WithdrawRequest;
 import com.jpkocommunity.domain.user.dto.response.MyCommentResponse;
 import com.jpkocommunity.domain.user.dto.response.MyPostResponse;
 import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.event.UserWithdrawnEvent;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,6 +31,7 @@ public class UserService {
     private final CommentRepository commentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
 
     public User findById(Long id) {
         return userRepository.findById(id)
@@ -94,5 +98,26 @@ public class UserService {
 
         // 사용자 비밀번호 변경 시, 기존 refresh token 삭제
         refreshTokenRepository.deleteByUserId(userId);
+    }
+
+    @Transactional
+    public void withdraw(Long userId, WithdrawRequest request) {
+        User user = findById(userId);
+
+        if (user.isDeleted()) {
+            throw new CustomException(ErrorCode.ALREADY_WITHDRAWN);
+        }
+
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new CustomException(ErrorCode.WRONG_PASSWORD);
+        }
+
+        user.withdraw();
+
+        // 모든 기기 로그아웃 처리
+        refreshTokenRepository.deleteByUserId(userId);
+
+        // 사용자 탈퇴 이벤트는 탈퇴 트랜잭션 커밋 후 처리됨
+        eventPublisher.publishEvent(new UserWithdrawnEvent(userId));
     }
 }

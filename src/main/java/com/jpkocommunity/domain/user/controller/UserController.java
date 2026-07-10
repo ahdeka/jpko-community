@@ -2,11 +2,14 @@ package com.jpkocommunity.domain.user.controller;
 
 import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
+import com.jpkocommunity.domain.user.dto.request.WithdrawRequest;
 import com.jpkocommunity.domain.user.dto.response.MyCommentResponse;
 import com.jpkocommunity.domain.user.dto.response.MyPostResponse;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
+import com.jpkocommunity.global.util.CookieUtils;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +26,19 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final CookieUtils cookieUtils;
+
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> withdraw(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody WithdrawRequest request,
+            HttpServletResponse response
+    ) {
+        userService.withdraw(authUser.userId(), request);
+        cookieUtils.delete(response, "accessToken");
+        cookieUtils.delete(response, "refreshToken");
+        return ResponseEntity.ok(ApiResponse.ok("회원 탈퇴가 완료되었습니다."));
+    }
 
     @GetMapping("/me/posts")
     public ResponseEntity<ApiResponse<Page<MyPostResponse>>> getMyPosts(

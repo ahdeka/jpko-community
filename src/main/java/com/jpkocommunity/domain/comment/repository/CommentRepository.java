@@ -4,9 +4,11 @@ import com.jpkocommunity.domain.comment.entity.Comment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
@@ -27,4 +29,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     // 사용자별 댓글 조회 (삭제 제외)
     @Query("SELECT c FROM Comment c JOIN FETCH c.post WHERE c.user.id = :userId AND c.deletedAt IS NULL AND c.post.deletedAt IS NULL")
     Page<Comment> findByUserIdWithPost(@Param("userId") Long userId, Pageable pageable);
+
+    // IP 주소 익명화
+    @Modifying
+    @Query("UPDATE Comment c SET c.ipAddress = NULL WHERE c.ipAddress IS NOT NULL AND c.createdAt < :cutoff")
+    int anonymizeIpBefore(@Param("cutoff") LocalDateTime cutoff);
 }

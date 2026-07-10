@@ -56,4 +56,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
     void incrementViewCount(@Param("id") Long id);
 
+    // IP 주소 익명화
+    @Modifying
+    @Query("UPDATE Post p SET p.ipAddress = NULL WHERE p.ipAddress IS NOT NULL AND p.createdAt < :cutoff")
+    int anonymizeIpBefore(@Param("cutoff") LocalDateTime cutoff);
+
 }
