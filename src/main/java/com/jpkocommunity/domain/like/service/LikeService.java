@@ -5,6 +5,8 @@ import com.jpkocommunity.domain.like.dto.response.LikeResponse;
 import com.jpkocommunity.domain.like.entity.Like;
 import com.jpkocommunity.domain.like.entity.LikeType;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
+import com.jpkocommunity.domain.notification.entity.NotificationType;
+import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.service.PostService;
 import com.jpkocommunity.domain.user.entity.User;
@@ -12,6 +14,7 @@ import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +29,7 @@ public class LikeService {
     private final LikeRepository likeRepository;
     private final PostService postService;
     private final UserService userService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public LikeResponse toggle(Long userId, Long postId, LikeRequest request) {
@@ -42,6 +46,11 @@ public class LikeService {
                         .user(user)
                         .type(request.type())
                         .build());
+
+                // 알림은 LIKE일 때만 발생시킴
+                if (request.type() == LikeType.LIKE) {
+                    publishLikeNotification(post, userId);
+                }
             } catch (DataIntegrityViolationException e) {
                 // 동시 요청으로 unique 제약 위반 발생 시
                 throw new CustomException(ErrorCode.DUPLICATE_LIKE);
@@ -80,5 +89,18 @@ public class LikeService {
         }
 
         return new LikeResponse(likeCount, dislikeCount, myType);
+    }
+
+    // 자기 글에 좋아요 누른 경우는 알림 대상 제외
+    private void publishLikeNotification(Post post, Long likerId) {
+        Long receiverId = post.getUser().getId();
+
+        if (receiverId.equals(likerId)) {
+            return;
+        }
+
+        eventPublisher.publishEvent(new NotificationEvent(
+                receiverId, likerId, NotificationType.LIKE, post.getId(), null, false
+        ));
     }
 }

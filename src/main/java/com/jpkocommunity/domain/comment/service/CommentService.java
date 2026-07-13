@@ -5,6 +5,8 @@ import com.jpkocommunity.domain.comment.dto.request.CommentUpdateRequest;
 import com.jpkocommunity.domain.comment.dto.response.CommentResponse;
 import com.jpkocommunity.domain.comment.entity.Comment;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
+import com.jpkocommunity.domain.notification.entity.NotificationType;
+import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.service.PostService;
 import com.jpkocommunity.domain.user.entity.User;
@@ -12,6 +14,7 @@ import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +28,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostService postService;
     private final UserService userService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<CommentResponse> getComments(Long postId, Long currentUserId) {
         postService.findActivePostById(postId);
@@ -51,9 +55,12 @@ public class CommentService {
                 .ipAddress(ipAddress)
                 .build();
 
+        Comment saved = commentRepository.save(comment);
+        publishNotificationEvent(saved, post, parent, userId);
+
         return request.parentId() == null
-                ? CommentResponse.from(commentRepository.save(comment), userId)
-                : CommentResponse.fromReply(commentRepository.save(comment), userId);
+                ? CommentResponse.from(saved, userId)
+                : CommentResponse.fromReply(saved, userId);
     }
 
     @Transactional
@@ -112,4 +119,20 @@ public class CommentService {
 
         return parent;
     }
+
+    // 댓글은 게시글 작성자에게 알림, 대댓글은 부모 댓글 작성자에게 알림
+    private void publishNotificationEvent(Comment saved, Post post, Comment parent, Long commenterId) {
+        Long receiverId = (parent == null) ? post.getUser().getId() : parent.getUser().getId();
+
+        // 작성자와 수신자가 같으면 알림 발송하지 않음
+        if (receiverId.equals(commenterId)) {
+            return;
+        }
+
+        NotificationType type = (parent == null) ? NotificationType.COMMENT : NotificationType.REPLY;
+        eventPublisher.publishEvent(new NotificationEvent(
+                receiverId, commenterId, type, post.getId(), saved.getId(), saved.isAnonymous()
+        ));
+    }
+
 }
