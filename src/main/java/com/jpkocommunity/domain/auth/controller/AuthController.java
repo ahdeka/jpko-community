@@ -42,7 +42,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<UserInfoResponse>> me(@AuthenticationPrincipal AuthUser authUser) {
         User user = userService.findById(authUser.userId());
         return ResponseEntity.ok(ApiResponse.ok(
-                new UserInfoResponse(user.getId(), user.getEmail(), user.getNickname(), user.getRole(), user.isEmailVerified())
+                UserInfoResponse.from(user)
         ));
     }
 
