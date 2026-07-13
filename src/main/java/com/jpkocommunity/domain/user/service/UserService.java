@@ -127,7 +127,7 @@ public class UserService {
 
     // ========== 관리자 기능 ==========
 
-    public Page<AdminUserResponse> searchUsers(String keyword, Pageable pageable) {
+    public Page<AdminUserResponse> getUsers(String keyword, Pageable pageable) {
         Page<User> users = (keyword == null || keyword.isBlank())
                 ? userRepository.findAll(pageable)
                 : userRepository.findByNicknameContainingOrEmailContaining(keyword, keyword, pageable);
@@ -160,6 +160,15 @@ public class UserService {
     @Transactional
     public void updateGrade(Long userId, UserGrade grade) {
         User user = findById(userId);
+
+        if (user.isDeleted()) {
+            throw new CustomException(ErrorCode.ALREADY_WITHDRAWN);
+        }
+
+        if (grade == UserGrade.SHOGUN && user.getRole() != UserRole.ADMIN) {
+            throw new CustomException(ErrorCode.SHOGUN_REQUIRES_ADMIN_ROLE);
+        }
+
         user.updateGrade(grade);
     }
 
