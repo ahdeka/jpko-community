@@ -1,6 +1,7 @@
 package com.jpkocommunity.domain.comment.dto.response;
 
 import com.jpkocommunity.domain.comment.entity.Comment;
+import com.jpkocommunity.domain.user.entity.UserRole;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.List;
 public record CommentResponse(
         Long id,
         String author,
+        boolean adminAuthor,
         boolean anonymous,
         boolean isOwner,
         String content,
@@ -20,6 +22,7 @@ public record CommentResponse(
         return new CommentResponse(
                 comment.getId(),
                 resolveAuthor(comment),
+                resolveAdminAuthor(comment),
                 comment.isAnonymous(),
                 isOwner(comment, currentUserId),
                 resolveContent(comment),
@@ -36,6 +39,7 @@ public record CommentResponse(
         return new CommentResponse(
                 comment.getId(),
                 resolveAuthor(comment),
+                resolveAdminAuthor(comment),
                 comment.isAnonymous(),
                 isOwner(comment, currentUserId),
                 resolveContent(comment),
@@ -54,6 +58,13 @@ public record CommentResponse(
         if (comment.isDeleted()) return "(삭제됨)";
         if (comment.isAnonymous()) return "ㅇㅇ(" + comment.getMaskedIp() + ")";
         return comment.getUser().getDisplayNickname();
+    }
+
+    // 작성자가 운영진(ADMIN)인지 — 닉네임 옆 "운영진" 뱃지 표시에만 쓴다.
+    // 삭제·익명 댓글은 작성자를 숨기므로 false(운영진 신원 노출 방지).
+    private static boolean resolveAdminAuthor(Comment comment) {
+        if (comment.isDeleted() || comment.isAnonymous()) return false;
+        return comment.getUser().getRole() == UserRole.ADMIN;
     }
 
     // 익명 댓글이라도 실제 작성자 본인이면 true
