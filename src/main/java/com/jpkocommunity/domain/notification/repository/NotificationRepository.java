@@ -1,11 +1,13 @@
 package com.jpkocommunity.domain.notification.repository;
 
 import com.jpkocommunity.domain.notification.entity.Notification;
+import com.jpkocommunity.domain.notification.entity.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
@@ -18,4 +20,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             order by n.createdAt desc
             """)
     List<Notification> findUnreadWithDetailsByReceiverId(@Param("receiverId") Long receiverId);
+
+    // 좋아요 재클릭 중복 알림 억제용
+    Optional<Notification> findTopByReceiverIdAndSenderIdAndPostIdAndTypeOrderByCreatedAtDesc(
+            Long receiverId, Long senderId, Long postId, NotificationType type
+    );
 }
