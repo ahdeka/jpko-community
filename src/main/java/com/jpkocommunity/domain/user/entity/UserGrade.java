@@ -6,11 +6,12 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum UserGrade {
-    ASHIGARU("아시가루"),
-    SAMURAI("사무라이"),
-    HATAMOTO("하타모토"),
-    DAIMYO("다이묘"),       // 최상위 우수회원
-    SHOGUN("쇼군");         // 운영진 전용
+    ASHIGARU("일반 회원"),
+    SAMURAI("우수 회원"),
+    HATAMOTO("특별 회원"),
+    DAIMYO("대표 회원"),
+    SHOGUN("운영진");
 
     private final String displayGradeName;
+
 }
