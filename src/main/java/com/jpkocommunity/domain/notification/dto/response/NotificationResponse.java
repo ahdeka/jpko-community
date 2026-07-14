@@ -12,6 +12,7 @@ public record NotificationResponse(
         boolean isAnonymous,
         String senderName,     // 익명이면 null
         Long postId,
+        String postTitle,
         Long commentId,
         boolean isRead,
         LocalDateTime createdAt
@@ -24,6 +25,7 @@ public record NotificationResponse(
                 anonymous,
                 anonymous ? null : n.getSender().getDisplayNickname(),
                 n.getPost().getId(),
+                n.getPost().getTitle(),
                 n.getComment() != null ? n.getComment().getId() : null,
                 n.isRead(),
                 n.getCreatedAt()

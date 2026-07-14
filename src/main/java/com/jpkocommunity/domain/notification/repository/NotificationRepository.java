@@ -12,9 +12,11 @@ import java.util.Optional;
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
     // "안 읽은 알림 목록" 조회용 (N+1 방지를 위해 fetch join)
+    // post는 nullable=false라 inner join fetch로 안전하게 제목까지 함께 로드
     @Query("""
             select n from Notification n
             join fetch n.sender
+            join fetch n.post
             left join fetch n.comment
             where n.receiver.id = :receiverId and n.isRead = false
             order by n.createdAt desc
