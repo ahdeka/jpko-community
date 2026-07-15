@@ -9,16 +9,21 @@ import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.service.PostService;
+import com.jpkocommunity.domain.report.entity.ReportTargetType;
+import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
 import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
+import com.jpkocommunity.global.security.auth.AuthUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -73,15 +78,35 @@ public class CommentService {
     }
 
     @Transactional
-    public void deleteComment(Long userId, Long commentId) {
+    public void deleteComment(AuthUser authUser, Long commentId) {
         Comment comment = findActiveComment(commentId);
-        validateAuthor(comment, userId);
+        validateAuthor(comment, authUser);
+
+        boolean isAdmin = authUser.role() == UserRole.ADMIN;
+        boolean isOwner = comment.getUser().getId().equals(authUser.userId());
+
         comment.delete();
+
+        eventPublisher.publishEvent(new ContentDeletedEvent(ReportTargetType.COMMENT, commentId));
+
+        if (isAdmin && !isOwner) {
+            eventPublisher.publishEvent(new NotificationEvent(
+                    comment.getUser().getId(), authUser.userId(), NotificationType.CONTENT_REMOVED,
+                    comment.getPost().getId(), commentId, false
+            ));
+        }
     }
 
-    // ========== private 메서드 ==========
+    public Optional<Comment> findByIdOptional(Long commentId) {
+        return commentRepository.findById(commentId);
+    }
 
-    private Comment findActiveComment(Long commentId) {
+    // 신고 미리보기용 - id 목록으로 작성자까지 한 번에 조회
+    public List<Comment> findAllWithUserByIdIn(List<Long> ids) {
+        return commentRepository.findAllWithUserByIdIn(ids);
+    }
+
+    public Comment findActiveComment(Long commentId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
         if (comment.isDeleted()) {
@@ -90,8 +115,10 @@ public class CommentService {
         return comment;
     }
 
-    private void validateAuthor(Comment comment, Long userId) {
-        if (!comment.getUser().getId().equals(userId)) {
+    // ========== private 메서드 ==========
+
+    private void validateAuthor(Comment comment, AuthUser authUser) {
+        if (!comment.getUser().getId().equals(authUser.userId())) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
     }

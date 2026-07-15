@@ -30,6 +30,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Query("SELECT c FROM Comment c JOIN FETCH c.post WHERE c.user.id = :userId AND c.deletedAt IS NULL AND c.post.deletedAt IS NULL")
     Page<Comment> findByUserIdWithPost(@Param("userId") Long userId, Pageable pageable);
 
+    // 신고 목록/집계 미리보기용 - id 목록으로 작성자까지 함께 조회 (소프트 삭제 포함)
+    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.id IN :ids")
+    List<Comment> findAllWithUserByIdIn(@Param("ids") List<Long> ids);
+
     // IP 주소 익명화
     @Modifying
     @Query("UPDATE Comment c SET c.ipAddress = NULL WHERE c.ipAddress IS NOT NULL AND c.createdAt < :cutoff")

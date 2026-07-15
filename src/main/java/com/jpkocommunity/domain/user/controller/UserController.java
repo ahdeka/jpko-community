@@ -1,5 +1,7 @@
 package com.jpkocommunity.domain.user.controller;
 
+import com.jpkocommunity.domain.report.dto.response.MyReportResponse;
+import com.jpkocommunity.domain.report.service.ReportService;
 import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
 import com.jpkocommunity.domain.user.dto.request.WithdrawRequest;
@@ -27,6 +29,7 @@ public class UserController {
 
     private final UserService userService;
     private final CookieUtils cookieUtils;
+    private final ReportService reportService;
 
     @DeleteMapping("/me")
     public ResponseEntity<ApiResponse<Void>> withdraw(
@@ -74,6 +77,14 @@ public class UserController {
     ) {
         userService.updatePassword(authUser.userId(), request);
         return ResponseEntity.ok(ApiResponse.ok("비밀번호가 변경되었습니다."));
+    }
+
+    @GetMapping("/me/reports")
+    public ResponseEntity<ApiResponse<Page<MyReportResponse>>> getMyReports(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(reportService.getMyReports(authUser.userId(), pageable)));
     }
 
 }

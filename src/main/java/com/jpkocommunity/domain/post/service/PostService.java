@@ -10,6 +10,8 @@ import com.jpkocommunity.domain.like.repository.LikeRepository;
 import com.jpkocommunity.domain.like.repository.PostLikeCount;
 import com.jpkocommunity.domain.notice.dto.response.NoticeSummaryResponse;
 import com.jpkocommunity.domain.notice.service.NoticeService;
+import com.jpkocommunity.domain.notification.entity.NotificationType;
+import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
 import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
 import com.jpkocommunity.domain.post.dto.request.SearchType;
@@ -19,6 +21,8 @@ import com.jpkocommunity.domain.post.dto.response.PostResponse;
 import com.jpkocommunity.domain.post.dto.response.PostSummaryResponse;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostRepository;
+import com.jpkocommunity.domain.report.entity.ReportTargetType;
+import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
@@ -26,6 +30,7 @@ import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.auth.AuthUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -36,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,6 +61,7 @@ public class PostService {
     private final CategoryService categoryService;
     private final NoticeService noticeService;
     private final ImageService imageService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private List<PostSummaryResponse> toSummaryList(List<Post> posts) {
         List<Long> postIds = posts.stream().map(Post::getId).toList();
@@ -123,6 +130,7 @@ public class PostService {
 
     /**
      * 인기 게시글 조회
+     *
      * @param days  최근 N일 (1=실시간, 7=주간)
      * @param limit 노출 개수
      */
@@ -201,7 +209,20 @@ public class PostService {
     public void deletePost(AuthUser authUser, Long postId) {
         Post post = findActivePostById(postId);
         validateAuthor(post, authUser);
+
+        boolean isAdmin = authUser.role() == UserRole.ADMIN;
+        boolean isOwner = post.getUser().getId().equals(authUser.userId());
+
         post.delete();
+
+        eventPublisher.publishEvent(new ContentDeletedEvent(ReportTargetType.POST, postId));
+
+        if (isAdmin && !isOwner) {
+            eventPublisher.publishEvent(new NotificationEvent(
+                    post.getUser().getId(), authUser.userId(), NotificationType.CONTENT_REMOVED,
+                    post.getId(), null, false
+            ));
+        }
     }
 
     public Post findActivePostById(Long postId) {
@@ -211,6 +232,15 @@ public class PostService {
             throw new CustomException(ErrorCode.POST_NOT_FOUND);
         }
         return post;
+    }
+
+    public Optional<Post> findByIdOptional(Long postId) {
+        return postRepository.findById(postId);
+    }
+
+    // 신고 미리보기용 - id 목록으로 작성자까지 한 번에 조회
+    public List<Post> findAllWithUserByIdIn(List<Long> ids) {
+        return postRepository.findAllWithUserByIdIn(ids);
     }
 
     // ========== private 메서드 ==========

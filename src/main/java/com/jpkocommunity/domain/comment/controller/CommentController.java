@@ -63,7 +63,7 @@ public class CommentController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long commentId
     ) {
-        commentService.deleteComment(authUser.userId(), commentId);
+        commentService.deleteComment(authUser, commentId);
         return ResponseEntity.ok(ApiResponse.ok("댓글이 삭제되었습니다."));
     }
 

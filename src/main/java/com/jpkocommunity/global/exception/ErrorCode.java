@@ -47,6 +47,11 @@ public enum ErrorCode {
     // Notification
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 알림입니다."),
 
+    // Report
+    REPORT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 신고한 게시글/댓글입니다."),
+    REPORT_DETAIL_REQUIRED(HttpStatus.BAD_REQUEST, "기타 사유는 상세 내용을 입력해주세요."),
+    SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인이 작성한 게시글/댓글은 신고할 수 없습니다."),
+
     // Image
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 이미지입니다."),
     IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "게시글당 이미지는 최대 5장까지 업로드할 수 있습니다."),

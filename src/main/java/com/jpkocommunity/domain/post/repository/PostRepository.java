@@ -51,6 +51,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT p FROM Post p JOIN FETCH p.category WHERE p.user.id = :userId AND p.deletedAt IS NULL")
     Page<Post> findByUserIdWithCategory(@Param("userId") Long userId, Pageable pageable);
 
+    // 신고 목록/집계 미리보기용 - id 목록으로 작성자까지 함께 조회 (소프트 삭제 포함)
+    @Query("SELECT p FROM Post p JOIN FETCH p.user WHERE p.id IN :ids")
+    List<Post> findAllWithUserByIdIn(@Param("ids") List<Long> ids);
+
     // 조회수 증가를 위한 벌크 업데이트
     @Modifying
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
