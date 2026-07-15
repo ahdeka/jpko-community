@@ -9,8 +9,10 @@ import java.time.LocalDateTime;
 public record AdminReportSummaryResponse(
         ReportTargetType targetType,
         Long targetId,
+        Long postId,
         String targetPreview,
         String targetAuthor,
+        ReportStatus status,
         long reportCount,
         LocalDateTime lastReportedAt
 ) {}

@@ -10,6 +10,7 @@ public record MyReportResponse(
         Long id,
         ReportTargetType targetType,
         Long targetId,
+        Long postId,
         String targetPreview,
         ReportReason reason,
         String detail,

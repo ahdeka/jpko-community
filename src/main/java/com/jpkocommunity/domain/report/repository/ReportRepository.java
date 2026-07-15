@@ -29,7 +29,9 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     @Query(
             value = """
                 SELECT target_type AS targetType, target_id AS targetId,
-                       COUNT(*) AS reportCount, MAX(created_at) AS lastReportedAt
+                       COUNT(*) AS reportCount, MAX(created_at) AS lastReportedAt,
+                       CASE MAX(CASE status WHEN 'PENDING' THEN 2 WHEN 'RESOLVED' THEN 1 ELSE 0 END)
+                            WHEN 2 THEN 'PENDING' WHEN 1 THEN 'RESOLVED' ELSE 'REJECTED' END AS status
                 FROM reports
                 WHERE (:targetType IS NULL OR target_type = :targetType)
                   AND (:status IS NULL OR status = :status)
@@ -66,6 +68,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
         Long getTargetId();
         Long getReportCount();
         LocalDateTime getLastReportedAt();
+        String getStatus();
     }
 
 }

@@ -64,11 +64,15 @@ public class ReportService {
         Map<TargetKey, TargetView> views = resolveTargetViews(
                 groupTargetIds(reports.getContent(), Report::getTargetType, Report::getTargetId));
 
-        return reports.map(report -> new MyReportResponse(
-                report.getId(), report.getTargetType(), report.getTargetId(),
-                previewOf(views, report.getTargetType(), report.getTargetId()),
-                report.getReason(), report.getDetail(), report.getStatus(), report.getCreatedAt()
-        ));
+        return reports.map(report -> {
+            TargetView view = views.get(new TargetKey(report.getTargetType(), report.getTargetId()));
+            return new MyReportResponse(
+                    report.getId(), report.getTargetType(), report.getTargetId(),
+                    postIdOf(view, report.getTargetType(), report.getTargetId()),
+                    view != null ? view.preview() : deletedPreview(report.getTargetType()),
+                    report.getReason(), report.getDetail(), report.getStatus(), report.getCreatedAt()
+            );
+        });
     }
 
     // ========== 관리자 기능 ==========
@@ -90,7 +94,9 @@ public class ReportService {
             String preview = view != null ? view.preview() : deletedPreview(type);
             String author = view != null ? view.authorNickname() : "-";
             return new AdminReportSummaryResponse(
-                    type, row.getTargetId(), preview, author, row.getReportCount(), row.getLastReportedAt());
+                    type, row.getTargetId(), postIdOf(view, type, row.getTargetId()),
+                    preview, author, ReportStatus.valueOf(row.getStatus()),
+                    row.getReportCount(), row.getLastReportedAt());
         });
     }
 
@@ -141,19 +147,19 @@ public class ReportService {
             case POST -> postService.findAllWithUserByIdIn(ids).stream()
                     .collect(Collectors.toMap(
                             p -> new TargetKey(ReportTargetType.POST, p.getId()),
-                            p -> new TargetView(truncate(p.getTitle()), p.getUser().getNickname())));
+                            p -> new TargetView(p.getId(), truncate(p.getTitle()), p.getUser().getNickname())));
             case COMMENT -> commentService.findAllWithUserByIdIn(ids).stream()
                     .collect(Collectors.toMap(
                             c -> new TargetKey(ReportTargetType.COMMENT, c.getId()),
-                            c -> new TargetView(truncate(c.getContent()), c.getUser().getNickname())));
+                            c -> new TargetView(c.getPost().getId(), truncate(c.getContent()), c.getUser().getNickname())));
         }));
         return views;
     }
 
-    // 신고 대상 미리보기 조회
-    private String previewOf(Map<TargetKey, TargetView> views, ReportTargetType type, Long targetId) {
-        TargetView view = views.get(new TargetKey(type, targetId));
-        return view != null ? view.preview() : deletedPreview(type);
+    // 원문 게시글 id: view가 있으면 그 값, 없으면(삭제 등) POST는 targetId 자신, COMMENT는 알 수 없어 null
+    private Long postIdOf(TargetView view, ReportTargetType type, Long targetId) {
+        if (view != null) return view.postId();
+        return type == ReportTargetType.POST ? targetId : null;
     }
 
     // 대상이 하드 삭제/정합성 깨짐으로 조회되지 않을 때의 폴백 문구 (Post/Comment는 소프트삭제라 실제로는 거의 발생 안 함)
@@ -190,7 +196,7 @@ public class ReportService {
     // 배치 조회 결과를 (타입, 대상 id)로 찾기 위한 복합 키
     private record TargetKey(ReportTargetType targetType, Long targetId) {}
 
-    // 신고 목록/집계에 노출할 대상 미리보기 + 작성자 닉네임
-    private record TargetView(String preview, String authorNickname) {}
+    // 신고 목록/집계에 노출할 대상 미리보기 + 작성자 닉네임 (postId: 원문 게시글 이동용, 게시글 신고는 자기 자신)
+    private record TargetView(Long postId, String preview, String authorNickname) {}
 
 }

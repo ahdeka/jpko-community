@@ -118,7 +118,9 @@ public class CommentService {
     // ========== private 메서드 ==========
 
     private void validateAuthor(Comment comment, AuthUser authUser) {
-        if (!comment.getUser().getId().equals(authUser.userId())) {
+        boolean isOwner = comment.getUser().getId().equals(authUser.userId());
+        boolean isAdmin = authUser.role() == UserRole.ADMIN;
+        if (!isOwner && !isAdmin) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
     }
