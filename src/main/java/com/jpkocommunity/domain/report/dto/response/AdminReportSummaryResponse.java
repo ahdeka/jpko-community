@@ -12,6 +12,7 @@ public record AdminReportSummaryResponse(
         Long postId,
         String targetPreview,
         String targetAuthor,
+        boolean targetDeleted,
         ReportStatus status,
         long reportCount,
         LocalDateTime lastReportedAt

@@ -12,6 +12,7 @@ public record MyReportResponse(
         Long targetId,
         Long postId,
         String targetPreview,
+        boolean targetDeleted,
         ReportReason reason,
         String detail,
         ReportStatus status,

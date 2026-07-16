@@ -3,6 +3,9 @@ spring:
     name: jpko-community
   profiles:
     active: dev
+  mvc:
+    locale: ko
+    locale-resolver: fixed
   servlet:
     multipart:
       max-file-size: 5MB

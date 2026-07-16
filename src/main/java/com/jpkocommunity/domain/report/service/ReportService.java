@@ -41,6 +41,7 @@ public class ReportService {
     private final PostService postService;
     private final CommentService commentService;
 
+    @Transactional
     public ReportResponse createReport(Long userId, ReportCreateRequest request) {
         User reporter = userService.findById(userId);
         Long authorId = resolveTargetAuthorId(request.targetType(), request.targetId());
@@ -65,11 +66,14 @@ public class ReportService {
                 groupTargetIds(reports.getContent(), Report::getTargetType, Report::getTargetId));
 
         return reports.map(report -> {
-            TargetView view = views.get(new TargetKey(report.getTargetType(), report.getTargetId()));
+            ReportTargetType type = report.getTargetType();
+            TargetView view = views.get(new TargetKey(type, report.getTargetId()));
+            boolean deleted = isTargetDeleted(view);
             return new MyReportResponse(
-                    report.getId(), report.getTargetType(), report.getTargetId(),
-                    postIdOf(view, report.getTargetType(), report.getTargetId()),
-                    view != null ? view.preview() : deletedPreview(report.getTargetType()),
+                    report.getId(), type, report.getTargetId(),
+                    deleted ? null : view.postId(),
+                    deleted ? deletedPreview(type) : view.preview(),
+                    deleted,
                     report.getReason(), report.getDetail(), report.getStatus(), report.getCreatedAt()
             );
         });
@@ -91,11 +95,12 @@ public class ReportService {
         return rows.map(row -> {
             ReportTargetType type = ReportTargetType.valueOf(row.getTargetType());
             TargetView view = views.get(new TargetKey(type, row.getTargetId()));
-            String preview = view != null ? view.preview() : deletedPreview(type);
+            boolean deleted = isTargetDeleted(view);
+            String preview = deleted ? deletedPreview(type) : view.preview();
             String author = view != null ? view.authorNickname() : "-";
             return new AdminReportSummaryResponse(
-                    type, row.getTargetId(), postIdOf(view, type, row.getTargetId()),
-                    preview, author, ReportStatus.valueOf(row.getStatus()),
+                    type, row.getTargetId(), deleted ? null : view.postId(),
+                    preview, author, deleted, ReportStatus.valueOf(row.getStatus()),
                     row.getReportCount(), row.getLastReportedAt());
         });
     }
@@ -107,6 +112,7 @@ public class ReportService {
                 .toList();
     }
 
+    @Transactional
     public void updateTargetStatus(AdminReportTargetStatusRequest request) {
         if (request.status() == ReportStatus.PENDING) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
@@ -147,22 +153,21 @@ public class ReportService {
             case POST -> postService.findAllWithUserByIdIn(ids).stream()
                     .collect(Collectors.toMap(
                             p -> new TargetKey(ReportTargetType.POST, p.getId()),
-                            p -> new TargetView(p.getId(), truncate(p.getTitle()), p.getUser().getNickname())));
+                            p -> new TargetView(p.getId(), truncate(p.getTitle()),
+                                    p.getUser().getNickname(), p.isDeleted())));
             case COMMENT -> commentService.findAllWithUserByIdIn(ids).stream()
                     .collect(Collectors.toMap(
                             c -> new TargetKey(ReportTargetType.COMMENT, c.getId()),
-                            c -> new TargetView(c.getPost().getId(), truncate(c.getContent()), c.getUser().getNickname())));
+                            c -> new TargetView(c.getPost().getId(), truncate(c.getContent()),
+                                    c.getUser().getNickname(), c.isDeleted() || c.getPost().isDeleted())));
         }));
         return views;
     }
 
-    // 원문 게시글 id: view가 있으면 그 값, 없으면(삭제 등) POST는 targetId 자신, COMMENT는 알 수 없어 null
-    private Long postIdOf(TargetView view, ReportTargetType type, Long targetId) {
-        if (view != null) return view.postId();
-        return type == ReportTargetType.POST ? targetId : null;
+    private boolean isTargetDeleted(TargetView view) {
+        return view == null || view.deleted();
     }
 
-    // 대상이 하드 삭제/정합성 깨짐으로 조회되지 않을 때의 폴백 문구 (Post/Comment는 소프트삭제라 실제로는 거의 발생 안 함)
     private String deletedPreview(ReportTargetType type) {
         return switch (type) {
             case POST -> "삭제된 게시글입니다.";
@@ -197,6 +202,6 @@ public class ReportService {
     private record TargetKey(ReportTargetType targetType, Long targetId) {}
 
     // 신고 목록/집계에 노출할 대상 미리보기 + 작성자 닉네임 (postId: 원문 게시글 이동용, 게시글 신고는 자기 자신)
-    private record TargetView(Long postId, String preview, String authorNickname) {}
+    private record TargetView(Long postId, String preview, String authorNickname, boolean deleted) {}
 
 }
