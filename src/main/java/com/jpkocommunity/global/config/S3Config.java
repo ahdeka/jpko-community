@@ -9,6 +9,11 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
+/**
+ * S3Client Bean 생성
+ * - 로컬(dev)에서는 application-dev.yaml에 access-key, secret-key를 채워 정적 자격증명 사용
+ * - prod에서는 기본 자격증명 체인(EC2 IAM Role 등)을 사용하도록 설정
+ */
 @Configuration
 public class S3Config {
 

@@ -2,6 +2,12 @@ package com.jpkocommunity.global.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * JWT 관련 설정
+ *  secret: JWT 서명에 사용할 비밀 키
+ *  accessTokenExpiration: 액세스 토큰 만료 시간 (ms)
+ *  refreshTokenExpiration: 리프레시 토큰 만료 시간 (ms)
+ */
 @ConfigurationProperties(prefix = "jwt")
 public record JwtProperties(
         String secret,

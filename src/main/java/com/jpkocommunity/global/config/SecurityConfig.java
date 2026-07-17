@@ -29,6 +29,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Spring Security 설정 클래스
+ * - JWT 인증 필터 적용
+ * - CORS 설정
+ * - 인증/인가 예외 처리
+ */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
