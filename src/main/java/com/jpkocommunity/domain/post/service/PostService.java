@@ -26,6 +26,8 @@ import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
+import com.jpkocommunity.global.config.ThrottleLockClassifier;
+import com.jpkocommunity.global.config.ThrottleProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.auth.AuthUser;
@@ -62,6 +64,7 @@ public class PostService {
     private final NoticeService noticeService;
     private final ImageService imageService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ThrottleProperties throttleProperties;
 
     private List<PostSummaryResponse> toSummaryList(List<Post> posts) {
         List<Long> postIds = posts.stream().map(Post::getId).toList();
@@ -163,6 +166,8 @@ public class PostService {
     @Transactional
     public PostResponse createPost(Long userId, PostCreateRequest request, String ipAddress) {
         User user = userService.findById(userId);
+        validateThrottle(user);
+
         Category category = categoryService.findById(request.categoryId());
 
         String sanitizedContent = imageService.sanitizeAndValidate(request.content());
@@ -251,6 +256,18 @@ public class PostService {
         if (!isOwner && !isAdmin) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
+    }
+
+    // Throttling 검증
+    private void validateThrottle(User user) {
+        if (user.getRole() == UserRole.ADMIN) return;
+
+        postRepository.acquireUserLock(ThrottleLockClassifier.POST, user.getId());
+
+        postRepository.findLatestCreatedAtByUserId(user.getId())
+                .filter(last -> last.isAfter(LocalDateTime.now().minusSeconds(throttleProperties.postIntervalSeconds())))
+                .ifPresent(last -> {
+                    throw new CustomException(ErrorCode.POST_TOO_FREQUENT);});
     }
 
 }

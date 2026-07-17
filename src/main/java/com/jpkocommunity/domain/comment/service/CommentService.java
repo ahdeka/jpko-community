@@ -14,6 +14,8 @@ import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
+import com.jpkocommunity.global.config.ThrottleLockClassifier;
+import com.jpkocommunity.global.config.ThrottleProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.auth.AuthUser;
@@ -22,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,6 +37,7 @@ public class CommentService {
     private final PostService postService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ThrottleProperties throttleProperties;
 
     public List<CommentResponse> getComments(Long postId, Long currentUserId) {
         postService.findActivePostById(postId);
@@ -47,6 +51,8 @@ public class CommentService {
     public CommentResponse createComment(Long userId, Long postId,
                                          CommentCreateRequest request, String ipAddress) {
         User user = userService.findById(userId);
+        validateThrottle(user);
+
         Post post = postService.findActivePostById(postId);
 
         Comment parent = resolveParent(request.parentId(), postId);
@@ -164,4 +170,15 @@ public class CommentService {
         ));
     }
 
+    // Throttling 검증
+    private void validateThrottle(User user) {
+        if (user.getRole() == UserRole.ADMIN) return;
+
+        commentRepository.acquireUserLock(ThrottleLockClassifier.COMMENT, user.getId());
+
+        commentRepository.findLatestCreatedAtByUserId(user.getId())
+                .filter(last -> last.isAfter(LocalDateTime.now().minusSeconds(throttleProperties.commentIntervalSeconds())))
+                .ifPresent(last -> {
+                    throw new CustomException(ErrorCode.COMMENT_TOO_FREQUENT);});
+    }
 }

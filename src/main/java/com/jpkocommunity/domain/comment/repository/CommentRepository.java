@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
@@ -38,4 +39,12 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Modifying
     @Query("UPDATE Comment c SET c.ipAddress = NULL WHERE c.ipAddress IS NOT NULL AND c.createdAt < :cutoff")
     int anonymizeIpBefore(@Param("cutoff") LocalDateTime cutoff);
+
+    // 도배 방지용 - 유저의 마지막 댓글 작성 시간만 조회
+    @Query(value = "SELECT c.createdAt FROM Comment c WHERE c.user.id = :userId ORDER BY c.createdAt DESC LIMIT 1")
+    Optional<LocalDateTime> findLatestCreatedAtByUserId(@Param("userId") Long userId);
+
+    // 도배 방지용 - 유저 단위 락 (classifier로 Post 스로틀링 락과 네임스페이스 분리)
+    @Query(value = "SELECT pg_advisory_xact_lock(:classifier, CAST(:userId AS integer))", nativeQuery = true)
+    void acquireUserLock(@Param("classifier") int classifier, @Param("userId") Long userId);
 }

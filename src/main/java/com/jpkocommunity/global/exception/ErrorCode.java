@@ -34,9 +34,11 @@ public enum ErrorCode {
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 게시글입니다."),
     POST_EDIT_EXPIRED(HttpStatus.FORBIDDEN, "작성 후 30분이 지난 게시글은 수정할 수 없습니다."),
     TEMP_IMAGE_NOT_FOUND(HttpStatus.BAD_REQUEST, "첨부한 이미지를 찾을 수 없습니다. 이미지를 다시 첨부해주세요."),
+    POST_TOO_FREQUENT(HttpStatus.TOO_MANY_REQUESTS, "너무 빠르게 게시글을 작성하고 있습니다. 잠시 후 다시 시도해주세요."),
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 댓글입니다."),
+    COMMENT_TOO_FREQUENT(HttpStatus.TOO_MANY_REQUESTS, "너무 빠르게 댓글을 작성하고 있습니다. 잠시 후 다시 시도해주세요."),
 
     // Like
     DUPLICATE_LIKE(HttpStatus.CONFLICT, "이미 좋아요/싫어요를 누른 게시글입니다."),

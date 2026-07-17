@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
@@ -64,5 +65,13 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Modifying
     @Query("UPDATE Post p SET p.ipAddress = NULL WHERE p.ipAddress IS NOT NULL AND p.createdAt < :cutoff")
     int anonymizeIpBefore(@Param("cutoff") LocalDateTime cutoff);
+
+    // 도배 방지용 - 유저의 마지막 게시글 작성 시간만 조회
+    @Query("SELECT p.createdAt FROM Post p WHERE p.user.id = :userId ORDER BY p.createdAt DESC LIMIT 1")
+    Optional<LocalDateTime> findLatestCreatedAtByUserId(@Param("userId") Long userId);
+
+    // 도배 방지용 - 유저 단위 락 (classifier로 Post 스로틀링 락과 네임스페이스 분리)
+    @Query(value = "SELECT pg_advisory_xact_lock(:classifier, CAST(:userId AS integer))", nativeQuery = true)
+    void acquireUserLock(@Param("classifier") int classifier, @Param("userId") Long userId);
 
 }
