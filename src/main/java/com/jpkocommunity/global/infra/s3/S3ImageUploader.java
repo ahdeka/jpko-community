@@ -18,6 +18,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ public class S3ImageUploader {
 
     private static final List<String> ALLOWED_EXTENSIONS =
             List.of("jpg", "jpeg", "png", "gif", "webp");
+    private static final int MAGIC_BYTES_READ_LENGTH = 12;
 
     private static final Map<String, String> EXTENSION_CONTENT_TYPE = Map.of(
             "jpg",  "image/jpeg",
@@ -39,7 +41,10 @@ public class S3ImageUploader {
             "webp", "image/webp"
     );
 
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final long DEFAULT_MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final Map<String, Long> MAX_FILE_SIZE_BY_EXTENSION = Map.of(
+            "gif", 10 * 1024 * 1024L // 10MB
+    );
 
     private final S3Client s3Client;
 
@@ -49,7 +54,6 @@ public class S3ImageUploader {
     @Value("${cloud.aws.region.static}")
     private String region;
 
-    // TODO: CloudFront를 사용하지 않는 경우, 빈 문자열이 반환되도록 처리, 나중에 CloudFront 적용 필요
     @Value("${cloud.aws.cloudfront.domain:}")
     private String cdnDomain;
 
@@ -126,12 +130,17 @@ public class S3ImageUploader {
         if (file.isEmpty()) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
-        if (file.getSize() > MAX_FILE_SIZE) {
+        if (file.getSize() > resolveMaxSize(extension)) {
             throw new CustomException(ErrorCode.FILE_TOO_LARGE);
         }
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
             throw new CustomException(ErrorCode.INVALID_FILE_TYPE);
         }
+        validateMagicBytes(file, extension);
+    }
+
+    private long resolveMaxSize(String extension) {
+        return MAX_FILE_SIZE_BY_EXTENSION.getOrDefault(extension, DEFAULT_MAX_FILE_SIZE);
     }
 
     private String extractExtension(String filename) {
@@ -139,6 +148,43 @@ public class S3ImageUploader {
             throw new CustomException(ErrorCode.INVALID_FILE_TYPE);
         }
         return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+    }
+
+    private void validateMagicBytes(MultipartFile file, String extension) {
+        byte[] header = readHeader(file);
+
+        boolean valid = switch (extension) {
+            case "jpg", "jpeg" -> startsWith(header, 0, 0xFF, 0xD8, 0xFF);
+            case "png"         -> startsWith(header, 0, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A);
+            case "gif"         -> startsWith(header, 0, 'G', 'I', 'F', '8');
+            case "webp"        -> startsWith(header, 0, 'R', 'I', 'F', 'F')
+                    && startsWith(header, 8, 'W', 'E', 'B', 'P');
+            default -> false;
+        };
+
+        if (!valid) {
+            throw new CustomException(ErrorCode.INVALID_FILE_TYPE);
+        }
+    }
+
+    private byte[] readHeader(MultipartFile file) {
+        try (InputStream is = file.getInputStream()) {
+            byte[] header = is.readNBytes(MAGIC_BYTES_READ_LENGTH);
+            if (header.length < MAGIC_BYTES_READ_LENGTH) {
+                throw new CustomException(ErrorCode.INVALID_FILE_TYPE);
+            }
+            return header;
+        } catch (IOException e) {
+            throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    private boolean startsWith(byte[] header, int offset, int... expected) {
+        if (header.length < offset + expected.length) return false;
+        for (int i = 0; i < expected.length; i++) {
+            if ((header[offset + i] & 0xFF) != expected[i]) return false;
+        }
+        return true;
     }
 
     private void putObject(MultipartFile file, String s3Key, String extension) {
