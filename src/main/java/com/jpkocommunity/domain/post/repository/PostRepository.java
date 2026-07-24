@@ -14,6 +14,11 @@ import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
+    // 특정 유저 게시글 목록 조회 - 프로필 조회에 사용
+    @Query("SELECT p FROM Post p JOIN FETCH p.category WHERE p.user.id = :userId " +
+            "AND p.deletedAt IS NULL AND p.anonymous = false")
+    Page<Post> findPublicPostsByUserId(@Param("userId") Long userId, Pageable pageable);
+
     // deletedAt IS NULL 조건으로 삭제된 게시글 필터링
     @Query("SELECT p FROM Post p WHERE p.category.id = :categoryId AND p.deletedAt IS NULL")
     Page<Post> findByCategoryId(@Param("categoryId") Long categoryId, Pageable pageable);

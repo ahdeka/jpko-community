@@ -2,13 +2,16 @@ package com.jpkocommunity.domain.user.service;
 
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
+import com.jpkocommunity.domain.comment.repository.PostCommentCount;
+import com.jpkocommunity.domain.like.repository.LikeRepository;
+import com.jpkocommunity.domain.like.repository.PostLikeCount;
+import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostRepository;
+import com.jpkocommunity.domain.user.dto.request.UpdateBioRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
 import com.jpkocommunity.domain.user.dto.request.WithdrawRequest;
-import com.jpkocommunity.domain.user.dto.response.AdminUserResponse;
-import com.jpkocommunity.domain.user.dto.response.MyCommentResponse;
-import com.jpkocommunity.domain.user.dto.response.MyPostResponse;
+import com.jpkocommunity.domain.user.dto.response.*;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserGrade;
 import com.jpkocommunity.domain.user.entity.UserRole;
@@ -25,6 +28,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -34,6 +41,8 @@ public class UserService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final LikeRepository likeRepository;
+
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -53,6 +62,48 @@ public class UserService {
 
     public boolean existsByNickname(String nickname) {
         return userRepository.existsByNickname(nickname);
+    }
+
+
+    // =========== 공개 프로필 기능 ==========
+
+    private User findPublicUserByNickname(String nickname) {
+        User user = userRepository.findByNickname(nickname)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        // 탈퇴된 유저는 조회 X (정지는 OK)
+        if (user.isDeleted()) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return user;
+    }
+
+    public PublicProfileResponse getUserProfile(String nickname) {
+        return PublicProfileResponse.from(findPublicUserByNickname(nickname));
+    }
+
+    public Page<UserPostResponse> getUserPosts(String nickname, Pageable pageable) {
+        User user = findPublicUserByNickname(nickname);
+        Page<Post> posts = postRepository.findPublicPostsByUserId(user.getId(), pageable);
+
+        List<Long> postIds = posts.getContent().stream().map(Post::getId).toList();
+
+        if (postIds.isEmpty()) {
+            return posts.map(post -> UserPostResponse.from(post, 0L, 0L));
+        }
+
+        Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(PostCommentCount::getPostId, PostCommentCount::getCommentCount));
+
+        Map<Long, Long> likeCounts = likeRepository.countLikesByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(PostLikeCount::getPostId, PostLikeCount::getLikeCount));
+
+        return posts.map(post -> UserPostResponse.from(
+                post,
+                commentCounts.getOrDefault(post.getId(), 0L),
+                likeCounts.getOrDefault(post.getId(), 0L)
+        ));
     }
 
     // =========== 마이페이지 기능 ==========
@@ -80,6 +131,18 @@ public class UserService {
         }
 
         user.updateNickname(request.nickname());
+    }
+
+    @Transactional
+    public void updateBio(Long userId, UpdateBioRequest request) {
+        User user = findById(userId);
+        user.updateBio(normalizeBio(request.bio()));
+    }
+
+    private String normalizeBio(String bio) {
+        if (bio == null) return null;
+        String trimmed = bio.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Transactional

@@ -37,6 +37,9 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 20)
     private UserGrade grade;
 
+    @Column(length = 200)
+    private String bio;
+
     // 이용약관
     @Column(nullable = false)
     private LocalDateTime termsAgreedAt;
@@ -89,6 +92,10 @@ public class User extends BaseEntity {
 
     public void activate() {
         this.status = UserStatus.ACTIVE;
+    }
+
+    public void updateBio(String bio) {
+        this.bio = bio;
     }
 
     public void withdraw() {
