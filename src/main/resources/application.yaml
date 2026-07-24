@@ -22,6 +22,8 @@ app:
 
 server:
   port: 8080
+  tomcat:
+    uri-encoding: UTF-8
 
 mail:
   from: no-reply@jpkocommunity.site
