@@ -39,6 +39,15 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                                        @Param("keyword") String keyword,
                                        Pageable pageable);
 
+    // 닉네임 검색 - 정확 일치
+    @Query("SELECT p FROM Post p JOIN p.user u WHERE p.deletedAt IS NULL " +
+            "AND p.anonymous = false " +
+            "AND (:categoryId IS NULL OR p.category.id = :categoryId) " +
+            "AND LOWER(u.nickname) = LOWER(:keyword)")
+    Page<Post> searchByNickname(@Param("categoryId") Long categoryId,
+                                @Param("keyword") String keyword,
+                                Pageable pageable);
+
     // 인기글: since 이후 작성된 글을 좋아요 수 → 조회수 → 최신순으로 정렬
     // LEFT JOIN: 좋아요 0개인 글도 결과에 포함시키기 위함
     @Query("SELECT p FROM Post p " +

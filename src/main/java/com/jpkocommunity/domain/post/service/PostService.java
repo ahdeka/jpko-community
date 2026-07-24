@@ -123,9 +123,11 @@ public class PostService {
             throw new CustomException(ErrorCode.SEARCH_KEYWORD_TOO_SHORT);
         }
 
-        Page<Post> result = (type == SearchType.TITLE)
-                ? postRepository.searchByTitle(categoryId, trimmed, pageable)
-                : postRepository.searchByTitleAndContent(categoryId, trimmed, pageable);
+        Page<Post> result = switch (type) {
+            case TITLE -> postRepository.searchByTitle(categoryId, trimmed, pageable);
+            case TITLE_CONTENT -> postRepository.searchByTitleAndContent(categoryId, trimmed, pageable);
+            case NICKNAME -> postRepository.searchByNickname(categoryId, trimmed, pageable);
+        };
 
         return PostListResponse.of(List.of(), toSummaryPage(result));
     }
