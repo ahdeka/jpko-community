@@ -79,8 +79,8 @@ public class UserService {
         return user;
     }
 
-    public PublicProfileResponse getUserProfile(String nickname) {
-        return PublicProfileResponse.from(findPublicUserByNickname(nickname));
+    public UserProfileResponse getUserProfile(String nickname) {
+        return UserProfileResponse.from(findPublicUserByNickname(nickname));
     }
 
     public Page<UserPostResponse> getUserPosts(String nickname, Pageable pageable) {

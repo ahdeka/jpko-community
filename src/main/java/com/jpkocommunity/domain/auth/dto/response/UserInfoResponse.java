@@ -9,6 +9,7 @@ public record UserInfoResponse(
         String email,
         String nickname,
         UserRole role,
+        String bio,
         boolean emailVerified,
         UserGrade grade
 ) {
@@ -18,6 +19,7 @@ public record UserInfoResponse(
                 user.getEmail(),
                 user.getNickname(),
                 user.getRole(),
+                user.getBio(),
                 user.isEmailVerified(),
                 user.getGrade()
         );

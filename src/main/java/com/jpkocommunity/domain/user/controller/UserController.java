@@ -8,7 +8,7 @@ import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
 import com.jpkocommunity.domain.user.dto.request.WithdrawRequest;
 import com.jpkocommunity.domain.user.dto.response.MyCommentResponse;
 import com.jpkocommunity.domain.user.dto.response.MyPostResponse;
-import com.jpkocommunity.domain.user.dto.response.PublicProfileResponse;
+import com.jpkocommunity.domain.user.dto.response.UserProfileResponse;
 import com.jpkocommunity.domain.user.dto.response.UserPostResponse;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.response.ApiResponse;
@@ -65,7 +65,7 @@ public class UserController {
     }
 
     @GetMapping("/by-nickname/{nickname}")
-    public ResponseEntity<ApiResponse<PublicProfileResponse>> getPublicUserProfile(
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getPublicUserProfile(
             @PathVariable String nickname
     ) {
         return ResponseEntity.ok(ApiResponse.ok(userService.getUserProfile(nickname)));
