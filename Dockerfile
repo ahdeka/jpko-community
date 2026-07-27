@@ -8,7 +8,7 @@ RUN apk add --no-cache libwebp-tools
 WORKDIR /app
 
 # jar 파일 복사
-COPY jpko-community-0.0.1-SNAPSHOT.jar app.jar
+COPY build/libs/*.jar app.jar
 
 # 포트 오픈
 EXPOSE 8080
