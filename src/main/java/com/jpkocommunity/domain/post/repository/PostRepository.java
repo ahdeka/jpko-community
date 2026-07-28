@@ -48,7 +48,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT p FROM Post p JOIN p.user u WHERE p.deletedAt IS NULL " +
             "AND p.anonymous = false " +
             "AND (:categoryId IS NULL OR p.category.id = :categoryId) " +
-            "AND LOWER(u.nickname) = LOWER(:keyword)")
+            "AND u.nickname = keyword")
     Page<Post> searchByNickname(@Param("categoryId") Long categoryId,
                                 @Param("keyword") String keyword,
                                 Pageable pageable);
