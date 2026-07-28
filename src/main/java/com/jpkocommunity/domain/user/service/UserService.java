@@ -7,6 +7,8 @@ import com.jpkocommunity.domain.like.repository.LikeRepository;
 import com.jpkocommunity.domain.like.repository.PostLikeCount;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostRepository;
+import com.jpkocommunity.domain.report.entity.ReportTargetType;
+import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
 import com.jpkocommunity.domain.user.dto.request.UpdateBioRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
@@ -62,6 +64,10 @@ public class UserService {
 
     public boolean existsByNickname(String nickname) {
         return userRepository.existsByNickname(nickname);
+    }
+
+    public List<User> findAllByIdIn(List<Long> ids) {
+        return userRepository.findAllById(ids);
     }
 
 
@@ -186,6 +192,9 @@ public class UserService {
 
         // 사용자 탈퇴 이벤트는 탈퇴 트랜잭션 커밋 후 처리됨
         eventPublisher.publishEvent(new UserWithdrawnEvent(userId));
+
+        // 해당 유저 PENDING 상태 신고 모두 RESOLVED 처리
+        eventPublisher.publishEvent(new ContentDeletedEvent(ReportTargetType.USER, userId));
     }
 
     // ========== 관리자 기능 ==========

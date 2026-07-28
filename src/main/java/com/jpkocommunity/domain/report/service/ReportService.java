@@ -136,7 +136,17 @@ public class ReportService {
         return switch (targetType) {
             case POST -> postService.findActivePostById(targetId).getUser().getId();
             case COMMENT -> commentService.findActiveComment(targetId).getUser().getId();
+            case USER -> resolveReportableUserId(targetId);
         };
+    }
+
+    // 신고 대상 유저가 존재하고 탈퇴 상태가 아닌지 확인
+    private Long resolveReportableUserId(Long userId) {
+        User user = userService.findById(userId);
+        if (user.isDeleted()) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+        return user.getId();
     }
 
     // 신고 대상 id를 타입별로 그룹핑
@@ -160,6 +170,10 @@ public class ReportService {
                             c -> new TargetKey(ReportTargetType.COMMENT, c.getId()),
                             c -> new TargetView(c.getPost().getId(), truncate(c.getContent()),
                                     c.getUser().getNickname(), c.isDeleted() || c.getPost().isDeleted())));
+            case USER -> userService.findAllByIdIn(ids).stream()
+                    .collect(Collectors.toMap(
+                            u -> new TargetKey(ReportTargetType.USER, u.getId()),
+                            u -> new TargetView(null, u.getNickname(), u.getDisplayNickname(), u.isDeleted())));
         }));
         return views;
     }
@@ -172,6 +186,7 @@ public class ReportService {
         return switch (type) {
             case POST -> "삭제된 게시글입니다.";
             case COMMENT -> "삭제된 댓글입니다.";
+            case USER -> "탈퇴한 회원입니다.";
         };
     }
 
@@ -199,9 +214,9 @@ public class ReportService {
     }
 
     // 배치 조회 결과를 (타입, 대상 id)로 찾기 위한 복합 키
-    private record TargetKey(ReportTargetType targetType, Long targetId) {}
+    private record TargetKey(ReportTargetType targetType, Long targetId) { }
 
     // 신고 목록/집계에 노출할 대상 미리보기 + 작성자 닉네임 (postId: 원문 게시글 이동용, 게시글 신고는 자기 자신)
-    private record TargetView(Long postId, String preview, String authorNickname, boolean deleted) {}
+    private record TargetView(Long postId, String preview, String authorNickname, boolean deleted) { }
 
 }
