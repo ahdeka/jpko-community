@@ -17,6 +17,22 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # 테스트용 DB 서비스 컨테이너
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: jpko_community
+          POSTGRES_USER: jpko
+          POSTGRES_PASSWORD: jpko
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U jpko"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,10 +43,15 @@ jobs:
           java-version: '21'
           distribution: 'corretto'
 
-      - name: Build with Gradle
+      - name: Build and test with Gradle
+        env:
+          DB_HOST: localhost
+          DB_USER: jpko
+          DB_PASSWORD: jpko
+          JWT_SECRET: ci-test-secret-not-real
         run: |
           chmod +x gradlew
-          ./gradlew bootJar -x test
+          ./gradlew bootJar
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
