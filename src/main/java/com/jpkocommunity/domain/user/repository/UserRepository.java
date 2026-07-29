@@ -1,6 +1,7 @@
 package com.jpkocommunity.domain.user.repository;
 
 import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.entity.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByNickname(String nickname);
+
+    boolean existsByIdAndStatus(Long id, UserStatus status);
 
     // Admin 기능
     Page<User> findByNicknameContainingOrEmailContaining(String nickname, String email, Pageable pageable);

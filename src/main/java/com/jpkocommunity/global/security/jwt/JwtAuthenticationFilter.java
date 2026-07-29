@@ -2,7 +2,10 @@ package com.jpkocommunity.global.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jpkocommunity.domain.user.entity.UserRole;
+import com.jpkocommunity.domain.user.entity.UserStatus;
+import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.exception.CustomException;
+import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.PublicAuthPaths;
 import com.jpkocommunity.global.security.auth.AuthUser;
@@ -23,7 +26,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     // EXCLUDED_PATHS 요청은 필터 자체를 건너뜀
     @Override
@@ -58,7 +61,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Long userId = jwtProvider.getUserId(token);
             UserRole role = jwtProvider.getRole(token);
 
-            // DB 조회 없이 토큰 클레임만으로 인증 객체 생성
+            // 매 요청마다 실시간 유저 상태 확인
+            if (!userRepository.existsByIdAndStatus(userId, UserStatus.ACTIVE)) {
+                throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
+            }
+
+            // 클레임으로 인증 객체 생성 (상태는 위에서 DB 확인)
             AuthUser authUser = new AuthUser(userId, role);
 
             UsernamePasswordAuthenticationToken authentication =

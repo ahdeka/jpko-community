@@ -6,6 +6,7 @@ import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.PublicAuthPaths;
 import com.jpkocommunity.global.security.jwt.JwtAuthenticationFilter;
 import com.jpkocommunity.global.security.jwt.JwtProvider;
+import com.jpkocommunity.domain.user.repository.UserRepository;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -79,7 +81,7 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtProvider, objectMapper);
+        return new JwtAuthenticationFilter(jwtProvider, objectMapper, userRepository);
     }
 
     @Bean
