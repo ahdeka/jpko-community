@@ -1,0 +1,36 @@
+package com.jpkocommunity.domain.point.controller;
+
+import com.jpkocommunity.domain.point.dto.response.PointResponse;
+import com.jpkocommunity.domain.point.service.PointService;
+import com.jpkocommunity.global.response.ApiResponse;
+import com.jpkocommunity.global.security.auth.AuthUser;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/points")
+@RequiredArgsConstructor
+public class PointController {
+
+    private final PointService pointService;
+    private final
+
+    // C
+
+    // R
+    @GetMapping
+    public ResponseEntity<ApiResponse<PointResponse>> getPoint(
+            @AuthenticationPrincipal AuthUser authUser
+            ) {
+
+        return ResponseEntity.ok(ApiResponse.ok(pointService.getPointByUserId(authUser.userId())));
+    }
+    // U
+
+    // D
+}

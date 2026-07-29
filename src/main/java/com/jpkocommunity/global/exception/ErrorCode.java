@@ -75,7 +75,16 @@ public enum ErrorCode {
     INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "요청 파라미터가 올바르지 않습니다."),
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 Content-Type입니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드입니다."),
-    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다."),
+
+    // Transaction
+    TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 트랜잭션입니다."),
+    TRANSACTION_ENDED(HttpStatus.FORBIDDEN, "이미 종료된 거래입니다."),
+
+    // Point
+    INITIALPOINT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "초기 포인트 지급 중 오류가 발생했습니다."),
+    LOADPOINT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "포인트 로딩 중 오류가 발생했습니다.");
+
 
     private final HttpStatus status;
     private final String message;

@@ -2,8 +2,10 @@ package com.jpkocommunity.global.exception;
 
 import lombok.Getter;
 
+import java.util.function.Supplier;
+
 @Getter
-public class CustomException extends RuntimeException {
+public class CustomException extends RuntimeException implements Supplier<X> {
 
     private final ErrorCode errorCode;
 
