@@ -2,95 +2,83 @@ package com.jpkocommunity.domain.point.service;
 
 import com.jpkocommunity.domain.point.dto.response.PointResponse;
 import com.jpkocommunity.domain.point.entity.Point;
+import com.jpkocommunity.domain.point.entity.Transaction;
+import com.jpkocommunity.domain.point.entity.TransactionType;
 import com.jpkocommunity.domain.point.repository.PointRepository;
+import com.jpkocommunity.domain.point.repository.TransactionRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class PointService {
 
     private final PointRepository pointRepository;
     private final UserService userService;
-    private final TransactionService transactionService;
+    private final TransactionRepository transactionRepository;
 
     public PointResponse getPointByUserId(Long userId) {
-        Point res = get(userId);
-        return new PointResponse(res.getPoint(), res.getUser());
+        return PointResponse.from(getOrCreateAccount(userId));
     }
 
-
-
-
-
-
-
-
-
-
-    // ========== private 메서드 ==========
-
-    private Point get(Long userId) {
-        User user = userService.findById(userId);
-        Optional<Point> existing = pointRepository.findByUser(user);
-
-        if (existing.isEmpty()) {
-            return createFirst(userId);
-        }
-
-        return existing.orElseThrow(() -> new CustomException(ErrorCode.LOADPOINT_ERROR));
-    }
-
-    private Point update(Long userId, Long updatedPoint) {
-        Point target = get(userId);
-
-        if (target.getUser().getId().equals(userId)) {
-            target.setPoint(updatedPoint);
-            pointRepository.save(target);
-            return get(userId);
-        } else  {
-            throw new CustomException(ErrorCode.FORBIDDEN);
-        }
-    }
-
-    private Point createFirst(Long userId) {
-        try {
-            User user = userService.findById(userId);
-
-            // TODO: 관리자 페이지에서 초기 부여 포인트 관리하는 기능 추가 후 변경 필요
-            Long initialPoint = 0L;
-            pointRepository.save(Point.builder()
-                    .user(user)
-                    .point(initialPoint)
-                    .real_point(initialPoint)
-                    .build());
-
-
-
-            return get(userId);
-        } catch (Exception e) {
-            throw new CustomException(ErrorCode.INITIALPOINT_ERROR);
-        }
-    }
-
-    private PointResponse buildResponse(Long userId) {
+    // userId가 null이면 시스템 계정을 반환
+    // 잠금 없이 조회만 할 때 사용
+    public Point getOrCreateAccount(Long userId) {
         if (userId == null) {
-            return null;
+            return getSystemAccount();
+        }
+        User user = userService.findById(userId);
+        return pointRepository.findByUser(user)
+                .orElseGet(() -> createAccount(user));
+    }
+
+    // 계정에 비관적 잠금을 건 채로 조회
+    // 없으면 생성
+    @Transactional
+    Point lockAccountForUpdate(Long userId) {
+        if (userId == null) {
+            return pointRepository.findSystemAccountForUpdate()
+                    .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));
+        }
+        User user = userService.findById(userId);
+        return pointRepository.findByUserForUpdate(user)
+                .orElseGet(() -> createAccount(user));
+    }
+
+    private Point getSystemAccount() {
+        return pointRepository.findByUserIsNull()
+                .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));
+    }
+
+    @Transactional
+    Point createAccount(User user) {
+        Point account;
+        try {
+            account = pointRepository.save(Point.builder().user(user).balance(0L).build());
+
+        } catch (DataIntegrityViolationException e) {
+            // 경쟁 상황 -> 이미 다른 트랜잭션이 만든 계정을 그대로 사용
+            return pointRepository.findByUser(user)
+                    .orElseThrow(() -> new CustomException(ErrorCode.INTERNAL_ERROR));
         }
 
-        long point = get(userId).getPoint();
-        User user = userService.findById(userId);
+        transactionRepository.save(Transaction.builder()
+                .sender(null)
+                .recipient(user)
+                .amount(0L)
+                .type(TransactionType.ACCOUNT_OPENED)
+                .prevRecipientBalance(0L)
+                .postRecipientBalance(0L)
+                .message("Account created")
+                .build());
 
-        return new PointResponse(point, user);
+        return account;
     }
 }

@@ -1,9 +1,7 @@
 package com.jpkocommunity.domain.point.entity;
 
 public enum TransactionType {
-    SUCCESS,        // 거래 성공
-    INTERNAL_SERVER_ERROR,          // 내부 서버 에러로 인한 실패
-    WRONG_AMOUNT,           // 거래액 오류(잔고 부족 등)으로 인한 실패
-    WRONG_SENDER_RECIPIENT, // 수취인 없음 등으로 인한 실패
-    PENDING // 거래 대기
+    GRANT, // 시스템 -> 유저 지급
+    COLLECT, // 유저 -> 시스템 회수
+    ACCOUNT_OPENED   // 신규 계정 개설 감사 로그 (금액 이동 없음, amount=0)
 }

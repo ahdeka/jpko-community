@@ -83,7 +83,10 @@ public enum ErrorCode {
 
     // Point
     INITIALPOINT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "초기 포인트 지급 중 오류가 발생했습니다."),
-    LOADPOINT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "포인트 로딩 중 오류가 발생했습니다.");
+    LOADPOINT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "포인트 로딩 중 오류가 발생했습니다."),
+    INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "포인트 잔액이 부족합니다."),
+    INVALID_TRANSACTION_AMOUNT(HttpStatus.BAD_REQUEST, "거래 금액은 0보다 커야 합니다."),
+    SYSTEM_ACCOUNT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "시스템 포인트 계정을 찾을 수 없습니다.");
 
 
     private final HttpStatus status;

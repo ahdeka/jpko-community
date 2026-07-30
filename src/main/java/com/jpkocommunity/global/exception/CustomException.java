@@ -5,7 +5,7 @@ import lombok.Getter;
 import java.util.function.Supplier;
 
 @Getter
-public class CustomException extends RuntimeException implements Supplier<X> {
+public class CustomException extends RuntimeException {
 
     private final ErrorCode errorCode;
 
