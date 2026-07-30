@@ -50,28 +50,42 @@ public class RouletteService {
         long rolledAmount = ThreadLocalRandom.current()
                 .nextLong(rouletteProperties.minAmount(), rouletteProperties.maxAmount() + 1);
 
-        Optional<TransactionResponse> result;
+        // 1단계: 피해자 -> 시스템 (몰수). 포인트는 항상 시스템 계정을 거쳐야 하므로 유저-유저 직접 이체는 하지 않는다.
+        TransactionResponse collected;
         try {
-            result = transactionService.spinRoulette(userId, victimId.get(), rolledAmount);
+            collected = transactionService.collectForRoulette(victimId.get(), rolledAmount, "일일 포인트 룰렛 몰수");
         } catch (CustomException e) {
-            // 피해자가 스핀 도중 정지되는 등 드문 레이스 -> 로그인 자체는 계속 진행되도록 흡수
-            log.warn("[포인트 룰렛] 스핀 실패, 스킵 처리. winnerId={}, victimId={}", userId, victimId.get(), e);
+            // 피해자가 몰수 도중 정지되는 등 드문 레이스 -> 아직 아무 것도 옮기지 않았으므로 그냥 스킵
+            log.warn("[포인트 룰렛] 몰수 실패, 스킵 처리. winnerId={}, victimId={}", userId, victimId.get(), e);
+            return RouletteOutcome.none();
+        }
+        long actualAmount = collected.amount();
+
+        // 2단계: 시스템 -> 당첨자 (지급). 당첨자 계좌 락 이후 "오늘 이미 지급받았는지"를 재검증한다.
+        Optional<TransactionResponse> granted;
+        try {
+            granted = transactionService.grantForRouletteIfEligible(userId, actualAmount, "일일 포인트 룰렛 당첨");
+        } catch (CustomException e) {
+            // 당첨자가 지급 도중 정지되는 등 드문 레이스 -> 아래 환불 분기로 흘려보냄
+            log.warn("[포인트 룰렛] 지급 실패, 환불 처리. winnerId={}, victimId={}", userId, victimId.get(), e);
+            granted = Optional.empty();
+        }
+
+        if (granted.isEmpty()) {
+            // 검증 실패(동시 로그인으로 이미 오늘 지급됨 등) -> 이미 몰수한 만큼 피해자에게 환불
+            if (actualAmount > 0) {
+                transactionService.grant(victimId.get(), actualAmount, "일일 포인트 룰렛 환불 - 중복 지급 감지");
+            }
             return RouletteOutcome.none();
         }
 
-        // 락 이후 재확인에서 "이미 오늘 돌림"으로 판정된 경쟁 상황
-        if (result.isEmpty()) {
-            return RouletteOutcome.none();
-        }
-
-        TransactionResponse response = result.get();
-        if (response.amount() > 0) {
+        if (actualAmount > 0) {
             eventPublisher.publishEvent(new NotificationEvent(
-                    victimId.get(), userId, NotificationType.POINT_STOLEN, null, null, false, response.amount()
+                    victimId.get(), userId, NotificationType.POINT_STOLEN, null, null, false, actualAmount
             ));
         }
 
-        return RouletteOutcome.spun(response.amount());
+        return RouletteOutcome.spun(actualAmount);
     }
 
     private boolean alreadyPlayedToday(Long userId) {

@@ -45,48 +45,73 @@ public class TransactionService {
         return execute(senderUserId, null, amount, TransactionType.COLLECT, message);
     }
 
-    // 유저 -> 유저 (일일 포인트 룰렛): 피해자(victim) 계좌에서 뺏어 당첨자(winner)에게 지급.
-    // rolledAmount는 "뽑힌 금액"이며, 피해자 잔액이 부족하면 잔액만큼만(0 포함) 실제로 차감된다.
-    // 오늘 이미 룰렛을 돌린 기록이 있으면(동시 로그인 경쟁) 아무 것도 하지 않고 Optional.empty()를 반환한다.
+    // 유저 -> 시스템 (일일 포인트 룰렛 몰수). 피해자 잔액이 부족하면 잔액만큼만(0 포함) 실제로 차감된다.
+    // 포인트 이동은 항상 시스템 계정을 거친다는 원장의 불변식을 지키기 위해 유저-유저 직접 이체 대신
+    // "피해자->시스템" / "시스템->당첨자" 2단계로 나눈 첫 번째 레그.
     @Transactional
-    public Optional<TransactionResponse> spinRoulette(Long winnerUserId, Long victimUserId, long rolledAmount) {
-        User winner = userService.findById(winnerUserId);
+    public TransactionResponse collectForRoulette(Long victimUserId, long rolledAmount, String message) {
         User victim = userService.findById(victimUserId);
-        validateActive(winner);
         validateActive(victim);
 
-        // 락 순서를 user id 오름차순으로 고정 -> 서로를 동시에 피해자로 뽑아도 데드락 없음
-        Long firstId = Math.min(winnerUserId, victimUserId);
-        Long secondId = Math.max(winnerUserId, victimUserId);
-        Point lockedFirst = pointService.lockAccountForUpdate(firstId);
-        Point lockedSecond = pointService.lockAccountForUpdate(secondId);
-        Point lockedWinner = winnerUserId.equals(firstId) ? lockedFirst : lockedSecond;
-        Point lockedVictim = victimUserId.equals(firstId) ? lockedFirst : lockedSecond;
+        // 시스템 계정을 항상 먼저 잠금 -> 기존 execute()와 동일한 데드락 방지 패턴
+        Point lockedSystem = pointService.lockAccountForUpdate(null);
+        Point lockedVictim = pointService.lockAccountForUpdate(victimUserId);
 
-        // 락 획득 이후 재확인 -> 동시 로그인(같은 유저, 다른 기기)으로 이미 오늘 스핀이 기록됐다면 조용히 종료
+        long actualAmount = Math.min(rolledAmount, lockedVictim.getBalance()); // 락 이후 계산 -> TOCTOU 없음
+
+        long prevVictimBalance = lockedVictim.getBalance();
+        long prevSystemBalance = lockedSystem.getBalance();
+
+        lockedVictim.debit(actualAmount);
+        lockedSystem.credit(actualAmount);
+
+        Transaction transaction = transactionRepository.save(Transaction.builder()
+                .sender(victim)
+                .recipient(null)
+                .amount(actualAmount)
+                .type(TransactionType.ROULETTE)
+                .prevSenderBalance(prevVictimBalance)
+                .postSenderBalance(lockedVictim.getBalance())
+                .prevRecipientBalance(prevSystemBalance)
+                .postRecipientBalance(lockedSystem.getBalance())
+                .message(message)
+                .build());
+
+        return TransactionResponse.from(transaction);
+    }
+
+    // 시스템 -> 유저 (일일 포인트 룰렛 지급): collectForRoulette()로 몰수한 금액을 당첨자에게 지급하는 두 번째 레그.
+    // 당첨자 계좌에 락을 건 "이후" 오늘 이미 지급받았는지 재확인한다 -> 동시 로그인(같은 유저, 다른 기기)
+    // 경쟁으로 이미 지급이 끝났다면 아무 것도 하지 않고 Optional.empty()를 반환한다(호출부에서 피해자에게 환불 처리).
+    @Transactional
+    public Optional<TransactionResponse> grantForRouletteIfEligible(Long winnerUserId, long amount, String message) {
+        User winner = userService.findById(winnerUserId);
+        validateActive(winner);
+
+        Point lockedSystem = pointService.lockAccountForUpdate(null);
+        Point lockedWinner = pointService.lockAccountForUpdate(winnerUserId);
+
         if (transactionRepository.existsByRecipientIdAndTypeAndCreatedAtGreaterThanEqual(
                 winnerUserId, TransactionType.ROULETTE, startOfTodayKst())) {
             return Optional.empty();
         }
 
-        long actualAmount = Math.min(rolledAmount, lockedVictim.getBalance()); // 락 이후 계산 -> TOCTOU 없음
-
-        long prevVictimBalance = lockedVictim.getBalance();
         long prevWinnerBalance = lockedWinner.getBalance();
+        long prevSystemBalance = lockedSystem.getBalance();
 
-        lockedVictim.debit(actualAmount);
-        lockedWinner.credit(actualAmount);
+        lockedSystem.debit(amount);
+        lockedWinner.credit(amount);
 
         Transaction transaction = transactionRepository.save(Transaction.builder()
-                .sender(victim)
+                .sender(null)
                 .recipient(winner)
-                .amount(actualAmount)
+                .amount(amount)
                 .type(TransactionType.ROULETTE)
-                .prevSenderBalance(prevVictimBalance)
-                .postSenderBalance(lockedVictim.getBalance())
+                .prevSenderBalance(prevSystemBalance)
+                .postSenderBalance(lockedSystem.getBalance())
                 .prevRecipientBalance(prevWinnerBalance)
                 .postRecipientBalance(lockedWinner.getBalance())
-                .message("일일 포인트 룰렛")
+                .message(message)
                 .build());
 
         return Optional.of(TransactionResponse.from(transaction));
