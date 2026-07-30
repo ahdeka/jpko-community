@@ -75,7 +75,7 @@ public class NoticeController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ROOT')")
     public ResponseEntity<ApiResponse<NoticeResponse>> createNotice(
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody NoticeCreateRequest request
@@ -88,7 +88,7 @@ public class NoticeController {
     }
 
     @PutMapping("/{noticeId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ROOT')")
     public ResponseEntity<ApiResponse<NoticeResponse>> updateNotice(
             @PathVariable Long noticeId,
             @Valid @RequestBody NoticeUpdateRequest request
@@ -99,7 +99,7 @@ public class NoticeController {
     }
 
     @DeleteMapping("/{noticeId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ROOT')")
     public ResponseEntity<ApiResponse<Void>> deleteNotice(
             @PathVariable Long noticeId
     ) {

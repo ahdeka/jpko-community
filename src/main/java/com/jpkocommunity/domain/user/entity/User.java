@@ -90,6 +90,10 @@ public class User extends BaseEntity {
         this.status = UserStatus.SUSPENDED;
     }
 
+    public void updateRole(UserRole role) {
+        this.role = role;
+    }
+
     public void activate() {
         this.status = UserStatus.ACTIVE;
     }

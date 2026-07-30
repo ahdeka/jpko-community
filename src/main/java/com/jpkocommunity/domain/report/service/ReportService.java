@@ -14,6 +14,7 @@ import com.jpkocommunity.domain.report.entity.ReportStatus;
 import com.jpkocommunity.domain.report.entity.ReportTargetType;
 import com.jpkocommunity.domain.report.repository.ReportRepository;
 import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
@@ -81,8 +82,8 @@ public class ReportService {
 
     // ========== 관리자 기능 ==========
 
-    public Page<AdminReportSummaryResponse> getReportSummaries(
-            ReportTargetType targetType, ReportStatus status, Pageable pageable) {
+    public Page<AdminReportSummaryResponse> getReportSummaries(ReportTargetType targetType, ReportStatus status, Pageable pageable) {
+
         Page<ReportRepository.ReportTargetSummaryRow> rows = reportRepository.summarizeByTarget(
                 targetType != null ? targetType.name() : null,
                 status != null ? status.name() : null,
@@ -145,6 +146,10 @@ public class ReportService {
         User user = userService.findById(userId);
         if (user.isDeleted()) {
             throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        if (user.getRole() == UserRole.ROOT) {
+            throw new CustomException(ErrorCode.CANNOT_REPORT_ROOT);
         }
         return user.getId();
     }

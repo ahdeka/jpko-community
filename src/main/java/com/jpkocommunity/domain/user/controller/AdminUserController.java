@@ -1,6 +1,7 @@
 package com.jpkocommunity.domain.user.controller;
 
 import com.jpkocommunity.domain.user.dto.request.UpdateUserGradeRequest;
+import com.jpkocommunity.domain.user.dto.request.UpdateUserRoleRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdateUserStatusRequest;
 import com.jpkocommunity.domain.user.dto.response.AdminUserResponse;
 import com.jpkocommunity.domain.user.service.UserService;
@@ -18,12 +19,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {
 
     private final UserService userService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'ROOT')")
     public ResponseEntity<ApiResponse<Page<AdminUserResponse>>> getUsers(
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
@@ -32,6 +33,7 @@ public class AdminUserController {
     }
 
     @PatchMapping("/{userId}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ROOT')")
     public ResponseEntity<ApiResponse<Void>> updateStatus(
             @PathVariable Long userId,
             @Valid @RequestBody UpdateUserStatusRequest request
@@ -41,11 +43,22 @@ public class AdminUserController {
     }
 
     @PatchMapping("/{userId}/grade")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ROOT')")
     public ResponseEntity<ApiResponse<Void>> updateGrade(
             @PathVariable Long userId,
             @Valid @RequestBody UpdateUserGradeRequest request
     ) {
         userService.updateGrade(userId, request.grade());
         return ResponseEntity.ok(ApiResponse.ok("사용자 등급이 변경되었습니다."));
+    }
+
+    @PatchMapping("/{userId}/role")
+    @PreAuthorize("hasRole('ROOT')")
+    public ResponseEntity<ApiResponse<Void>> updateRole(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateUserRoleRequest request
+    ) {
+        userService.updateRole(userId, request.role());
+        return ResponseEntity.ok(ApiResponse.ok("사용자 권한이 변경되었습니다."));
     }
 }

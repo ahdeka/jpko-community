@@ -76,11 +76,7 @@ public class UserService {
     private User findPublicUserByNickname(String nickname) {
         User user = userRepository.findByNickname(nickname)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        // 탈퇴된 유저는 조회 X (정지는 OK)
-        if (user.isDeleted()) {
-            throw new CustomException(ErrorCode.USER_NOT_FOUND);
-        }
+        validateWithdrawUser(user);
 
         return user;
     }
@@ -176,10 +172,7 @@ public class UserService {
     @Transactional
     public void withdraw(Long userId, WithdrawRequest request) {
         User user = findById(userId);
-
-        if (user.isDeleted()) {
-            throw new CustomException(ErrorCode.ALREADY_WITHDRAWN);
-        }
+        validateWithdrawUser(user);
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new CustomException(ErrorCode.WRONG_PASSWORD);
@@ -213,14 +206,11 @@ public class UserService {
         }
 
         User user = findById(userId);
-
-        if (user.isDeleted()) {
-            throw new CustomException(ErrorCode.ALREADY_WITHDRAWN);
-        }
+        validateWithdrawUser(user);
 
         if (status == UserStatus.SUSPENDED) {
-            if (user.getRole() == UserRole.ADMIN) {
-                throw new CustomException(ErrorCode.CANNOT_SUSPEND_ADMIN);
+            if (user.getRole() == UserRole.ROOT) {
+                throw new CustomException(ErrorCode.CANNOT_SUSPEND_ROOT);
             }
             user.suspend();
             refreshTokenRepository.deleteByUserId(userId);
@@ -232,16 +222,41 @@ public class UserService {
     @Transactional
     public void updateGrade(Long userId, UserGrade grade) {
         User user = findById(userId);
-
-        if (user.isDeleted()) {
-            throw new CustomException(ErrorCode.ALREADY_WITHDRAWN);
-        }
+        validateWithdrawUser(user);
 
         if (grade == UserGrade.SHOGUN && user.getRole() != UserRole.ADMIN) {
             throw new CustomException(ErrorCode.SHOGUN_REQUIRES_ADMIN_ROLE);
         }
 
         user.updateGrade(grade);
+    }
+
+    // ========== 최고 관리자 기능 ==========
+
+    @Transactional
+    public void updateRole(Long userId, UserRole role) {
+        User user = findById(userId);
+        validateWithdrawUser(user);
+
+        // 최고 관리자 계정은 변경 불가
+        if (user.getRole() == UserRole.ROOT) {
+            throw new CustomException(ErrorCode.CANNOT_MODIFY_ROOT);
+        }
+
+        // ROOT는 부여 불가
+        if (role == UserRole.ROOT) {
+            throw new CustomException(ErrorCode.CANNOT_ASSIGN_ROOT_ROLE);
+        }
+
+        user.updateRole(role);
+    }
+
+    // ========== private 메서드 ==========
+
+    private void validateWithdrawUser(User user) {
+        if (user.isDeleted()) {
+            throw new CustomException(ErrorCode.ALREADY_WITHDRAWN);
+        }
     }
 
 }
