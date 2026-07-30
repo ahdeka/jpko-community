@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class PointController {
 
     private final PointService pointService;
-    private final TransactionService transactionService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<PointResponse>> getMyPoint(
@@ -32,11 +31,4 @@ public class PointController {
         return ResponseEntity.ok(ApiResponse.ok(pointService.getPointByUserId(authUser.userId())));
     }
 
-    @GetMapping("/transactions")
-    public ResponseEntity<ApiResponse<Page<TransactionResponse>>> getMyTransactions(
-            @AuthenticationPrincipal AuthUser authUser,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(transactionService.getMyTransactions(authUser.userId(), pageable)));
-    }
 }
