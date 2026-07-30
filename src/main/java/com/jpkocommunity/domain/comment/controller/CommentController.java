@@ -48,14 +48,13 @@ public class CommentController {
     }
 
     @PutMapping("/api/comments/{commentId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long commentId,
             @Valid @RequestBody CommentUpdateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
-                commentService.updateComment(authUser.userId(), commentId, request)));
+                commentService.updateComment(authUser, commentId, request)));
     }
 
     @DeleteMapping("/api/comments/{commentId}")

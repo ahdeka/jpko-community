@@ -18,7 +18,9 @@ public enum ErrorCode {
     ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "이미 탈퇴한 계정입니다."),
     SUSPENDED_ACCOUNT(HttpStatus.FORBIDDEN, "이용이 제한된 계정입니다."),
     SHOGUN_REQUIRES_ADMIN_ROLE(HttpStatus.BAD_REQUEST, "해당 등급은 관리자 계정에만 부여할 수 있습니다."),
-    CANNOT_SUSPEND_ADMIN(HttpStatus.BAD_REQUEST, "관리자 계정은 정지할 수 없습니다."),
+    CANNOT_SUSPEND_ROOT(HttpStatus.BAD_REQUEST, "최고 관리자 계정은 정지할 수 없습니다."),
+    CANNOT_MODIFY_ROOT(HttpStatus.BAD_REQUEST, "최고 관리자 계정은 권한을 변경할 수 없습니다."),
+    CANNOT_ASSIGN_ROOT_ROLE(HttpStatus.BAD_REQUEST, "해당 권한은 부여할 수 없습니다."),
 
     // Auth
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
@@ -53,6 +55,7 @@ public enum ErrorCode {
     REPORT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 신고한 대상입니다."),
     REPORT_DETAIL_REQUIRED(HttpStatus.BAD_REQUEST, "기타 사유는 상세 내용을 입력해주세요."),
     SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인 또는 본인이 작성한 컨텐츠는 신고할 수 없습니다."),
+    CANNOT_REPORT_ROOT(HttpStatus.FORBIDDEN, "최고 관리자 계정은 신고할 수 없습니다."),
 
     // Image
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 이미지입니다."),

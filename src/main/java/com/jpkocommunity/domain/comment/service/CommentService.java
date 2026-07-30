@@ -75,12 +75,16 @@ public class CommentService {
     }
 
     @Transactional
-    public CommentResponse updateComment(Long userId, Long commentId,
+    public CommentResponse updateComment(AuthUser authUser, Long commentId,
                                          CommentUpdateRequest request) {
         Comment comment = findActiveComment(commentId);
 
+        if (!comment.getUser().getId().equals(authUser.userId())) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+
         comment.update(request.content());
-        return CommentResponse.from(comment, userId);
+        return CommentResponse.from(comment, authUser.userId());
     }
 
     @Transactional
@@ -88,14 +92,14 @@ public class CommentService {
         Comment comment = findActiveComment(commentId);
         validateAuthor(comment, authUser);
 
-        boolean isAdmin = authUser.role() == UserRole.ADMIN;
+        boolean isPrivileged = authUser.role() == UserRole.ROOT || authUser.role() == UserRole.ADMIN;
         boolean isOwner = comment.getUser().getId().equals(authUser.userId());
 
         comment.delete();
 
         eventPublisher.publishEvent(new ContentDeletedEvent(ReportTargetType.COMMENT, commentId));
 
-        if (isAdmin && !isOwner) {
+        if (isPrivileged && !isOwner) {
             eventPublisher.publishEvent(new NotificationEvent(
                     comment.getUser().getId(), authUser.userId(), NotificationType.CONTENT_REMOVED,
                     comment.getPost().getId(), commentId, false
@@ -125,8 +129,8 @@ public class CommentService {
 
     private void validateAuthor(Comment comment, AuthUser authUser) {
         boolean isOwner = comment.getUser().getId().equals(authUser.userId());
-        boolean isAdmin = authUser.role() == UserRole.ADMIN;
-        if (!isOwner && !isAdmin) {
+        boolean isPrivileged = authUser.role() == UserRole.ROOT || authUser.role() == UserRole.ADMIN;
+        if (!isOwner && !isPrivileged) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
     }
@@ -179,6 +183,7 @@ public class CommentService {
         commentRepository.findLatestCreatedAtByUserId(user.getId())
                 .filter(last -> last.isAfter(LocalDateTime.now().minusSeconds(throttleProperties.commentIntervalSeconds())))
                 .ifPresent(last -> {
-                    throw new CustomException(ErrorCode.COMMENT_TOO_FREQUENT);});
+                    throw new CustomException(ErrorCode.COMMENT_TOO_FREQUENT);
+                });
     }
 }

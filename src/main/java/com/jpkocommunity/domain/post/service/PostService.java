@@ -192,11 +192,14 @@ public class PostService {
     @Transactional
     public PostResponse updatePost(AuthUser authUser, Long postId, PostUpdateRequest request) {
         Post post = findActivePostById(postId);
-        validateAuthor(post, authUser);
+
+        if (!post.getUser().getId().equals(authUser.userId())) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
 
         // 시간 제한 체크, ADMIN은 우회
-        boolean isAdmin = authUser.role() == UserRole.ADMIN;
-        if (!isAdmin && post.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(EDIT_ALLOWED_MINUTES))) {
+        boolean isPrivileged = authUser.role() == UserRole.ADMIN || authUser.role() == UserRole.ROOT;
+        if (!isPrivileged && post.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(EDIT_ALLOWED_MINUTES))) {
             throw new CustomException(ErrorCode.POST_EDIT_EXPIRED);
         }
 
@@ -217,14 +220,14 @@ public class PostService {
         Post post = findActivePostById(postId);
         validateAuthor(post, authUser);
 
-        boolean isAdmin = authUser.role() == UserRole.ADMIN;
+        boolean isPrivileged = authUser.role() == UserRole.ADMIN || authUser.role() == UserRole.ROOT;
         boolean isOwner = post.getUser().getId().equals(authUser.userId());
 
         post.delete();
 
         eventPublisher.publishEvent(new ContentDeletedEvent(ReportTargetType.POST, postId));
 
-        if (isAdmin && !isOwner) {
+        if (isPrivileged && !isOwner) {
             eventPublisher.publishEvent(new NotificationEvent(
                     post.getUser().getId(), authUser.userId(), NotificationType.CONTENT_REMOVED,
                     post.getId(), null, false
@@ -254,8 +257,8 @@ public class PostService {
 
     void validateAuthor(Post post, AuthUser authUser) {
         boolean isOwner = post.getUser().getId().equals(authUser.userId());
-        boolean isAdmin = authUser.role() == UserRole.ADMIN;
-        if (!isOwner && !isAdmin) {
+        boolean isPrivileged = authUser.role() == UserRole.ROOT || authUser.role() == UserRole.ADMIN;
+        if (!isOwner && !isPrivileged) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
     }
