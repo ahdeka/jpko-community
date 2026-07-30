@@ -14,7 +14,8 @@ public record NotificationPushDto(
         Long senderId,        // 익명이면 null
         Long postId,
         Long commentId,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        Long amount            // POINT_STOLEN 외 타입은 null
 ) {
     public static NotificationPushDto of(Notification saved, NotificationEvent event) {
         return new NotificationPushDto(
@@ -24,7 +25,8 @@ public record NotificationPushDto(
                 event.isAnonymous() ? null : event.senderId(),
                 event.postId(),
                 event.commentId(),
-                saved.getCreatedAt()
+                saved.getCreatedAt(),
+                event.amount()
         );
     }
 }

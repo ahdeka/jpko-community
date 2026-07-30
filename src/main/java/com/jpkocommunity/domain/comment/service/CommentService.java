@@ -102,7 +102,7 @@ public class CommentService {
         if (isPrivileged && !isOwner) {
             eventPublisher.publishEvent(new NotificationEvent(
                     comment.getUser().getId(), authUser.userId(), NotificationType.CONTENT_REMOVED,
-                    comment.getPost().getId(), commentId, false
+                    comment.getPost().getId(), commentId, false, null
             ));
         }
     }
@@ -170,7 +170,7 @@ public class CommentService {
 
         NotificationType type = (parent == null) ? NotificationType.COMMENT : NotificationType.REPLY;
         eventPublisher.publishEvent(new NotificationEvent(
-                receiverId, commenterId, type, post.getId(), saved.getId(), saved.isAnonymous()
+                receiverId, commenterId, type, post.getId(), saved.getId(), saved.isAnonymous(), null
         ));
     }
 

@@ -15,7 +15,8 @@ public record NotificationResponse(
         String postTitle,
         Long commentId,
         boolean isRead,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        Long amount             // POINT_STOLEN 외 타입은 null
 ) {
     public static NotificationResponse from(Notification n) {
         boolean anonymous = isAnonymousComment(n);
@@ -24,11 +25,12 @@ public record NotificationResponse(
                 n.getType(),
                 anonymous,
                 anonymous ? null : n.getSender().getDisplayNickname(),
-                n.getPost().getId(),
-                n.getPost().getTitle(),
+                n.getPost() != null ? n.getPost().getId() : null,
+                n.getPost() != null ? n.getPost().getTitle() : null,
                 n.getComment() != null ? n.getComment().getId() : null,
                 n.isRead(),
-                n.getCreatedAt()
+                n.getCreatedAt(),
+                n.getAmount()
         );
     }
 
