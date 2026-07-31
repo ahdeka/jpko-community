@@ -5,7 +5,7 @@ import com.jpkocommunity.domain.point.dto.response.RouletteConfigResponse;
 import com.jpkocommunity.domain.point.dto.response.RouletteOpponentResponse;
 import com.jpkocommunity.domain.point.dto.response.RouletteSpinResponse;
 import com.jpkocommunity.domain.point.service.RouletteService;
-import com.jpkocommunity.global.config.RouletteProperties;
+import com.jpkocommunity.global.config.properties.RouletteProperties;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
 import jakarta.validation.Valid;

@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 // 로그인(및 회원가입 직후 자동 로그인) 시 하루 1회, 시스템 계정을 상대로 마이너스~플러스 범위에서
 // 랜덤하게 포인트를 증감하는 출첵
 @Slf4j
@@ -36,13 +34,16 @@ public class CheckInService {
             return CheckInOutcome.none();
         }
 
-        long rolledAmount = ThreadLocalRandom.current()
-                .nextLong(checkInProperties.minAmount(), checkInProperties.maxAmount() + 1);
+        long rolledAmount = checkInProperties.rollAmount();
 
         try {
             // 락 건 뒤 재확인한 결과 오늘 이미 출첵한 상태였다면(동시 로그인 레이스) empty로 돌아온다.
+            // ⚠️ TransactionResponse.amount()는 원장 관례상 항상 양수(방향은 sender/recipient로 구분)라,
+            // 그대로 넘기면 마이너스 결과도 "획득"으로 보이는 버그가 생긴다 -> recipient가 나 자신인지로
+            // 부호를 다시 살려서 CheckInOutcome에 담는다.
             return transactionService.checkIn(userId, rolledAmount, "일일 출첵")
-                    .map(tx -> CheckInOutcome.checkedIn(tx.amount()))
+                    .map(tx -> CheckInOutcome.checkedIn(
+                            userId.equals(tx.recipientId()) ? tx.amount() : -tx.amount()))
                     .orElseGet(CheckInOutcome::none);
         } catch (CustomException e) {
             // 유저가 처리 도중 정지되는 등 드문 레이스 -> 스킵 처리

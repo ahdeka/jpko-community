@@ -47,9 +47,11 @@ import static org.assertj.core.api.Assertions.assertThat;
         "cookie.domain=localhost",
         "cloud.aws.region.static=ap-northeast-2",
         "cloud.aws.s3.bucket=test-bucket",
-        // 결과를 결정론적으로 검증하기 위해 출첵 금액을 고정값으로 둔다
-        "app.checkin.min-amount=100",
-        "app.checkin.max-amount=100"
+        // 결과를 결정론적으로 검증하기 위해 출첵 금액을 구간 1개짜리 고정값으로 둔다
+        "app.checkin.unit=100",
+        "app.checkin.ranges[0].min-amount=100",
+        "app.checkin.ranges[0].max-amount=100",
+        "app.checkin.ranges[0].weight=1"
 })
 class CheckInServiceConcurrencyTest {
 
