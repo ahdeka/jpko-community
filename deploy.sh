@@ -32,6 +32,7 @@ JWT_SECRET="$(get_param /jpko/prod/JWT_SECRET)"
 DB_USER="$(get_param /jpko/prod/DB_USER)"
 DB_PASSWORD="$(get_param /jpko/prod/DB_PASSWORD)"
 S3_BUCKET="$(get_param /jpko/prod/S3_BUCKET)"
+TURNSTILE_SECRET_KEY="$(get_param /jpko/prod/TURNSTILE_SECRET_KEY)"
 
 # .env는 소유자만 읽도록 권한 최소화
 umask 077
@@ -43,6 +44,7 @@ JWT_SECRET=${JWT_SECRET}
 DB_USER=${DB_USER}
 DB_PASSWORD=${DB_PASSWORD}
 S3_BUCKET=${S3_BUCKET}
+TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
 EOF
 }
 
