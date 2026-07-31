@@ -1,6 +1,6 @@
 package com.jpkocommunity.global.infra.s3;
 
-import com.jpkocommunity.global.config.ImageProcessingProperties;
+import com.jpkocommunity.global.config.properties.ImageProcessingProperties;
 import com.jpkocommunity.global.entity.ConvertedFile;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;

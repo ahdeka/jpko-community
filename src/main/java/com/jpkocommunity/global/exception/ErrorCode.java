@@ -28,6 +28,7 @@ public enum ErrorCode {
     WRONG_PASSWORD(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+    CAPTCHA_FAILED(HttpStatus.BAD_REQUEST, "보안 문자 인증에 실패했습니다. 다시 시도해주세요."),
 
     // Category
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카테고리입니다."),

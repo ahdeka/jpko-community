@@ -26,7 +26,10 @@ public record SignupRequest(
 
         @AssertTrue(message = "개인정보처리방침에 동의해주세요.")
         @NotNull(message = "개인정보처리방침 동의 여부를 입력해주세요.")
-        Boolean privacyAgreed
+        Boolean privacyAgreed,
+
+        @NotBlank(message = "보안 문자 인증이 필요합니다.")
+        String turnstileToken
 ) {
     public SignupRequest {
         email = email == null ? null : email.trim().toLowerCase();
