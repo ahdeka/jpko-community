@@ -34,5 +34,5 @@ mail:
 
 turnstile:
   enabled: true
-  secret-key: ${TURNSTILE_SECRET_KEY:}
+  secret-key: ${TURNSTILE_SECRET_KEY}
   verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify
