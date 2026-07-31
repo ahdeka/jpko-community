@@ -10,15 +10,13 @@ import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
+import com.jpkocommunity.global.util.KstDateUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Optional;
 
 // 포인트 원장. 모든 포인트 증감은 이 서비스를 통해서만 이뤄지며,
@@ -32,6 +30,7 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final PointService pointService;
     private final UserService userService;
+    private final KstDateUtils kstDateUtils;
 
     // 시스템 계정 -> 유저 (출석 보상, 활동 보상 등)
     @Transactional
@@ -59,25 +58,7 @@ public class TransactionService {
 
         long actualAmount = Math.min(rolledAmount, lockedVictim.getBalance()); // 락 이후 계산 -> TOCTOU 없음
 
-        long prevVictimBalance = lockedVictim.getBalance();
-        long prevSystemBalance = lockedSystem.getBalance();
-
-        lockedVictim.debit(actualAmount);
-        lockedSystem.credit(actualAmount);
-
-        Transaction transaction = transactionRepository.save(Transaction.builder()
-                .sender(victim)
-                .recipient(null)
-                .amount(actualAmount)
-                .type(TransactionType.ROULETTE)
-                .prevSenderBalance(prevVictimBalance)
-                .postSenderBalance(lockedVictim.getBalance())
-                .prevRecipientBalance(prevSystemBalance)
-                .postRecipientBalance(lockedSystem.getBalance())
-                .message(message)
-                .build());
-
-        return TransactionResponse.from(transaction);
+        return executeTransfer(lockedVictim, lockedSystem, victim, null, actualAmount, TransactionType.ROULETTE, message);
     }
 
     // 시스템 -> 유저 (일일 포인트 룰렛 지급): collectForRoulette()로 몰수한 금액을 당첨자에게 지급하는 두 번째 레그.
@@ -92,29 +73,11 @@ public class TransactionService {
         Point lockedWinner = pointService.lockAccountForUpdate(winnerUserId);
 
         if (transactionRepository.existsByRecipientIdAndTypeAndCreatedAtGreaterThanEqual(
-                winnerUserId, TransactionType.ROULETTE, startOfTodayKst())) {
+                winnerUserId, TransactionType.ROULETTE, kstDateUtils.startOfToday())) {
             return Optional.empty();
         }
 
-        long prevWinnerBalance = lockedWinner.getBalance();
-        long prevSystemBalance = lockedSystem.getBalance();
-
-        lockedSystem.debit(amount);
-        lockedWinner.credit(amount);
-
-        Transaction transaction = transactionRepository.save(Transaction.builder()
-                .sender(null)
-                .recipient(winner)
-                .amount(amount)
-                .type(TransactionType.ROULETTE)
-                .prevSenderBalance(prevSystemBalance)
-                .postSenderBalance(lockedSystem.getBalance())
-                .prevRecipientBalance(prevWinnerBalance)
-                .postRecipientBalance(lockedWinner.getBalance())
-                .message(message)
-                .build());
-
-        return Optional.of(TransactionResponse.from(transaction));
+        return Optional.of(executeTransfer(lockedSystem, lockedWinner, null, winner, amount, TransactionType.ROULETTE, message));
     }
 
     public Page<TransactionResponse> getMyTransactions(Long userId, Pageable pageable) {
@@ -142,21 +105,35 @@ public class TransactionService {
         Point lockedSender = senderUserId != null ? lockedUserAccount : lockedSystemAccount;
         Point lockedRecipient = recipientUserId != null ? lockedUserAccount : lockedSystemAccount;
 
-        long prevSenderBalance = lockedSender.getBalance();
-        long prevRecipientBalance = lockedRecipient.getBalance();
+        User senderUser = senderUserId != null ? counterpart : null;
+        User recipientUser = recipientUserId != null ? counterpart : null;
 
-        lockedSender.debit(amount);
-        lockedRecipient.credit(amount);
+        return executeTransfer(lockedSender, lockedRecipient, senderUser, recipientUser, amount, type, message);
+    }
+
+    // 잠금이 끝난 두 계좌 사이에 잔액 이동 + Transaction 로그 저장을 원자적으로 수행하는 공통 로직.
+    // execute()/collectForRoulette()/grantForRouletteIfEligible() 모두 "락을 건 이후"의 로직만 다르고
+    // 이 부분은 동일하여 공유한다.
+    private TransactionResponse executeTransfer(
+            Point lockedSenderAccount, Point lockedRecipientAccount,
+            User senderUser, User recipientUser,
+            long amount, TransactionType type, String message
+    ) {
+        long prevSenderBalance = lockedSenderAccount.getBalance();
+        long prevRecipientBalance = lockedRecipientAccount.getBalance();
+
+        lockedSenderAccount.debit(amount);
+        lockedRecipientAccount.credit(amount);
 
         Transaction transaction = transactionRepository.save(Transaction.builder()
-                .sender(senderUserId != null ? counterpart : null)
-                .recipient(recipientUserId != null ? counterpart : null)
+                .sender(senderUser)
+                .recipient(recipientUser)
                 .amount(amount)
                 .type(type)
                 .prevSenderBalance(prevSenderBalance)
-                .postSenderBalance(lockedSender.getBalance())
+                .postSenderBalance(lockedSenderAccount.getBalance())
                 .prevRecipientBalance(prevRecipientBalance)
-                .postRecipientBalance(lockedRecipient.getBalance())
+                .postRecipientBalance(lockedRecipientAccount.getBalance())
                 .message(message)
                 .build());
 
@@ -173,11 +150,5 @@ public class TransactionService {
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
         }
-    }
-
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
-
-    private LocalDateTime startOfTodayKst() {
-        return LocalDate.now(KST).atStartOfDay();
     }
 }

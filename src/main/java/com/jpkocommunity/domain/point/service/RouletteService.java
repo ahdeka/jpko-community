@@ -9,14 +9,14 @@ import com.jpkocommunity.domain.point.repository.TransactionRepository;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.RouletteProperties;
 import com.jpkocommunity.global.exception.CustomException;
+import com.jpkocommunity.global.util.KstDateUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -26,15 +26,17 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class RouletteService {
 
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
-
     private final TransactionRepository transactionRepository;
     private final TransactionService transactionService;
     private final UserService userService;
     private final RouletteProperties rouletteProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final KstDateUtils kstDateUtils;
 
-    @Transactional
+    // REQUIRES_NEW -> 호출부인 AuthService.login()의 트랜잭션과 분리해서 독립적으로 커밋한다.
+    // 스핀 과정에서 시스템 계정(단일 row)에 두 번 락을 거는데, login()의 트랜잭션에 그대로 합류하면
+    // 토큰 발급/저장까지 끝날 때까지 그 락을 붙들고 있게 되어 동시 로그인 시 불필요하게 직렬화된다.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public RouletteOutcome spinIfEligible(Long userId) {
         // 락 없는 사전 체크 -> 하루 중 두 번째 이후 로그인은 대부분 여기서 끝남
         if (alreadyPlayedToday(userId)) {
@@ -90,6 +92,6 @@ public class RouletteService {
 
     private boolean alreadyPlayedToday(Long userId) {
         return transactionRepository.existsByRecipientIdAndTypeAndCreatedAtGreaterThanEqual(
-                userId, TransactionType.ROULETTE, LocalDate.now(KST).atStartOfDay());
+                userId, TransactionType.ROULETTE, kstDateUtils.startOfToday());
     }
 }

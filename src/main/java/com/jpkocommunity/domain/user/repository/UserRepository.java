@@ -27,7 +27,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 일일 포인트 룰렛 피해자 선정용: 본인을 제외한 활성 유저 중 무작위 1명.
     // ROOT는 정지/권한변경 등 다른 관리 기능에서도 보호 대상이라 룰렛 피해자에서도 제외한다.
-    @Query(value = "SELECT id FROM users WHERE status = 'ACTIVE' AND role <> 'ROOT' AND id <> :excludeUserId "
-            + "ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    // ORDER BY RANDOM()은 대상 row 전체에 난수를 매겨 정렬해야 해서 유저가 많아지면 느려짐 ->
+    // COUNT로 대상 수를 센 뒤 그 범위 안에서 OFFSET만 무작위로 골라 정렬 없이 1건만 읽는다.
+    @Query(value = """
+            SELECT id FROM users
+            WHERE status = 'ACTIVE' AND role <> 'ROOT' AND id <> :excludeUserId
+            OFFSET floor(random() * (
+                SELECT COUNT(*) FROM users
+                WHERE status = 'ACTIVE' AND role <> 'ROOT' AND id <> :excludeUserId
+            ))::bigint
+            LIMIT 1
+            """, nativeQuery = true)
     Optional<Long> findRandomActiveUserIdExcluding(@Param("excludeUserId") Long excludeUserId);
 }

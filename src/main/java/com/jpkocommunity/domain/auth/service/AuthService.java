@@ -67,7 +67,8 @@ public class AuthService {
         userRepository.save(user);
 
         // 회원가입 자체는 룰렛 대상이 아님 (이후 별도 로그인부터 대상)
-        return issueTokens(user, deviceInfo, ipAddress, RouletteOutcome.none());
+        TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);
+        return toLoginResult(user, tokens, RouletteOutcome.none());
     }
 
     @Transactional
@@ -87,14 +88,25 @@ public class AuthService {
             throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
         }
 
-        // 인증/상태 검증을 모두 통과한 이후에만 룰렛을 돌림 (로그인 실패 시 하루 기회가 소모되면 안 됨)
+        // 토큰 발급을 먼저 끝낸 뒤에 룰렛을 돌린다. 반대 순서(룰렛 먼저)로 하면
+        // 룰렛은 이미 커밋됐는데 토큰 저장이 실패해 로그인 자체는 실패하는 불일치가 생길 수 있다.
+        // 이 순서면 토큰 발급이 실패할 경우 룰렛은 아예 시도되지 않고, 룰렛이 실패해도 로그인은 이미 발급된 상태다.
+        TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);
         RouletteOutcome rouletteOutcome = rouletteService.spinIfEligible(user.getId());
 
-        return issueTokens(user, deviceInfo, ipAddress, rouletteOutcome);
+        return toLoginResult(user, tokens, rouletteOutcome);
+    }
+
+    private LoginResult toLoginResult(User user, TokenPair tokens, RouletteOutcome rouletteOutcome) {
+        return new LoginResult(
+                new LoginResponse(user.getNickname(), user.getRole(), LoginResponse.RouletteInfo.from(rouletteOutcome)),
+                tokens.accessToken(),
+                tokens.refreshToken()
+        );
     }
 
     // 토큰 발급 공통 로직
-    private LoginResult issueTokens(User user, String deviceInfo, String ipAddress, RouletteOutcome rouletteOutcome) {
+    private TokenPair issueTokens(User user, String deviceInfo, String ipAddress) {
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtProvider.generateRefreshToken(user.getId());
 
@@ -108,12 +120,10 @@ public class AuthService {
                 .expiresAt(LocalDateTime.now().plusSeconds(jwtProperties.refreshTokenMaxAgeSeconds()))
                 .build());
 
-        return new LoginResult(
-                new LoginResponse(user.getNickname(), user.getRole(), LoginResponse.RouletteInfo.from(rouletteOutcome)),
-                accessToken,
-                refreshToken
-        );
+        return new TokenPair(accessToken, refreshToken);
     }
+
+    private record TokenPair(String accessToken, String refreshToken) { }
 
     @Transactional
     public String refresh(String refreshToken) {
