@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
         MailProperties.class,
         ThrottleProperties.class,
         ImageProcessingProperties.class,
-        TurnstileProperties.class
+        TurnstileProperties.class,
         CheckInProperties.class,
         RouletteProperties.class
 })
