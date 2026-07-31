@@ -20,8 +20,20 @@ app:
   image:
     gif2webp-path: gif2webp
   checkin:
-    min-amount: -300
-    max-amount: 1000
+    unit: 50 # 지급액은 항상 이 값의 배수로만 나온다
+    ranges:
+      - min-amount: -300
+        max-amount: -50
+        weight: 15   # 15% 확률로 손실
+      - min-amount: 0
+        max-amount: 0
+        weight: 10   # 10% 확률로 본전
+      - min-amount: 50
+        max-amount: 500
+        weight: 55   # 55% 확률로 소소하게 획득
+      - min-amount: 550
+        max-amount: 1000
+        weight: 20   # 20% 확률로 크게 획득
   roulette:
     bet-unit: 100
     min-bet: 100

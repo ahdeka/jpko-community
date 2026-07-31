@@ -59,6 +59,15 @@ public class RouletteService {
         User opponent = userService.findById(opponentId);
 
         long fee = Math.round(betAmount * rouletteProperties.feeRate());
+
+        // 배팅액+수수료를 감당할 잔액이 없으면 애초에 시작하지 않는다. 이 검증이 없으면
+        // 수수료를 먼저 뗀 뒤 패배해서 잔액이 모자랄 때, settleRouletteDuel의 Math.min 캡 때문에
+        // 원래 배팅액보다 적게 잃는(사실상 할인되는) 의도치 않은 결과가 생길 수 있다.
+        long balanceBefore = pointService.getPointByUserId(userId).balance();
+        if (balanceBefore < betAmount + fee) {
+            throw new CustomException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
         if (fee > 0) {
             transactionService.collectRouletteFee(userId, fee, "룰렛 수수료");
         }
@@ -70,11 +79,14 @@ public class RouletteService {
         TransactionResponse settled = transactionService.settleRouletteDuel(loserId, winnerId, betAmount, "포인트 룰렛");
         long resultAmount = settled.amount();
 
-        // initiator가 이겨서 상대(수동적으로 참여한 쪽)가 뺏긴 경우에만 알린다.
-        // initiator가 진 경우는 이 스핀 응답 자체로 이미 결과를 알고 있으므로 별도 알림이 필요 없다.
-        if (win && resultAmount > 0) {
+        // 승자/패자 모두에게 알린다 — initiator든 상대(수동적으로 참여한 쪽)든 결과와 무관하게 동일하게 처리한다.
+        // (initiator는 이 스핀 응답으로 결과를 이미 알지만, 알림 목록/벨에도 동일하게 남도록 별도로 발행한다)
+        if (resultAmount > 0) {
             eventPublisher.publishEvent(new NotificationEvent(
-                    opponentId, userId, NotificationType.POINT_STOLEN, null, null, false, resultAmount
+                    loserId, winnerId, NotificationType.POINT_STOLEN, null, null, false, resultAmount
+            ));
+            eventPublisher.publishEvent(new NotificationEvent(
+                    winnerId, loserId, NotificationType.POINT_WON, null, null, false, resultAmount
             ));
         }
 
