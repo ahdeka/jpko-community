@@ -11,7 +11,7 @@ import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.service.UserService;
-import com.jpkocommunity.global.config.RouletteProperties;
+import com.jpkocommunity.global.config.properties.RouletteProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;

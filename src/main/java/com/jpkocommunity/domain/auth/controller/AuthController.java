@@ -9,7 +9,7 @@ import com.jpkocommunity.domain.auth.dto.response.UserInfoResponse;
 import com.jpkocommunity.domain.auth.service.AuthService;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
-import com.jpkocommunity.global.config.JwtProperties;
+import com.jpkocommunity.global.config.properties.JwtProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
@@ -24,8 +24,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")

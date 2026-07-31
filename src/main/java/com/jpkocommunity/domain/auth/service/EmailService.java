@@ -1,6 +1,6 @@
 package com.jpkocommunity.domain.auth.service;
 
-import com.jpkocommunity.global.config.MailProperties;
+import com.jpkocommunity.global.config.properties.MailProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;

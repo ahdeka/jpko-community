@@ -1,7 +1,7 @@
 package com.jpkocommunity.global.security.jwt;
 
 import com.jpkocommunity.domain.user.entity.UserRole;
-import com.jpkocommunity.global.config.JwtProperties;
+import com.jpkocommunity.global.config.properties.JwtProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import io.jsonwebtoken.Claims;

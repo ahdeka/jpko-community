@@ -1,4 +1,4 @@
-package com.jpkocommunity.global.config;
+package com.jpkocommunity.global.config.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
