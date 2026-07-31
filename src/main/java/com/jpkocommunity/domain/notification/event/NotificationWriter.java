@@ -40,8 +40,9 @@ public class NotificationWriter {
                 .receiver(userRepository.getReferenceById(event.receiverId()))
                 .sender(userRepository.getReferenceById(event.senderId()))
                 .type(event.type())
-                .post(postRepository.getReferenceById(event.postId()))
+                .post(event.postId() != null ? postRepository.getReferenceById(event.postId()) : null)
                 .comment(event.commentId() != null ? commentRepository.getReferenceById(event.commentId()) : null)
+                .amount(event.amount())
                 .build();
 
         return Optional.of(notificationRepository.save(notification));

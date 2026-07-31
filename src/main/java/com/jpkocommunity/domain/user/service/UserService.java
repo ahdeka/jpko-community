@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -68,6 +69,11 @@ public class UserService {
 
     public List<User> findAllByIdIn(List<Long> ids) {
         return userRepository.findAllById(ids);
+    }
+
+    // 일일 포인트 룰렛 피해자 선정용
+    public Optional<Long> findRandomActiveUserIdExcluding(Long excludeUserId) {
+        return userRepository.findRandomActiveUserIdExcluding(excludeUserId);
     }
 
 

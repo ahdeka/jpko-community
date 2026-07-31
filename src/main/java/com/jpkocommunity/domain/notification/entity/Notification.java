@@ -30,8 +30,9 @@ public class Notification extends BaseEntity {
     @Column(nullable = false, length = 20)
     private NotificationType type;
 
+    // POINT_STOLEN처럼 게시글과 무관한 알림은 null (룰렛으로 포인트를 뺏긴 경우 등)
     @ManyToOne(fetch = LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
+    @JoinColumn(name = "post_id")
     private Post post;
 
     @ManyToOne(fetch = LAZY)
@@ -41,14 +42,18 @@ public class Notification extends BaseEntity {
     @Column(nullable = false)
     private boolean isRead;
 
+    // POINT_STOLEN 알림에서 뺏긴/뺏은 포인트 금액. 그 외 타입은 null
+    private Long amount;
+
     @Builder
-    public Notification(User receiver, User sender, NotificationType type, Post post, Comment comment) {
+    public Notification(User receiver, User sender, NotificationType type, Post post, Comment comment, Long amount) {
         this.receiver = receiver;
         this.sender = sender;
         this.type = type;
         this.post = post;
         this.comment = comment;
         this.isRead = false;
+        this.amount = amount;
     }
 
     public void markAsRead() {

@@ -100,7 +100,7 @@ public class LikeService {
         }
 
         eventPublisher.publishEvent(new NotificationEvent(
-                receiverId, likerId, NotificationType.LIKE, post.getId(), null, false
+                receiverId, likerId, NotificationType.LIKE, post.getId(), null, false, null
         ));
     }
 }

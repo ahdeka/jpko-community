@@ -230,7 +230,7 @@ public class PostService {
         if (isPrivileged && !isOwner) {
             eventPublisher.publishEvent(new NotificationEvent(
                     post.getUser().getId(), authUser.userId(), NotificationType.CONTENT_REMOVED,
-                    post.getId(), null, false
+                    post.getId(), null, false, null
             ));
         }
     }

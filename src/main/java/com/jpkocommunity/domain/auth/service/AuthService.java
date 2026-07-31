@@ -9,6 +9,8 @@ import com.jpkocommunity.domain.auth.entity.VerificationToken;
 import com.jpkocommunity.domain.auth.entity.VerificationTokenType;
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.auth.repository.VerificationTokenRepository;
+import com.jpkocommunity.domain.point.dto.response.RouletteOutcome;
+import com.jpkocommunity.domain.point.service.RouletteService;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
@@ -42,6 +44,7 @@ public class AuthService {
     private final EmailDomainValidator emailDomainValidator;
     private final VerificationTokenProperties verificationTokenProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final RouletteService rouletteService;
 
     @Transactional
     public LoginResult signup(SignupRequest request, String deviceInfo, String ipAddress) {
@@ -63,7 +66,8 @@ public class AuthService {
 
         userRepository.save(user);
 
-        return issueTokens(user, deviceInfo, ipAddress);
+        // 회원가입 자체는 룰렛 대상이 아님 (이후 별도 로그인부터 대상)
+        return issueTokens(user, deviceInfo, ipAddress, RouletteOutcome.none());
     }
 
     @Transactional
@@ -83,11 +87,14 @@ public class AuthService {
             throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
         }
 
-        return issueTokens(user, deviceInfo, ipAddress);
+        // 인증/상태 검증을 모두 통과한 이후에만 룰렛을 돌림 (로그인 실패 시 하루 기회가 소모되면 안 됨)
+        RouletteOutcome rouletteOutcome = rouletteService.spinIfEligible(user.getId());
+
+        return issueTokens(user, deviceInfo, ipAddress, rouletteOutcome);
     }
 
     // 토큰 발급 공통 로직
-    private LoginResult issueTokens(User user, String deviceInfo, String ipAddress) {
+    private LoginResult issueTokens(User user, String deviceInfo, String ipAddress, RouletteOutcome rouletteOutcome) {
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtProvider.generateRefreshToken(user.getId());
 
@@ -102,7 +109,7 @@ public class AuthService {
                 .build());
 
         return new LoginResult(
-                new LoginResponse(user.getNickname(), user.getRole()),
+                new LoginResponse(user.getNickname(), user.getRole(), LoginResponse.RouletteInfo.from(rouletteOutcome)),
                 accessToken,
                 refreshToken
         );

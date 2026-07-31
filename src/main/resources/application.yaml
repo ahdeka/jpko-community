@@ -19,6 +19,9 @@ app:
     comment-interval-seconds: 5
   image:
     gif2webp-path: gif2webp
+  roulette:
+    min-amount: 0
+    max-amount: 1000
 
 server:
   port: 8080
