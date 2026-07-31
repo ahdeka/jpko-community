@@ -44,40 +44,72 @@ public class TransactionService {
         return execute(senderUserId, null, amount, TransactionType.COLLECT, message);
     }
 
-    // 유저 -> 시스템 (일일 포인트 룰렛 몰수). 피해자 잔액이 부족하면 잔액만큼만(0 포함) 실제로 차감된다.
-    // 포인트 이동은 항상 시스템 계정을 거친다는 원장의 불변식을 지키기 위해 유저-유저 직접 이체 대신
-    // "피해자->시스템" / "시스템->당첨자" 2단계로 나눈 첫 번째 레그.
+    // 시스템 계정 상대로 부호 있는 금액을 정산한다(출첵 전용). signedAmount>=0이면 GRANT 형태(시스템->유저),
+    // <0이면 COLLECT 형태(유저->시스템)로 처리한다. 유저 잔액이 부족하면 실제 보유량만큼만 차감해
+    // INSUFFICIENT_BALANCE 예외를 피한다.
+    // 유저 계좌에 락을 건 "이후" 오늘 이미 출첵했는지 재확인한다 -> 동시 로그인(같은 유저, 다른 기기) 경쟁으로
+    // 두 스레드 모두 락 없는 사전 체크를 통과했더라도 여기서 걸러져 이중 지급되지 않는다.
     @Transactional
-    public TransactionResponse collectForRoulette(Long victimUserId, long rolledAmount, String message) {
-        User victim = userService.findById(victimUserId);
-        validateActive(victim);
+    public Optional<TransactionResponse> checkIn(Long userId, long signedAmount, String message) {
+        User user = userService.findById(userId);
+        validateActive(user);
 
-        // 시스템 계정을 항상 먼저 잠금 -> 기존 execute()와 동일한 데드락 방지 패턴
+        // 시스템 계정을 항상 먼저 잠금 -> 데드락 방지
         Point lockedSystem = pointService.lockAccountForUpdate(null);
-        Point lockedVictim = pointService.lockAccountForUpdate(victimUserId);
+        Point lockedUser = pointService.lockAccountForUpdate(userId);
 
-        long actualAmount = Math.min(rolledAmount, lockedVictim.getBalance()); // 락 이후 계산 -> TOCTOU 없음
-
-        return executeTransfer(lockedVictim, lockedSystem, victim, null, actualAmount, TransactionType.ROULETTE, message);
-    }
-
-    // 시스템 -> 유저 (일일 포인트 룰렛 지급): collectForRoulette()로 몰수한 금액을 당첨자에게 지급하는 두 번째 레그.
-    // 당첨자 계좌에 락을 건 "이후" 오늘 이미 지급받았는지 재확인한다 -> 동시 로그인(같은 유저, 다른 기기)
-    // 경쟁으로 이미 지급이 끝났다면 아무 것도 하지 않고 Optional.empty()를 반환한다(호출부에서 피해자에게 환불 처리).
-    @Transactional
-    public Optional<TransactionResponse> grantForRouletteIfEligible(Long winnerUserId, long amount, String message) {
-        User winner = userService.findById(winnerUserId);
-        validateActive(winner);
-
-        Point lockedSystem = pointService.lockAccountForUpdate(null);
-        Point lockedWinner = pointService.lockAccountForUpdate(winnerUserId);
-
-        if (transactionRepository.existsByRecipientIdAndTypeAndCreatedAtGreaterThanEqual(
-                winnerUserId, TransactionType.ROULETTE, kstDateUtils.startOfToday())) {
+        if (alreadyCheckedInToday(userId)) {
             return Optional.empty();
         }
 
-        return Optional.of(executeTransfer(lockedSystem, lockedWinner, null, winner, amount, TransactionType.ROULETTE, message));
+        if (signedAmount >= 0) {
+            return Optional.of(
+                    executeTransfer(lockedSystem, lockedUser, null, user, signedAmount, TransactionType.CHECKIN, message));
+        }
+
+        long actualAmount = Math.min(-signedAmount, lockedUser.getBalance()); // 락 이후 계산 -> TOCTOU 없음
+        return Optional.of(
+                executeTransfer(lockedUser, lockedSystem, user, null, actualAmount, TransactionType.CHECKIN, message));
+    }
+
+    // recipient(플러스 결과)/sender(마이너스 결과) 양쪽 방향 모두 확인해야 한다 -> CheckInService의
+    // 락 없는 사전 체크와 동일 기준.
+    private boolean alreadyCheckedInToday(Long userId) {
+        return transactionRepository.existsByRecipientIdAndTypeAndCreatedAtGreaterThanEqual(
+                userId, TransactionType.CHECKIN, kstDateUtils.startOfToday())
+                || transactionRepository.existsBySenderIdAndTypeAndCreatedAtGreaterThanEqual(
+                userId, TransactionType.CHECKIN, kstDateUtils.startOfToday());
+    }
+
+    // 유저 -> 시스템, 룰렛 판당 수수료
+    @Transactional
+    public TransactionResponse collectRouletteFee(Long userId, long amount, String message) {
+        return execute(userId, null, amount, TransactionType.ROULETTE_FEE, message);
+    }
+
+    // 패자 -> 시스템 -> 승자, 룰렛 대결 정산(제로섬). 로그인 토큰 발급과 얽혀있지 않은 유저 액션이라
+    // collectForRoulette/grantForRouletteIfEligible처럼 트랜잭션을 쪼갤 필요 없이 한 트랜잭션에서 원자적으로 처리한다.
+    // 시스템 계정을 항상 먼저 잠그고, 두 유저 계정은 id 오름차순으로 잠가 서로 다른 두 판의 락 순서가
+    // 엇갈려 교착되는 것을 막는다.
+    @Transactional
+    public TransactionResponse settleRouletteDuel(Long loserId, Long winnerId, long amount, String message) {
+        User loser = userService.findById(loserId);
+        validateActive(loser);
+        User winner = userService.findById(winnerId);
+        validateActive(winner);
+
+        Point lockedSystem = pointService.lockAccountForUpdate(null);
+        Long firstId = Math.min(loserId, winnerId);
+        Long secondId = Math.max(loserId, winnerId);
+        Point lockedFirst = pointService.lockAccountForUpdate(firstId);
+        Point lockedSecond = pointService.lockAccountForUpdate(secondId);
+        Point lockedLoser = loserId.equals(firstId) ? lockedFirst : lockedSecond;
+        Point lockedWinner = winnerId.equals(firstId) ? lockedFirst : lockedSecond;
+
+        long actualAmount = Math.min(amount, lockedLoser.getBalance()); // 락 이후 계산 -> TOCTOU 없음
+
+        executeTransfer(lockedLoser, lockedSystem, loser, null, actualAmount, TransactionType.ROULETTE, message);
+        return executeTransfer(lockedSystem, lockedWinner, null, winner, actualAmount, TransactionType.ROULETTE, message);
     }
 
     public Page<TransactionResponse> getMyTransactions(Long userId, Pageable pageable) {
@@ -112,8 +144,7 @@ public class TransactionService {
     }
 
     // 잠금이 끝난 두 계좌 사이에 잔액 이동 + Transaction 로그 저장을 원자적으로 수행하는 공통 로직.
-    // execute()/collectForRoulette()/grantForRouletteIfEligible() 모두 "락을 건 이후"의 로직만 다르고
-    // 이 부분은 동일하여 공유한다.
+    // execute()/checkIn()/settleRouletteDuel() 모두 "락을 건 이후"의 로직만 다르고 이 부분은 동일하여 공유한다.
     private TransactionResponse executeTransfer(
             Point lockedSenderAccount, Point lockedRecipientAccount,
             User senderUser, User recipientUser,

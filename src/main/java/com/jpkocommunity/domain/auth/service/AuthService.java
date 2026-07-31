@@ -9,8 +9,8 @@ import com.jpkocommunity.domain.auth.entity.VerificationToken;
 import com.jpkocommunity.domain.auth.entity.VerificationTokenType;
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.auth.repository.VerificationTokenRepository;
-import com.jpkocommunity.domain.point.dto.response.RouletteOutcome;
-import com.jpkocommunity.domain.point.service.RouletteService;
+import com.jpkocommunity.domain.point.dto.response.CheckInOutcome;
+import com.jpkocommunity.domain.point.service.CheckInService;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
@@ -21,6 +21,7 @@ import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.jwt.JwtProvider;
 import com.jpkocommunity.global.util.EmailDomainValidator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -43,8 +45,8 @@ public class AuthService {
     private final EmailDomainValidator emailDomainValidator;
     private final VerificationTokenProperties verificationTokenProperties;
     private final ApplicationEventPublisher eventPublisher;
-    private final RouletteService rouletteService;
     private final TurnstileService turnstileService;
+    private final CheckInService checkInService;
 
     @Transactional
     public LoginResult signup(SignupRequest request, String deviceInfo, String ipAddress) {
@@ -68,9 +70,11 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // 회원가입 자체는 룰렛 대상이 아님 (이후 별도 로그인부터 대상)
+        // 출첵은 이 메서드가 커밋된 뒤 별도로 처리한다(checkInAfterSignup 참고).
+        // 여기서 신규 유저를 대상으로 곧바로 출첵을 걸면, 출첵이 REQUIRES_NEW로 별도 트랜잭션에서
+        // 실행되는 탓에 아직 커밋되지 않은 이 유저 row를 보지 못해 USER_NOT_FOUND로 실패한다.
         TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);
-        return toLoginResult(user, tokens, RouletteOutcome.none());
+        return toLoginResult(user.getId(), user, tokens, CheckInOutcome.none());
     }
 
     @Transactional
@@ -90,18 +94,30 @@ public class AuthService {
             throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
         }
 
-        // 토큰 발급을 먼저 끝낸 뒤에 룰렛을 돌린다. 반대 순서(룰렛 먼저)로 하면
-        // 룰렛은 이미 커밋됐는데 토큰 저장이 실패해 로그인 자체는 실패하는 불일치가 생길 수 있다.
-        // 이 순서면 토큰 발급이 실패할 경우 룰렛은 아예 시도되지 않고, 룰렛이 실패해도 로그인은 이미 발급된 상태다.
+        // 토큰 발급을 먼저 끝낸 뒤에 출첵을 처리한다. 반대 순서(출첵 먼저)로 하면
+        // 출첵은 이미 커밋됐는데 토큰 저장이 실패해 로그인 자체는 실패하는 불일치가 생길 수 있다.
+        // 이 순서면 토큰 발급이 실패할 경우 출첵은 아예 시도되지 않고, 출첵이 실패해도 로그인은 이미 발급된 상태다.
         TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);
-        RouletteOutcome rouletteOutcome = rouletteService.spinIfEligible(user.getId());
+        CheckInOutcome checkInOutcome = checkInService.checkInIfEligible(user.getId());
 
-        return toLoginResult(user, tokens, rouletteOutcome);
+        return toLoginResult(user.getId(), user, tokens, checkInOutcome);
     }
 
-    private LoginResult toLoginResult(User user, TokenPair tokens, RouletteOutcome rouletteOutcome) {
+    // 회원가입 트랜잭션이 커밋된 뒤(AuthController가 signup() 호출에서 리턴받은 다음) 호출해야 한다.
+    // 실패해도 회원가입 응답 자체는 깨지지 않도록 여기서 흡수한다.
+    public LoginResponse.CheckInInfo checkInAfterSignup(Long userId) {
+        try {
+            return LoginResponse.CheckInInfo.from(checkInService.checkInIfEligible(userId));
+        } catch (Exception e) {
+            log.warn("[출첵] 회원가입 직후 출첵 처리 실패. userId={}", userId, e);
+            return LoginResponse.CheckInInfo.from(CheckInOutcome.none());
+        }
+    }
+
+    private LoginResult toLoginResult(Long userId, User user, TokenPair tokens, CheckInOutcome checkInOutcome) {
         return new LoginResult(
-                new LoginResponse(user.getNickname(), user.getRole(), LoginResponse.RouletteInfo.from(rouletteOutcome)),
+                userId,
+                new LoginResponse(user.getNickname(), user.getRole(), LoginResponse.CheckInInfo.from(checkInOutcome)),
                 tokens.accessToken(),
                 tokens.refreshToken()
         );
@@ -273,5 +289,5 @@ public class AuthService {
         refreshTokenRepository.deleteByUserId(user.getId());
     }
 
-    public record LoginResult(LoginResponse response, String accessToken, String refreshToken) { }
+    public record LoginResult(Long userId, LoginResponse response, String accessToken, String refreshToken) { }
 }

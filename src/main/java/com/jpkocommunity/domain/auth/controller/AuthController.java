@@ -57,8 +57,12 @@ public class AuthController {
         cookieUtils.add(response, "accessToken", result.accessToken(), jwtProperties.accessTokenMaxAgeSeconds());
         cookieUtils.add(response, "refreshToken", result.refreshToken(), jwtProperties.refreshTokenMaxAgeSeconds());
 
+        // signup()의 트랜잭션이 커밋된 뒤(=위 리턴 시점)에만 출첵을 걸 수 있다 — AuthService.checkInAfterSignup 참고.
+        LoginResponse.CheckInInfo checkIn = authService.checkInAfterSignup(result.userId());
+        LoginResponse body = new LoginResponse(result.response().nickname(), result.response().role(), checkIn);
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created("회원가입이 완료되었습니다.", result.response()));
+                .body(ApiResponse.created("회원가입이 완료되었습니다.", body));
     }
 
     @PostMapping("/login")
