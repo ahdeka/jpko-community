@@ -19,9 +19,15 @@ app:
     comment-interval-seconds: 5
   image:
     gif2webp-path: gif2webp
-  roulette:
-    min-amount: 0
+  checkin:
+    min-amount: -300
     max-amount: 1000
+  roulette:
+    bet-unit: 100
+    min-bet: 100
+    max-bet: 5000
+    win-probability: 0.45
+    fee-rate: 0.05
 
 server:
   port: 8080

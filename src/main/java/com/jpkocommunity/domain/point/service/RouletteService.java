@@ -2,96 +2,127 @@ package com.jpkocommunity.domain.point.service;
 
 import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
-import com.jpkocommunity.domain.point.dto.response.RouletteOutcome;
+import com.jpkocommunity.domain.point.dto.response.RouletteOpponentResponse;
+import com.jpkocommunity.domain.point.dto.response.RouletteSpinResponse;
 import com.jpkocommunity.domain.point.dto.response.TransactionResponse;
-import com.jpkocommunity.domain.point.entity.TransactionType;
-import com.jpkocommunity.domain.point.repository.TransactionRepository;
+import com.jpkocommunity.domain.point.entity.RouletteOpponent;
+import com.jpkocommunity.domain.point.repository.RouletteOpponentRepository;
+import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.entity.UserRole;
+import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.RouletteProperties;
 import com.jpkocommunity.global.exception.CustomException;
-import com.jpkocommunity.global.util.KstDateUtils;
+import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
-// 로그인 시 하루 1회, 무작위로 뽑힌 다른 유저의 포인트를 강탈해오는 룰렛
-@Slf4j
+// 유저가 직접 배팅해 상대와 겨루는 룰렛. 처음엔 랜덤 상대, 이후 원하면 고정/해제할 수 있다.
 @Service
 @RequiredArgsConstructor
 public class RouletteService {
 
-    private final TransactionRepository transactionRepository;
+    private final RouletteOpponentRepository rouletteOpponentRepository;
     private final TransactionService transactionService;
+    private final PointService pointService;
     private final UserService userService;
     private final RouletteProperties rouletteProperties;
     private final ApplicationEventPublisher eventPublisher;
-    private final KstDateUtils kstDateUtils;
 
-    // REQUIRES_NEW -> 호출부인 AuthService.login()의 트랜잭션과 분리해서 독립적으로 커밋한다.
-    // 스핀 과정에서 시스템 계정(단일 row)에 두 번 락을 거는데, login()의 트랜잭션에 그대로 합류하면
-    // 토큰 발급/저장까지 끝날 때까지 그 락을 붙들고 있게 되어 동시 로그인 시 불필요하게 직렬화된다.
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public RouletteOutcome spinIfEligible(Long userId) {
-        // 락 없는 사전 체크 -> 하루 중 두 번째 이후 로그인은 대부분 여기서 끝남
-        if (alreadyPlayedToday(userId)) {
-            return RouletteOutcome.none();
+    // 로그인 토큰 발급과 얽혀있지 않은 유저 액션이라 REQUIRES_NEW로 쪼갤 필요 없이
+    // 수수료 징수 + 대결 정산을 하나의 트랜잭션에서 원자적으로 처리한다.
+    @Transactional
+    public RouletteSpinResponse spin(Long userId, long betAmount) {
+        if (!rouletteProperties.isValidBet(betAmount)) {
+            throw new CustomException(ErrorCode.INVALID_BET_AMOUNT);
         }
 
-        // 피해자 후보 없음(활성 유저가 본인 1명) -> 오늘의 기회를 소모하지 않고 스킵
-        Optional<Long> victimId = userService.findRandomActiveUserIdExcluding(userId);
-        if (victimId.isEmpty()) {
-            return RouletteOutcome.none();
+        Optional<RouletteOpponent> locked = rouletteOpponentRepository.findByUserId(userId);
+        boolean opponentLocked;
+        Long opponentId;
+        if (locked.isPresent() && isEligibleOpponent(userId, locked.get().getOpponentId())) {
+            opponentId = locked.get().getOpponentId();
+            opponentLocked = true;
+        } else {
+            // 고정된 상대가 더 이상 유효하지 않으면(정지/탈퇴 등) 고정을 풀고 랜덤으로 대체한다.
+            locked.ifPresent(o -> rouletteOpponentRepository.deleteByUserId(userId));
+            opponentId = userService.findRandomActiveUserIdExcluding(userId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.ROULETTE_OPPONENT_NOT_FOUND));
+            opponentLocked = false;
         }
 
-        long rolledAmount = ThreadLocalRandom.current()
-                .nextLong(rouletteProperties.minAmount(), rouletteProperties.maxAmount() + 1);
+        User opponent = userService.findById(opponentId);
 
-        // 1단계: 피해자 -> 시스템 (몰수). 포인트는 항상 시스템 계정을 거쳐야 하므로 유저-유저 직접 이체는 하지 않는다.
-        TransactionResponse collected;
-        try {
-            collected = transactionService.collectForRoulette(victimId.get(), rolledAmount, "일일 포인트 룰렛 몰수");
-        } catch (CustomException e) {
-            // 피해자가 몰수 도중 정지되는 등 드문 레이스 -> 아직 아무 것도 옮기지 않았으므로 그냥 스킵
-            log.warn("[포인트 룰렛] 몰수 실패, 스킵 처리. winnerId={}, victimId={}", userId, victimId.get(), e);
-            return RouletteOutcome.none();
-        }
-        long actualAmount = collected.amount();
-
-        // 2단계: 시스템 -> 당첨자 (지급). 당첨자 계좌 락 이후 "오늘 이미 지급받았는지"를 재검증한다.
-        Optional<TransactionResponse> granted;
-        try {
-            granted = transactionService.grantForRouletteIfEligible(userId, actualAmount, "일일 포인트 룰렛 당첨");
-        } catch (CustomException e) {
-            // 당첨자가 지급 도중 정지되는 등 드문 레이스 -> 아래 환불 분기로 흘려보냄
-            log.warn("[포인트 룰렛] 지급 실패, 환불 처리. winnerId={}, victimId={}", userId, victimId.get(), e);
-            granted = Optional.empty();
+        long fee = Math.round(betAmount * rouletteProperties.feeRate());
+        if (fee > 0) {
+            transactionService.collectRouletteFee(userId, fee, "룰렛 수수료");
         }
 
-        if (granted.isEmpty()) {
-            // 검증 실패(동시 로그인으로 이미 오늘 지급됨 등) -> 이미 몰수한 만큼 피해자에게 환불
-            if (actualAmount > 0) {
-                transactionService.grant(victimId.get(), actualAmount, "일일 포인트 룰렛 환불 - 중복 지급 감지");
-            }
-            return RouletteOutcome.none();
-        }
+        boolean win = ThreadLocalRandom.current().nextDouble() < rouletteProperties.winProbability();
+        Long winnerId = win ? userId : opponentId;
+        Long loserId = win ? opponentId : userId;
 
-        if (actualAmount > 0) {
+        TransactionResponse settled = transactionService.settleRouletteDuel(loserId, winnerId, betAmount, "포인트 룰렛");
+        long resultAmount = settled.amount();
+
+        // initiator가 이겨서 상대(수동적으로 참여한 쪽)가 뺏긴 경우에만 알린다.
+        // initiator가 진 경우는 이 스핀 응답 자체로 이미 결과를 알고 있으므로 별도 알림이 필요 없다.
+        if (win && resultAmount > 0) {
             eventPublisher.publishEvent(new NotificationEvent(
-                    victimId.get(), userId, NotificationType.POINT_STOLEN, null, null, false, actualAmount
+                    opponentId, userId, NotificationType.POINT_STOLEN, null, null, false, resultAmount
             ));
         }
 
-        return RouletteOutcome.spun(actualAmount);
+        long balanceAfter = pointService.getPointByUserId(userId).balance();
+
+        return new RouletteSpinResponse(
+                win, betAmount, fee, resultAmount, balanceAfter, opponentId, opponent.getNickname(), opponentLocked);
     }
 
-    private boolean alreadyPlayedToday(Long userId) {
-        return transactionRepository.existsByRecipientIdAndTypeAndCreatedAtGreaterThanEqual(
-                userId, TransactionType.ROULETTE, kstDateUtils.startOfToday());
+    @Transactional
+    public void lockOpponent(Long userId, Long opponentId) {
+        if (userId.equals(opponentId)) {
+            throw new CustomException(ErrorCode.SELF_OPPONENT_NOT_ALLOWED);
+        }
+        if (!isEligibleOpponent(userId, opponentId)) {
+            throw new CustomException(ErrorCode.ROULETTE_OPPONENT_NOT_FOUND);
+        }
+
+        rouletteOpponentRepository.findByUserId(userId)
+                .ifPresentOrElse(
+                        existing -> existing.changeOpponent(opponentId),
+                        () -> rouletteOpponentRepository.save(
+                                RouletteOpponent.builder().userId(userId).opponentId(opponentId).build())
+                );
+    }
+
+    @Transactional
+    public void unlockOpponent(Long userId) {
+        rouletteOpponentRepository.deleteByUserId(userId);
+    }
+
+    public Optional<RouletteOpponentResponse> getOpponent(Long userId) {
+        return rouletteOpponentRepository.findByUserId(userId)
+                .map(o -> new RouletteOpponentResponse(
+                        o.getOpponentId(), userService.findById(o.getOpponentId()).getNickname()));
+    }
+
+    // 자기 자신·ROOT·비활성 유저는 상대로 지정할 수 없다 (랜덤 선정 시 이미 걸려있는 제약과 동일 기준)
+    private boolean isEligibleOpponent(Long userId, Long opponentId) {
+        if (userId.equals(opponentId)) {
+            return false;
+        }
+        User opponent;
+        try {
+            opponent = userService.findById(opponentId);
+        } catch (CustomException e) {
+            return false;
+        }
+        return opponent.getStatus() == UserStatus.ACTIVE && opponent.getRole() != UserRole.ROOT;
     }
 }

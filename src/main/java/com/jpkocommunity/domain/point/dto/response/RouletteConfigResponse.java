@@ -1,0 +1,11 @@
+package com.jpkocommunity.domain.point.dto.response;
+
+import com.jpkocommunity.global.config.RouletteProperties;
+
+// 룰렛 베팅 제약. 승률은 의도적으로 노출하지 않는다.
+public record RouletteConfigResponse(long betUnit, long minBet, long maxBet, double feeRate) {
+    public static RouletteConfigResponse from(RouletteProperties properties) {
+        return new RouletteConfigResponse(
+                properties.betUnit(), properties.minBet(), properties.maxBet(), properties.feeRate());
+    }
+}

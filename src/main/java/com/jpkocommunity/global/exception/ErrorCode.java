@@ -89,7 +89,12 @@ public enum ErrorCode {
     LOADPOINT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "포인트 로딩 중 오류가 발생했습니다."),
     INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "포인트 잔액이 부족합니다."),
     INVALID_TRANSACTION_AMOUNT(HttpStatus.BAD_REQUEST, "거래 금액은 0보다 커야 합니다."),
-    SYSTEM_ACCOUNT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "시스템 포인트 계정을 찾을 수 없습니다.");
+    SYSTEM_ACCOUNT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "시스템 포인트 계정을 찾을 수 없습니다."),
+
+    // Roulette
+    INVALID_BET_AMOUNT(HttpStatus.BAD_REQUEST, "배팅액이 설정된 단위·범위를 벗어났습니다."),
+    ROULETTE_OPPONENT_NOT_FOUND(HttpStatus.CONFLICT, "대결할 상대를 찾을 수 없습니다."),
+    SELF_OPPONENT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인을 상대로 지정할 수 없습니다.");
 
 
     private final HttpStatus status;

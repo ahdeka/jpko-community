@@ -22,7 +22,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             """)
     Page<Transaction> findBySenderOrRecipient(@Param("user") User user, Pageable pageable);
 
-    // "오늘 이미 룰렛을 돌렸는지" 판정용
+    // "오늘 이미 출첵했는지" 판정용 (플러스 결과 -> recipient=유저)
     boolean existsByRecipientIdAndTypeAndCreatedAtGreaterThanEqual(
             Long recipientId, TransactionType type, LocalDateTime createdAtFrom);
+
+    // "오늘 이미 출첵했는지" 판정용 (마이너스 결과 -> sender=유저)
+    boolean existsBySenderIdAndTypeAndCreatedAtGreaterThanEqual(
+            Long senderId, TransactionType type, LocalDateTime createdAtFrom);
 }

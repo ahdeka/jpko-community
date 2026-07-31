@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
  *      - MailProperties를 스프링 컨테이너에 등록
  *      - ThrottleProperties를 스프링 컨테이너에 등록
  *      - ImageProcessingProperties를 스프링 컨테이너에 등록
+ *      - CheckInProperties를 스프링 컨테이너에 등록
  *      - RouletteProperties를 스프링 컨테이너에 등록
  */
 @Configuration
@@ -21,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
         MailProperties.class,
         ThrottleProperties.class,
         ImageProcessingProperties.class,
+        CheckInProperties.class,
         RouletteProperties.class
 })
 public class PropertiesConfig {
