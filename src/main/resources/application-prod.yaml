@@ -31,3 +31,8 @@ cloud:
 
 mail:
   base-url: https://www.jpkocommunity.site
+
+turnstile:
+  enabled: true
+  secret-key: ${TURNSTILE_SECRET_KEY:}
+  verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify

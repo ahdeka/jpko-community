@@ -27,7 +27,7 @@ import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.ThrottleLockClassifier;
-import com.jpkocommunity.global.config.ThrottleProperties;
+import com.jpkocommunity.global.config.properties.ThrottleProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.auth.AuthUser;

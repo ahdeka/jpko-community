@@ -14,7 +14,7 @@ import com.jpkocommunity.domain.point.service.RouletteService;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
-import com.jpkocommunity.global.config.JwtProperties;
+import com.jpkocommunity.global.config.properties.JwtProperties;
 import com.jpkocommunity.global.config.VerificationTokenProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
@@ -40,14 +40,16 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final JwtProperties jwtProperties;
     private final VerificationTokenRepository verificationTokenRepository;
-    private final EmailService emailService;
     private final EmailDomainValidator emailDomainValidator;
     private final VerificationTokenProperties verificationTokenProperties;
     private final ApplicationEventPublisher eventPublisher;
     private final RouletteService rouletteService;
+    private final TurnstileService turnstileService;
 
     @Transactional
     public LoginResult signup(SignupRequest request, String deviceInfo, String ipAddress) {
+        turnstileService.verify(request.turnstileToken(), ipAddress);
+
         if (!request.password().equals(request.passwordConfirm())) {
             throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
         }

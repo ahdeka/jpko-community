@@ -7,7 +7,7 @@ import com.jpkocommunity.domain.point.dto.response.TransactionResponse;
 import com.jpkocommunity.domain.point.entity.TransactionType;
 import com.jpkocommunity.domain.point.repository.TransactionRepository;
 import com.jpkocommunity.domain.user.service.UserService;
-import com.jpkocommunity.global.config.RouletteProperties;
+import com.jpkocommunity.global.config.properties.RouletteProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.util.KstDateUtils;
 import lombok.RequiredArgsConstructor;
