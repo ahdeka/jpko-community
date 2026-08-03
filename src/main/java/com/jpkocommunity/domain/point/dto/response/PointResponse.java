@@ -1,7 +1,9 @@
 package com.jpkocommunity.domain.point.dto.response;
 
 import com.jpkocommunity.domain.point.entity.Point;
+import lombok.Builder;
 
+@Builder
 public record PointResponse(
         Long userId,
         Long balance

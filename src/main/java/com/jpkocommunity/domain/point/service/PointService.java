@@ -2,6 +2,7 @@ package com.jpkocommunity.domain.point.service;
 
 import com.jpkocommunity.domain.point.dto.LockedAccount;
 import com.jpkocommunity.domain.point.dto.response.PointResponse;
+import com.jpkocommunity.domain.point.dto.response.TransactionResponse;
 import com.jpkocommunity.domain.point.entity.Point;
 import com.jpkocommunity.domain.point.entity.Transaction;
 import com.jpkocommunity.domain.point.entity.TransactionType;
@@ -14,22 +15,36 @@ import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+// 포인트 계좌(Point)와 원장(Transaction)을 함께 관리하는 단일 서비스.
+// move(): 포인트 이동(잠금 -> 잔액 변경 -> 원장 기록을 원자적으로 수행)
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class PointService {
 
     private final PointRepository pointRepository;
-    private final UserService userService;
     private final TransactionRepository transactionRepository;
+    private final UserService userService;
 
     public PointResponse getPointByUserId(Long userId) {
         return PointResponse.from(getOrCreateAccount(userId));
+    }
+
+    public Page<TransactionResponse> getMyTransactions(Long userId, Pageable pageable) {
+        User user = userService.findById(userId);
+        return transactionRepository.findBySenderOrRecipient(user, pageable)
+                .map(TransactionResponse::from);
     }
 
     // userId가 null이면 시스템 계정을 반환
@@ -59,13 +74,32 @@ public class PointService {
         return locked;
     }
 
+    // 잠금이 끝난 두 계좌 사이에 잔액 이동 + 원장 기록을 원자적으로 수행하는 포인트 이동
+    @Transactional
+    TransactionResponse move(LockedAccount from, LockedAccount to, long amount, TransactionType type, String message) {
+        if (amount < 0) {
+            throw new CustomException(ErrorCode.INVALID_TRANSACTION_AMOUNT);
+        }
+
+        long prevFromBalance = from.point().getBalance();
+        long prevToBalance = to.point().getBalance();
+
+        from.point().debit(amount);
+        to.point().credit(amount);
+
+        Transaction transaction = saveTransaction(
+                from.user(), to.user(), amount, type, message,
+                prevFromBalance, from.point().getBalance(),
+                prevToBalance, to.point().getBalance());
+        return TransactionResponse.from(transaction);
+    }
+
     private LockedAccount lockAccount(Long userId) {
         if (userId == null) {
             Point systemPoint = pointRepository.findSystemAccountForUpdate()
                     .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));
             return new LockedAccount(null, systemPoint, null);
         }
-
         User user = userService.findById(userId);
         validateActive(user);
         Point point = pointRepository.findByUserForUpdate(user)
@@ -96,16 +130,28 @@ public class PointService {
                     .orElseThrow(() -> new CustomException(ErrorCode.INTERNAL_ERROR));
         }
 
-        transactionRepository.save(Transaction.builder()
-                .sender(null)
-                .recipient(user)
-                .amount(0L)
-                .type(TransactionType.ACCOUNT_OPENED)
-                .prevRecipientBalance(0L)
-                .postRecipientBalance(0L)
-                .message("Account created")
-                .build());
+        saveTransaction(null, user, 0L, TransactionType.ACCOUNT_OPENED, "Account created",
+                null, null, 0L, 0L);
 
         return account;
+    }
+
+    // 잔액 계산 없이 "이런 내용의 Transaction 한 줄"을 저장하는 것만 담당하는 헬퍼.
+    private Transaction saveTransaction(
+            User sender, User recipient, long amount, TransactionType type, String message,
+            Long prevSenderBalance, Long postSenderBalance,
+            Long prevRecipientBalance, Long postRecipientBalance
+    ) {
+        return transactionRepository.save(Transaction.builder()
+                .sender(sender)
+                .recipient(recipient)
+                .amount(amount)
+                .type(type)
+                .prevSenderBalance(prevSenderBalance)
+                .postSenderBalance(postSenderBalance)
+                .prevRecipientBalance(prevRecipientBalance)
+                .postRecipientBalance(postRecipientBalance)
+                .message(message)
+                .build());
     }
 }

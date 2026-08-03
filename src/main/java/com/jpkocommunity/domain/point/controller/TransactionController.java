@@ -1,7 +1,7 @@
 package com.jpkocommunity.domain.point.controller;
 
 import com.jpkocommunity.domain.point.dto.response.TransactionResponse;
-import com.jpkocommunity.domain.point.service.TransactionService;
+import com.jpkocommunity.domain.point.service.PointService;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
 import lombok.RequiredArgsConstructor;
@@ -19,13 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/transactions")
 @RequiredArgsConstructor
 public class TransactionController {
-    private final TransactionService transactionService;
+    private final PointService pointService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TransactionResponse>>> getMyTransactions(
             @AuthenticationPrincipal AuthUser authUser,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(transactionService.getMyTransactions(authUser.userId(), pageable)));
+        return ResponseEntity.ok(ApiResponse.ok(pointService.getMyTransactions(authUser.userId(), pageable)));
     }
 }

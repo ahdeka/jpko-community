@@ -19,6 +19,10 @@ app:
     comment-interval-seconds: 5
   image:
     gif2webp-path: gif2webp
+  points:
+    create-post: 50
+    create-comment: 10
+    get-um-ji-cheok: 10
   checkin:
     unit: 50 # 지급액은 항상 이 값의 배수로만 나온다
     ranges:

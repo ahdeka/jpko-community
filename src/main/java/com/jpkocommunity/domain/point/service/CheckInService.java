@@ -25,7 +25,6 @@ public class CheckInService {
 
     private final TransactionRepository transactionRepository;
     private final PointService pointService;
-    private final TransactionService transactionService;
     private final CheckInProperties checkInProperties;
     private final KstDateUtils kstDateUtils;
 
@@ -54,13 +53,13 @@ public class CheckInService {
             LockedAccount user = locked.get(userId);
 
             if (rolledAmount >= 0) {
-                TransactionResponse tx = transactionService.record(
+                TransactionResponse tx = pointService.move(
                         system, user, rolledAmount, TransactionType.CHECKIN, "일일 출첵");
                 return CheckInOutcome.checkedIn(tx.amount());
             }
 
             long actualAmount = Math.min(-rolledAmount, user.point().getBalance()); // 락 이후 계산 -> TOCTOU 없음
-            TransactionResponse tx = transactionService.record(
+            TransactionResponse tx = pointService.move(
                     user, system, actualAmount, TransactionType.CHECKIN, "일일 출첵");
             return CheckInOutcome.checkedIn(-tx.amount());
         } catch (CustomException e) {
