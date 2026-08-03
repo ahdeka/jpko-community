@@ -72,8 +72,8 @@ public class UserService {
     }
 
     // 일일 포인트 룰렛 피해자 선정용
-    public Optional<Long> findRandomActiveUserIdExcluding(Long excludeUserId) {
-        return userRepository.findRandomActiveUserIdExcluding(excludeUserId);
+    public Optional<Long> findRandomActiveUserIdExcluding(Long excludeUserId, long betAmount) {
+        return userRepository.findRandomActiveUserIdExcluding(excludeUserId, betAmount);
     }
 
 
