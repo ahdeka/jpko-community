@@ -30,7 +30,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class RouletteService {
 
     private final RouletteOpponentRepository rouletteOpponentRepository;
-    private final TransactionService transactionService;
     private final PointService pointService;
     private final UserService userService;
     private final RouletteProperties rouletteProperties;
@@ -80,7 +79,7 @@ public class RouletteService {
         }
 
         if (fee > 0) {
-            transactionService.record(initiator, system, fee, TransactionType.ROULETTE_FEE, "Roulette fee");
+            pointService.move(initiator, system, fee, TransactionType.ROULETTE_FEE, "룰렛 수수료");
         }
 
         boolean win = ThreadLocalRandom.current().nextDouble() < rouletteProperties.winProbability();
@@ -90,8 +89,7 @@ public class RouletteService {
         Long loserId = win ? opponentId : userId;
 
         long actualAmount = Math.min(betAmount, loserAccount.point().getBalance());
-        transactionService.record(loserAccount, system, actualAmount, TransactionType.ROULETTE, "Roulette");
-        transactionService.record(system, winnerAccount, actualAmount, TransactionType.ROULETTE, "Roulette");
+        pointService.move(loserAccount, winnerAccount, actualAmount, TransactionType.ROULETTE, "포인트 룰렛");
 
         // 승자/패자 모두에게 알린다 — initiator든 상대(수동적으로 참여한 쪽)든 결과와 무관하게 동일하게 처리한다.
         // (initiator는 이 스핀 응답으로 결과를 이미 알지만, 알림 목록/벨에도 동일하게 남도록 별도로 발행한다)
