@@ -53,7 +53,7 @@ public class RouletteService {
         Optional<RouletteOpponent> locked = rouletteOpponentRepository.findByUserId(userId);
         boolean opponentLocked;
         Long opponentId;
-        if (locked.isPresent() && isEligibleOpponent(userId, locked.get().getOpponentId(), betAmount + fee)) {
+        if (locked.isPresent() && isEligibleOpponent(userId, locked.get().getOpponentId(), betAmount)) {
             opponentId = locked.get().getOpponentId();
             opponentLocked = true;
         } else {
@@ -115,7 +115,7 @@ public class RouletteService {
         if (userId.equals(opponentId)) {
             throw new CustomException(ErrorCode.SELF_OPPONENT_NOT_ALLOWED);
         }
-        if (!isEligibleOpponent(userId, opponentId, betAmount + fee)) {
+        if (!isEligibleOpponent(userId, opponentId, betAmount)) {
             throw new CustomException(ErrorCode.ROULETTE_OPPONENT_NOT_FOUND);
         }
 
