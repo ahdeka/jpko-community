@@ -22,11 +22,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             """)
     Page<Transaction> findBySenderOrRecipient(@Param("user") User user, Pageable pageable);
 
-    // "오늘 이미 출첵했는지" 판정용 (플러스 결과 -> recipient=유저)
-    boolean existsByRecipientIdAndTypeAndCreatedAtGreaterThanEqual(
-            Long recipientId, TransactionType type, LocalDateTime createdAtFrom);
-
-    // "오늘 이미 출첵했는지" 판정용 (마이너스 결과 -> sender=유저)
-    boolean existsBySenderIdAndTypeAndCreatedAtGreaterThanEqual(
-            Long senderId, TransactionType type, LocalDateTime createdAtFrom);
+    // 유저가 관여한 거래가 since 이후로 존재하는지 확인
+    // -> 출첵 이미 했는지 등에 사용
+    @Query("""
+            select case when count(t) > 0 then true else false end from Transaction t
+            where t.type = :type and t.createdAt >= :since and 
+            (t.sender.id = :userId or t.recipient.id = :userId)
+            """)
+    boolean existsByUserAndTypeSince(
+            @Param("userId") Long userId,
+            @Param("type") TransactionType type,
+            @Param("since") LocalDateTime since
+    );
 }

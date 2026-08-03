@@ -1,5 +1,6 @@
 package com.jpkocommunity.domain.point.service;
 
+import com.jpkocommunity.domain.point.dto.LockedAccount;
 import com.jpkocommunity.domain.point.dto.response.PointResponse;
 import com.jpkocommunity.domain.point.entity.Point;
 import com.jpkocommunity.domain.point.entity.Transaction;
@@ -7,6 +8,7 @@ import com.jpkocommunity.domain.point.entity.TransactionType;
 import com.jpkocommunity.domain.point.repository.PointRepository;
 import com.jpkocommunity.domain.point.repository.TransactionRepository;
 import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
@@ -14,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -39,18 +43,55 @@ public class PointService {
                 .orElseGet(() -> createAccount(user));
     }
 
-    // 계정에 비관적 잠금을 건 채로 조회
-    // 없으면 생성
+    // 여러 계좌 동시에 락
+    // 시스템 계정 -> 유저 id 오름차순으로 잠금
+    // 잠그기 전 활성 상태 검증 -> 정지 유저 차단
     @Transactional
-    Point lockAccountForUpdate(Long userId) {
-        if (userId == null) {
-            return pointRepository.findSystemAccountForUpdate()
-                    .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));
+    Map<Long, LockedAccount> lockAccounts(Long... userIds) {
+        List<Long> lockOrder = Arrays.stream(userIds).distinct()
+                .sorted(Comparator.nullsFirst(Comparator.naturalOrder()))
+                .toList();
+
+        Map<Long, LockedAccount> locked = new HashMap<>();
+        for (Long userId : lockOrder) {
+            locked.put(userId, lockAccount(userId));
         }
-        User user = userService.findById(userId);
-        return pointRepository.findByUserForUpdate(user)
-                .orElseGet(() -> createAccount(user));
+        return locked;
     }
+
+    private LockedAccount lockAccount(Long userId) {
+        if (userId == null) {
+            Point systemPoint = pointRepository.findSystemAccountForUpdate()
+                    .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));
+            return new LockedAccount(null, systemPoint, null);
+        }
+
+        User user = userService.findById(userId);
+        validateActive(user);
+        Point point = pointRepository.findByUserForUpdate(user)
+                .orElseGet(() -> createAccount(user));
+        return new LockedAccount(userId, point, user);
+    }
+
+    private void validateActive(User user) {
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
+        }
+    }
+
+
+//    // 계정에 비관적 잠금을 건 채로 조회
+//    // 없으면 생성
+//    @Transactional
+//    Point lockAccountForUpdate(Long userId) {
+//        if (userId == null) {
+//            return pointRepository.findSystemAccountForUpdate()
+//                    .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));
+//        }
+//        User user = userService.findById(userId);
+//        return pointRepository.findByUserForUpdate(user)
+//                .orElseGet(() -> createAccount(user));
+//    }
 
     private Point getSystemAccount() {
         return pointRepository.findByUserIsNull()

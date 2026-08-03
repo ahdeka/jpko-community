@@ -39,3 +39,7 @@ out/
 ### Environment ###
 .env
 application-dev.yaml
+
+
+### DOCS ###
+docs/
