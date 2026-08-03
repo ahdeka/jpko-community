@@ -29,14 +29,23 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // ROOT는 정지/권한변경 등 다른 관리 기능에서도 보호 대상이라 룰렛 피해자에서도 제외한다.
     // ORDER BY RANDOM()은 대상 row 전체에 난수를 매겨 정렬해야 해서 유저가 많아지면 느려짐 ->
     // COUNT로 대상 수를 센 뒤 그 범위 안에서 OFFSET만 무작위로 골라 정렬 없이 1건만 읽는다.
+    // src/main/java/com/jpkocommunity/domain/user/repository/UserRepository.java
+
     @Query(value = """
-            SELECT id FROM users
-            WHERE status = 'ACTIVE' AND role <> 'ROOT' AND id <> :excludeUserId
-            OFFSET floor(random() * (
-                SELECT COUNT(*) FROM users
-                WHERE status = 'ACTIVE' AND role <> 'ROOT' AND id <> :excludeUserId
-            ))::bigint
-            LIMIT 1
-            """, nativeQuery = true)
-    Optional<Long> findRandomActiveUserIdExcluding(@Param("excludeUserId") Long excludeUserId);
+        SELECT u.id FROM users u
+        JOIN points p ON p.user_id = u.id
+        WHERE u.status = 'ACTIVE' AND u.role <> 'ROOT' AND u.id <> :excludeUserId
+          AND u.email_verified = true
+          AND p.balance >= :betAmount
+        OFFSET floor(random() * (
+            SELECT COUNT(*) FROM users u2
+            JOIN points p2 ON p2.user_id = u2.id
+            WHERE u2.status = 'ACTIVE' AND u2.role <> 'ROOT' AND u2.id <> :excludeUserId
+              AND u2.email_verified = true
+              AND p2.balance >= :betAmount
+        ))::bigint
+        LIMIT 1
+        """, nativeQuery = true)
+    Optional<Long> findRandomActiveUserIdExcluding(
+            @Param("excludeUserId") Long excludeUserId, @Param("betAmount") long betAmount);
 }

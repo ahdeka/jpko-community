@@ -79,20 +79,6 @@ public class PointService {
         }
     }
 
-
-//    // 계정에 비관적 잠금을 건 채로 조회
-//    // 없으면 생성
-//    @Transactional
-//    Point lockAccountForUpdate(Long userId) {
-//        if (userId == null) {
-//            return pointRepository.findSystemAccountForUpdate()
-//                    .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));
-//        }
-//        User user = userService.findById(userId);
-//        return pointRepository.findByUserForUpdate(user)
-//                .orElseGet(() -> createAccount(user));
-//    }
-
     private Point getSystemAccount() {
         return pointRepository.findByUserIsNull()
                 .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));

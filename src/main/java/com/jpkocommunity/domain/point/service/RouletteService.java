@@ -5,7 +5,6 @@ import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.point.dto.LockedAccount;
 import com.jpkocommunity.domain.point.dto.response.RouletteOpponentResponse;
 import com.jpkocommunity.domain.point.dto.response.RouletteSpinResponse;
-import com.jpkocommunity.domain.point.dto.response.TransactionResponse;
 import com.jpkocommunity.domain.point.entity.RouletteOpponent;
 import com.jpkocommunity.domain.point.entity.TransactionType;
 import com.jpkocommunity.domain.point.repository.RouletteOpponentRepository;
@@ -41,28 +40,31 @@ public class RouletteService {
     // 수수료 징수 + 대결 정산을 하나의 트랜잭션에서 원자적으로 처리한다.
     @Transactional
     public RouletteSpinResponse spin(Long userId, long betAmount) {
+        long fee = Math.round(betAmount * rouletteProperties.feeRate());
+
         if (!rouletteProperties.isValidBet(betAmount)) {
             throw new CustomException(ErrorCode.INVALID_BET_AMOUNT);
+        }
+
+        if (!userService.findById(userId).isEmailVerified()) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED_ROULETTE);
         }
 
         Optional<RouletteOpponent> locked = rouletteOpponentRepository.findByUserId(userId);
         boolean opponentLocked;
         Long opponentId;
-        if (locked.isPresent() && isEligibleOpponent(userId, locked.get().getOpponentId())) {
+        if (locked.isPresent() && isEligibleOpponent(userId, locked.get().getOpponentId(), betAmount + fee)) {
             opponentId = locked.get().getOpponentId();
             opponentLocked = true;
         } else {
             // 고정된 상대가 더 이상 유효하지 않으면(정지/탈퇴 등) 고정을 풀고 랜덤으로 대체한다.
             locked.ifPresent(o -> rouletteOpponentRepository.deleteByUserId(userId));
-            opponentId = userService.findRandomActiveUserIdExcluding(userId)
+            opponentId = userService.findRandomActiveUserIdExcluding(userId, betAmount)
                     .orElseThrow(() -> new CustomException(ErrorCode.ROULETTE_OPPONENT_NOT_FOUND));
             opponentLocked = false;
         }
 
         User opponent = userService.findById(opponentId);
-
-        long fee = Math.round(betAmount * rouletteProperties.feeRate());
-
 
         // 시작 전 계정 잠금
         Map<Long, LockedAccount> accounts = pointService.lockAccounts(null, userId, opponentId);
@@ -107,11 +109,13 @@ public class RouletteService {
     }
 
     @Transactional
-    public void lockOpponent(Long userId, Long opponentId) {
+    public void lockOpponent(Long userId, Long opponentId, long betAmount) {
+        long fee = Math.round(betAmount * rouletteProperties.feeRate());
+
         if (userId.equals(opponentId)) {
             throw new CustomException(ErrorCode.SELF_OPPONENT_NOT_ALLOWED);
         }
-        if (!isEligibleOpponent(userId, opponentId)) {
+        if (!isEligibleOpponent(userId, opponentId, betAmount + fee)) {
             throw new CustomException(ErrorCode.ROULETTE_OPPONENT_NOT_FOUND);
         }
 
@@ -135,7 +139,7 @@ public class RouletteService {
     }
 
     // 자기 자신·ROOT·비활성 유저는 상대로 지정할 수 없다 (랜덤 선정 시 이미 걸려있는 제약과 동일 기준)
-    private boolean isEligibleOpponent(Long userId, Long opponentId) {
+    private boolean isEligibleOpponent(Long userId, Long opponentId, Long betAmount) {
         if (userId.equals(opponentId)) {
             return false;
         }
@@ -145,6 +149,6 @@ public class RouletteService {
         } catch (CustomException e) {
             return false;
         }
-        return opponent.getStatus() == UserStatus.ACTIVE && opponent.getRole() != UserRole.ROOT;
+        return opponent.getStatus() == UserStatus.ACTIVE && opponent.getRole() != UserRole.ROOT && opponent.isEmailVerified() && pointService.getPointByUserId(opponentId).balance() >= betAmount;
     }
 }
