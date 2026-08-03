@@ -7,6 +7,8 @@ import com.jpkocommunity.domain.comment.entity.Comment;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
+import com.jpkocommunity.domain.point.entity.GrantType;
+import com.jpkocommunity.domain.point.service.PointService;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.service.PostService;
 import com.jpkocommunity.domain.report.entity.ReportTargetType;
@@ -15,6 +17,7 @@ import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.ThrottleLockClassifier;
+import com.jpkocommunity.global.config.properties.PointProperties;
 import com.jpkocommunity.global.config.properties.ThrottleProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
@@ -38,6 +41,8 @@ public class CommentService {
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
     private final ThrottleProperties throttleProperties;
+    private final PointProperties pointProperties;
+    private final PointService pointService;
 
     public List<CommentResponse> getComments(Long postId, Long currentUserId) {
         postService.findActivePostById(postId);
@@ -68,6 +73,12 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
         publishNotificationEvent(saved, post, parent, userId);
+
+        // 본인 게시글에 남긴 댓글은 포인트 지급 대상에서 제외
+        if (!post.getUser().getId().equals(userId)) {
+            int point = pointProperties.getPoints().get("create-comment");
+            pointService.grantPointByActivity(userId, (long) point, "Comment: " + comment.getId(), postId, comment.getId(), GrantType.COMMENT);
+        }
 
         return request.parentId() == null
                 ? CommentResponse.from(saved, userId)

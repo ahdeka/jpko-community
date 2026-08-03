@@ -12,6 +12,8 @@ import com.jpkocommunity.domain.notice.dto.response.NoticeSummaryResponse;
 import com.jpkocommunity.domain.notice.service.NoticeService;
 import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
+import com.jpkocommunity.domain.point.entity.GrantType;
+import com.jpkocommunity.domain.point.service.PointService;
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
 import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
 import com.jpkocommunity.domain.post.dto.request.SearchType;
@@ -27,6 +29,7 @@ import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.ThrottleLockClassifier;
+import com.jpkocommunity.global.config.properties.PointProperties;
 import com.jpkocommunity.global.config.properties.ThrottleProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
@@ -65,6 +68,8 @@ public class PostService {
     private final ImageService imageService;
     private final ApplicationEventPublisher eventPublisher;
     private final ThrottleProperties throttleProperties;
+    private final PointProperties pointProperties;
+    private final PointService pointService;
 
     private List<PostSummaryResponse> toSummaryList(List<Post> posts) {
         List<Long> postIds = posts.stream().map(Post::getId).toList();
@@ -186,6 +191,9 @@ public class PostService {
 
         String movedContent = imageService.moveTempImagesToPost(sanitizedContent, post.getId());
         post.confirmContent(movedContent);
+
+        int point = pointProperties.getPoints().get("create-post");
+        pointService.grantPointByActivity(userId, (long) point, "Post: " + post.getId(), post.getId(), null, GrantType.POST);
         return PostResponse.from(post.getId());
     }
 

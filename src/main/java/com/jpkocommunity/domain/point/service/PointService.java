@@ -1,8 +1,11 @@
 package com.jpkocommunity.domain.point.service;
 
+import com.jpkocommunity.domain.notification.entity.NotificationType;
+import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.point.dto.LockedAccount;
 import com.jpkocommunity.domain.point.dto.response.PointResponse;
 import com.jpkocommunity.domain.point.dto.response.TransactionResponse;
+import com.jpkocommunity.domain.point.entity.GrantType;
 import com.jpkocommunity.domain.point.entity.Point;
 import com.jpkocommunity.domain.point.entity.Transaction;
 import com.jpkocommunity.domain.point.entity.TransactionType;
@@ -14,6 +17,7 @@ import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +40,7 @@ public class PointService {
     private final PointRepository pointRepository;
     private final TransactionRepository transactionRepository;
     private final UserService userService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PointResponse getPointByUserId(Long userId) {
         return PointResponse.from(getOrCreateAccount(userId));
@@ -46,6 +51,32 @@ public class PointService {
         return transactionRepository.findBySenderOrRecipient(user, pageable)
                 .map(TransactionResponse::from);
     }
+
+    public TransactionResponse grantPointByActivity(Long userId, long amount, String message, Long postId, Long commentId, GrantType grantType) {
+        // 포인트 리워드는 이메일 인증을 받은 유저만
+        if (!userService.findById(userId).isEmailVerified()) {
+            return null;
+        }
+
+        Map<Long, LockedAccount> accounts = lockAccounts(null, userId);
+        LockedAccount system = accounts.get(null);
+        LockedAccount target = accounts.get(userId);
+
+        TransactionResponse res = move(system, target, amount, TransactionType.GRANT, message);
+
+        NotificationType notificationType = switch (grantType) {
+            case LIKE -> NotificationType.LIKE_REWARD;
+            case POST -> NotificationType.POST_REWARD;
+            case COMMENT -> NotificationType.COMMENT_REWARD;
+        };
+
+        eventPublisher.publishEvent(new NotificationEvent(
+                userId, null, notificationType, postId, commentId, false, amount
+        ));
+
+        return res;
+    }
+
 
     // userId가 null이면 시스템 계정을 반환
     // 잠금 없이 조회만 할 때 사용

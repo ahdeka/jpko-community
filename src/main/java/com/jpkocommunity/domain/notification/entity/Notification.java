@@ -22,8 +22,9 @@ public class Notification extends BaseEntity {
     @JoinColumn(name = "receiver_id", nullable = false)
     private User receiver;
 
+    // 시스템이 발행하는 알림(게시글 작성 포인트 지급 등)은 null
     @ManyToOne(fetch = LAZY)
-    @JoinColumn(name = "sender_id", nullable = false)
+    @JoinColumn(name = "sender_id")
     private User sender;
 
     @Enumerated(EnumType.STRING)

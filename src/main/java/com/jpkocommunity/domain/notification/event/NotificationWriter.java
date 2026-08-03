@@ -38,7 +38,7 @@ public class NotificationWriter {
 
         Notification notification = Notification.builder()
                 .receiver(userRepository.getReferenceById(event.receiverId()))
-                .sender(userRepository.getReferenceById(event.senderId()))
+                .sender(event.senderId() != null ? userRepository.getReferenceById(event.senderId()) : null)
                 .type(event.type())
                 .post(event.postId() != null ? postRepository.getReferenceById(event.postId()) : null)
                 .comment(event.commentId() != null ? commentRepository.getReferenceById(event.commentId()) : null)
