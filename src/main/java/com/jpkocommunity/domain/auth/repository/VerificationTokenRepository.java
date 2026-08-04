@@ -23,4 +23,6 @@ public interface VerificationTokenRepository extends JpaRepository<VerificationT
     int deleteAllExpired(@Param("now") LocalDateTime now);
 
     long deleteByUserId(Long userId);
+
+    void deleteByEmailAndType(String email, VerificationTokenType type);
 }

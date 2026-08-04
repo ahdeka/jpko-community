@@ -11,7 +11,8 @@ public record UserInfoResponse(
         UserRole role,
         String bio,
         boolean emailVerified,
-        UserGrade grade
+        UserGrade grade,
+        boolean needsOnboarding
 ) {
     public static UserInfoResponse from(User user) {
         return new UserInfoResponse(
@@ -21,7 +22,8 @@ public record UserInfoResponse(
                 user.getRole(),
                 user.getBio(),
                 user.isEmailVerified(),
-                user.getGrade()
+                user.getGrade(),
+                !user.isFullyOnboarded()
         );
     }
 }

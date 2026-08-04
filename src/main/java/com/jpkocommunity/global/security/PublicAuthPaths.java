@@ -17,6 +17,7 @@ public final class PublicAuthPaths {
             "/api/auth/email-verification/confirm",
             "/api/auth/email-verification/resend",
             "/api/auth/password-reset/request",
-            "/api/auth/password-reset/confirm"
+            "/api/auth/password-reset/confirm",
+            "/api/auth/email/confirm"
     );
 }

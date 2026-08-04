@@ -1,12 +1,14 @@
 package com.jpkocommunity.global.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jpkocommunity.domain.auth.repository.UserAuthProjection;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
+import com.jpkocommunity.global.security.OnboardingAllowedPaths;
 import com.jpkocommunity.global.security.PublicAuthPaths;
 import com.jpkocommunity.global.security.auth.AuthUser;
 import jakarta.servlet.FilterChain;
@@ -26,6 +28,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -38,6 +41,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
+
+    // 온보딩전 계정들은 읽기만 허용 TODO 마이그레이션 끝나면 정리
+    private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
     // EXCLUDED_PATHS 요청은 필터 자체를 건너뜀
     @Override
@@ -62,8 +68,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserRole role = jwtProvider.getRole(token);
 
             // 매 요청마다 실시간 유저 상태 확인
-            if (!userRepository.existsByIdAndStatus(userId, UserStatus.ACTIVE)) {
+            UserAuthProjection auth = userRepository.findAuthProjectionById(userId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.ONBOARDING_INCOMPLETE));
+
+            if (auth.getStatus() != UserStatus.ACTIVE) {
                 throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
+            }
+
+            // 온보딩 완료 판정 TODO 마이그레이션 끝나면 정리
+            boolean fullyOnboarded = auth.getLoginId() != null && auth.isEmailVerified();
+            boolean isWriteMethod = WRITE_METHODS.contains(request.getMethod());
+
+            if (!fullyOnboarded && isWriteMethod && !OnboardingAllowedPaths.PATHS.contains(request.getRequestURI())) {
+                throw new CustomException(ErrorCode.ONBOARDING_INCOMPLETE);
             }
 
             // 클레임으로 인증 객체 생성 (상태는 위에서 DB 확인)

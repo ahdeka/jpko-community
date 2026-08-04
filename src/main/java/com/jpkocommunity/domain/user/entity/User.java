@@ -1,6 +1,8 @@
 package com.jpkocommunity.domain.user.entity;
 
 import com.jpkocommunity.global.entity.BaseEntity;
+import com.jpkocommunity.global.exception.CustomException;
+import com.jpkocommunity.global.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,6 +20,9 @@ public class User extends BaseEntity {
 
     @Column(unique = true, length = 100)
     private String email;
+
+    @Column(unique = true, length = 20)
+    private String loginId;
 
     @Column
     private String password;
@@ -55,10 +60,11 @@ public class User extends BaseEntity {
     private boolean emailVerified;
 
     @Builder
-    public User(String email, String password, String nickname) {
+    public User(String email, String password, String nickname, String loginId) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
+        this.loginId = loginId;
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
         this.grade = UserGrade.ASHIGARU;
@@ -72,6 +78,25 @@ public class User extends BaseEntity {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    // TODO 26-feature 마이그레이션 끝나면 정리될 구문
+    public void assignLoginId(String loginId) {
+        if (this.loginId != null) {
+            throw new CustomException(ErrorCode.ALREADY_ASSIGN_LOGIN_ID);
+        }
+        this.loginId = loginId;
+    }
+
+    // TODO 26-feature 마이그레이션 끝나면 정리될 구문
+    public boolean isFullyOnboarded() {
+        return this.loginId != null && this.emailVerified;
+    }
+
+    // email 교체 + 인증 완료 TODO 마이그레이션 끝나면 정리
+    public void changeEmail(String newEmail) {
+        this.email = newEmail;
+        this.emailVerified = true;
     }
 
     public void updatePassword(String encodedPassword) {

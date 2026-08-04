@@ -21,6 +21,10 @@ public enum ErrorCode {
     CANNOT_SUSPEND_ROOT(HttpStatus.BAD_REQUEST, "최고 관리자 계정은 정지할 수 없습니다."),
     CANNOT_MODIFY_ROOT(HttpStatus.BAD_REQUEST, "최고 관리자 계정은 권한을 변경할 수 없습니다."),
     CANNOT_ASSIGN_ROOT_ROLE(HttpStatus.BAD_REQUEST, "해당 권한은 부여할 수 없습니다."),
+    ALREADY_ASSIGN_LOGIN_ID(HttpStatus.CONFLICT, "이미 로그인 아이디가 설정된 계정입니다."), // TODO 마이그레이션 끝나면 정리될 에러 코드
+    EMAIL_VERIFICATION_REQUIRED(HttpStatus.FORBIDDEN, "이메일 인증을 먼저 완료해주세요."), // TODO 마이그레이션 끝나면 정리될 에러 코드
+    DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
+    ONBOARDING_INCOMPLETE(HttpStatus.FORBIDDEN, "계정 설정을 완료해야 이 기능을 사용할 수 있습니다."), // TODO 마이그레이션 끝나면 정리될 에러 코드
 
     // Auth
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
