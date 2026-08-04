@@ -5,7 +5,7 @@ import com.jpkocommunity.domain.point.dto.response.CheckInOutcome;
 import com.jpkocommunity.domain.point.dto.response.TransactionResponse;
 import com.jpkocommunity.domain.point.entity.TransactionType;
 import com.jpkocommunity.domain.point.repository.TransactionRepository;
-import com.jpkocommunity.global.config.CheckInProperties;
+import com.jpkocommunity.global.config.properties.CheckInProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.util.KstDateUtils;
 import lombok.RequiredArgsConstructor;
