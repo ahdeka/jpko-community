@@ -10,6 +10,7 @@ import java.util.List;
 @Builder
 public record RoleAuctionRoundResponse(
         Long id,
+        Long shopItemId,
         UserRole targetRole,
         Integer quantity,
         Long minPrice,
@@ -22,6 +23,7 @@ public record RoleAuctionRoundResponse(
     public static RoleAuctionRoundResponse of(RoleAuctionRound round, List<Long> activeBidAmountsDesc) {
         return RoleAuctionRoundResponse.builder()
                 .id(round.getId())
+                .shopItemId(round.getShopItem().getId())
                 .targetRole(round.getTargetRole())
                 .quantity(round.getQuantity())
                 .minPrice(round.getMinPrice())

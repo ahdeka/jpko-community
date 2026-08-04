@@ -109,6 +109,23 @@ public class RoleAuctionService {
         return purchaseRepository.findByStatus(RolePurchaseStatus.ACTIVE, pageable).map(RolePurchaseAdminResponse::from);
     }
 
+    // ROOT가 진행 중인 회차의 종료 시각을 직접 수정(연장)하거나 조기 종료한다.
+    // 새 시각이 현재 이하면(조기 종료) 스케줄러의 다음 tick(최대 5분)을 기다리지 않고 이 요청 안에서 바로 정산한다.
+    @Transactional
+    public void updateRoundEndAt(Long roundId, LocalDateTime newEndAt) {
+        RoleAuctionRound round = roundRepository.findByIdAndStatus(roundId, AuctionRoundStatus.OPEN)
+                .orElseThrow(() -> new CustomException(ErrorCode.AUCTION_ROUND_NOT_OPEN));
+
+        round.updateEndAt(newEndAt);
+
+        if (!newEndAt.isAfter(LocalDateTime.now())) {
+            settleRound(round);
+            log.info("ROOT가 경매 회차를 조기 종료 - round={}", roundId);
+        } else {
+            log.info("ROOT가 경매 회차 종료 시각 변경 - round={}, newEndAt={}", roundId, newEndAt);
+        }
+    }
+
     // ========== 스케줄러 호출 ==========
 
     @Transactional

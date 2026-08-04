@@ -82,11 +82,14 @@ public class ReportService {
 
     // ========== 관리자 기능 ==========
 
-    public Page<AdminReportSummaryResponse> getReportSummaries(ReportTargetType targetType, ReportStatus status, Pageable pageable) {
+    // isRoot=false면 대상이 ADMIN(경매로 획득한 임시 ADMIN 포함)인 신고는 결과에서 제외한다.
+    public Page<AdminReportSummaryResponse> getReportSummaries(
+            ReportTargetType targetType, ReportStatus status, boolean isRoot, Pageable pageable) {
 
         Page<ReportRepository.ReportTargetSummaryRow> rows = reportRepository.summarizeByTarget(
                 targetType != null ? targetType.name() : null,
                 status != null ? status.name() : null,
+                !isRoot,
                 pageable);
 
         Map<TargetKey, TargetView> views = resolveTargetViews(groupTargetIds(rows.getContent(),
@@ -106,7 +109,13 @@ public class ReportService {
         });
     }
 
-    public List<AdminReportDetailResponse> getReportDetails(ReportTargetType targetType, Long targetId) {
+    // isRoot=false인데 대상이 ADMIN이면, 목록 집계에서 이미 안 보이는 대상을 targetId를 직접
+    // 넣어 조회하는 우회를 막기 위해 여기서도 다시 막는다(FORBIDDEN).
+    public List<AdminReportDetailResponse> getReportDetails(ReportTargetType targetType, Long targetId, boolean isRoot) {
+        if (!isRoot && isAdminTarget(targetType, targetId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+
         return reportRepository.findByTargetTypeAndTargetIdOrderByCreatedAtDesc(targetType, targetId)
                 .stream()
                 .map(AdminReportDetailResponse::from)
@@ -114,9 +123,12 @@ public class ReportService {
     }
 
     @Transactional
-    public void updateTargetStatus(AdminReportTargetStatusRequest request) {
+    public void updateTargetStatus(AdminReportTargetStatusRequest request, boolean isRoot) {
         if (request.status() == ReportStatus.PENDING) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        if (!isRoot && isAdminTarget(request.targetType(), request.targetId())) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
         }
 
         List<Report> targets = reportRepository.findByTargetTypeAndTargetIdOrderByCreatedAtDesc(
@@ -131,6 +143,26 @@ public class ReportService {
     }
 
     // ========== private 메서드 ==========
+
+    // 신고 대상 작성자(USER 신고는 대상 본인)가 ADMIN 권한인지. 대상을 못 찾으면(이미 삭제 등)
+    // 안전하게 false로 처리한다 — 삭제된 대상은 어차피 조치할 게 없다.
+    private boolean isAdminTarget(ReportTargetType targetType, Long targetId) {
+        return switch (targetType) {
+            case POST -> postService.findByIdOptional(targetId)
+                    .map(p -> p.getUser().getRole() == UserRole.ADMIN)
+                    .orElse(false);
+            case COMMENT -> commentService.findByIdOptional(targetId)
+                    .map(c -> c.getUser().getRole() == UserRole.ADMIN)
+                    .orElse(false);
+            case USER -> {
+                try {
+                    yield userService.findById(targetId).getRole() == UserRole.ADMIN;
+                } catch (CustomException e) {
+                    yield false;
+                }
+            }
+        };
+    }
 
     // 신고 대상이 활성 상태인지 확인 후 작성자 id 반환
     private Long resolveTargetAuthorId(ReportTargetType targetType, Long targetId) {

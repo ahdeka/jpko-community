@@ -9,8 +9,6 @@ import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.report.entity.ReportTargetType;
 import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
-import com.jpkocommunity.domain.shop.entity.RolePurchaseStatus;
-import com.jpkocommunity.domain.shop.repository.RolePurchaseRepository;
 import com.jpkocommunity.domain.user.dto.request.UpdateBioRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
@@ -43,14 +41,14 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class UserService {
 
-    private static final long MAX_PURCHASED_ADMIN_SUSPEND_DAYS = 7;
+    // ROOT만 무기한 정지 가능, ADMIN은 항상 이 기간 이하로만 정지할 수 있다.
+    private static final long MAX_ADMIN_SUSPEND_DAYS = 7;
 
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LikeRepository likeRepository;
-    private final RolePurchaseRepository rolePurchaseRepository;
 
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
@@ -225,13 +223,13 @@ public class UserService {
                 throw new CustomException(ErrorCode.CANNOT_SUSPEND_ROOT);
             }
 
-            // 경매로 획득한 ADMIN 권한은 기한이 있는 정지만 가능 (영구 정지 불가)
-            if (rolePurchaseRepository.existsByUser_IdAndStatusAndTargetRole(
-                    actingUserId, RolePurchaseStatus.ACTIVE, UserRole.ADMIN)) {
+            // ROOT만 무기한 정지 가능. ADMIN(경매로 획득했든 ROOT가 수동으로 부여했든 상관없이)은
+            // 항상 기한이 있는 정지만 가능하다 — 진짜 관리자는 ROOT뿐이라는 원칙.
+            if (findById(actingUserId).getRole() == UserRole.ADMIN) {
                 if (suspendedUntil == null) {
                     throw new CustomException(ErrorCode.SUSPEND_DURATION_REQUIRED);
                 }
-                if (suspendedUntil.isAfter(LocalDateTime.now().plusDays(MAX_PURCHASED_ADMIN_SUSPEND_DAYS))) {
+                if (suspendedUntil.isAfter(LocalDateTime.now().plusDays(MAX_ADMIN_SUSPEND_DAYS))) {
                     throw new CustomException(ErrorCode.SUSPEND_DURATION_TOO_LONG);
                 }
             }

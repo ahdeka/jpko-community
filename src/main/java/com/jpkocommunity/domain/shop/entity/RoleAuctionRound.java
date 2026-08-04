@@ -77,6 +77,11 @@ public class RoleAuctionRound extends BaseEntity {
         this.status = AuctionRoundStatus.SETTLED;
     }
 
+    // ROOT가 진행 중인 회차의 종료 시각을 직접 수정(연장)하거나 조기 종료(과거/현재 시각으로 지정)할 때 사용.
+    public void updateEndAt(LocalDateTime newEndAt) {
+        this.endAt = newEndAt;
+    }
+
     public boolean isOpenAndEnded() {
         return this.status == AuctionRoundStatus.OPEN && this.endAt.isBefore(LocalDateTime.now());
     }
