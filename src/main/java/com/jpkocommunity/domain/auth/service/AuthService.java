@@ -1,8 +1,8 @@
 package com.jpkocommunity.domain.auth.service;
 
-import com.jpkocommunity.domain.auth.dto.request.LoginRequest;
-import com.jpkocommunity.domain.auth.dto.request.SignupRequest;
+import com.jpkocommunity.domain.auth.dto.request.*;
 import com.jpkocommunity.domain.auth.dto.response.LoginResponse;
+import com.jpkocommunity.domain.auth.dto.response.PreSignupVerifyResponse;
 import com.jpkocommunity.domain.auth.entity.RefreshToken;
 import com.jpkocommunity.domain.auth.event.VerificationEmailEvent;
 import com.jpkocommunity.domain.auth.entity.VerificationToken;
@@ -48,15 +48,140 @@ public class AuthService {
     private final TurnstileService turnstileService;
     private final CheckInService checkInService;
 
+    // TODO: 이메일 반복 요청 방어 처리 필요
+    @Transactional
+    public void initSignup(SignupInitRequest request, String ipAddress) {
+        turnstileService.verify(request.turnstileToken(), ipAddress);
+
+        if (userRepository.existsByEmail(request.email())) {
+            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
+        if (!emailDomainValidator.hasMxRecord(request.email())) {
+            throw new CustomException(ErrorCode.INVALID_EMAIL_DOMAIN);
+        }
+
+        // 같은 이메일 재 요청 시 이전 토큰 무효화
+        verificationTokenRepository.deleteByEmailAndType(request.email(), VerificationTokenType.PRE_SIGNUP);
+
+        String token = UUID.randomUUID().toString();
+        verificationTokenRepository.save(VerificationToken.builder()
+                .email(request.email())
+                .token(token)
+                .type(VerificationTokenType.PRE_SIGNUP)
+                .expiresAt(LocalDateTime.now().plusSeconds(verificationTokenProperties.preSignupExpiration()))
+                .build());
+
+        eventPublisher.publishEvent(new VerificationEmailEvent(request.email(), token, VerificationTokenType.PRE_SIGNUP));
+    }
+
+    @Transactional(readOnly = true)
+    public PreSignupVerifyResponse verifyPreSignupToken(String token) {
+        VerificationToken verificationToken = getPreSignupToken(token);
+
+        // 읽기전용 트랜잭션이라 삭제는 안함
+        if (verificationToken.isExpired()) {
+            throw new CustomException(ErrorCode.EXPIRED_VERIFICATION_TOKEN);
+        }
+
+        return new PreSignupVerifyResponse(verificationToken.getEmail());
+    }
+
+    @Transactional
+    public LoginResult completeSignup(SignupCompleteRequest request, String deviceInfo, String ipAddress) {
+        VerificationToken verificationToken = getPreSignupToken(request.token());
+
+        validateSignupInfo(verificationToken, request);
+
+        User user = User.builder()
+                .email(verificationToken.getEmail())
+                .password(passwordEncoder.encode(request.password()))
+                .nickname(request.nickname())
+                .loginId(request.loginId())
+                .build();
+        user.verifyEmail();
+
+        userRepository.save(user);
+        verificationTokenRepository.delete(verificationToken);
+
+        TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);
+        return toLoginResult(user.getId(), user, tokens, CheckInOutcome.none());
+    }
+
+    @Transactional
+    public void completeOnBoarding(Long userId, SignupMigrationRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        validateOnboarding(user, request);
+
+        user.assignLoginId(request.loginId());
+        user.updatePassword(passwordEncoder.encode(request.password()));
+    }
+
+    @Transactional
+    public void requestEmailChange(Long userId, EmailChangeRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        if (request.email().equals(user.getEmail()) && user.isEmailVerified()) {
+            throw new CustomException(ErrorCode.ALREADY_VERIFIED_EMAIL);
+        }
+        if (userRepository.existsByEmailAndIdNot(request.email(), userId)) {
+            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
+        }
+        if (!emailDomainValidator.hasMxRecord(request.email())) {
+            throw new CustomException(ErrorCode.INVALID_EMAIL_DOMAIN);
+        }
+
+        verificationTokenRepository.deleteByUserIdAndType(userId, VerificationTokenType.EMAIL_CHANGE);
+
+        String token = UUID.randomUUID().toString();
+
+        verificationTokenRepository.save(VerificationToken.builder()
+                .userId(userId)
+                .email(request.email()) // 변경할 이메일을 토큰에 보관
+                .token(token)
+                .type(VerificationTokenType.EMAIL_CHANGE)
+                .expiresAt(LocalDateTime.now().plusSeconds(verificationTokenProperties.emailVerificationExpiration()))
+                .build());
+
+        eventPublisher.publishEvent(
+                new VerificationEmailEvent(
+                        request.email(),
+                        token,
+                        VerificationTokenType.EMAIL_CHANGE)
+        );
+    }
+
+    @Transactional
+    public void confirmEmailChange(String token) {
+        VerificationToken verificationToken = verificationTokenRepository.findByToken(token)
+                .filter(t -> t.getType() == VerificationTokenType.EMAIL_CHANGE)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_VERIFICATION_TOKEN));
+
+        if (verificationToken.isExpired()) {
+            verificationTokenRepository.delete(verificationToken);
+            throw new CustomException(ErrorCode.EXPIRED_VERIFICATION_TOKEN);
+        }
+
+        if (userRepository.existsByEmailAndIdNot(verificationToken.getEmail(), verificationToken.getUserId())) {
+            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
+        User user = userRepository.findById(verificationToken.getUserId())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        user.changeEmail(verificationToken.getEmail());
+        verificationTokenRepository.delete(verificationToken);
+    }
+
     @Transactional
     public LoginResult signup(SignupRequest request, String deviceInfo, String ipAddress) {
         turnstileService.verify(request.turnstileToken(), ipAddress);
 
         if (!request.password().equals(request.passwordConfirm())) {
             throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
-        }
-        if (userRepository.existsByEmail(request.email())) {
-            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
         if (userRepository.existsByNickname(request.nickname())) {
             throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
@@ -79,20 +204,11 @@ public class AuthService {
 
     @Transactional
     public LoginResult login(LoginRequest request, String deviceInfo, String ipAddress) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByLoginId(request.loginId())
+                .or(() -> userRepository.findByEmail(request.loginId()))
                 .orElseThrow(() -> new CustomException(ErrorCode.WRONG_PASSWORD));
 
-        if (user.isDeleted()) {
-            throw new CustomException(ErrorCode.WRONG_PASSWORD);
-        }
-
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new CustomException(ErrorCode.WRONG_PASSWORD);
-        }
-
-        if (user.getStatus() == UserStatus.SUSPENDED) {
-            throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
-        }
+        validateLoginInfo(user, request);
 
         // 토큰 발급을 먼저 끝낸 뒤에 출첵을 처리한다. 반대 순서(출첵 먼저)로 하면
         // 출첵은 이미 커밋됐는데 토큰 저장이 실패해 로그인 자체는 실패하는 불일치가 생길 수 있다.
@@ -117,7 +233,12 @@ public class AuthService {
     private LoginResult toLoginResult(Long userId, User user, TokenPair tokens, CheckInOutcome checkInOutcome) {
         return new LoginResult(
                 userId,
-                new LoginResponse(user.getNickname(), user.getRole(), LoginResponse.CheckInInfo.from(checkInOutcome)),
+                new LoginResponse(
+                        user.getNickname(),
+                        user.getRole(),
+                        LoginResponse.CheckInInfo.from(checkInOutcome),
+                        !user.isFullyOnboarded()
+                ),
                 tokens.accessToken(),
                 tokens.refreshToken()
         );
@@ -141,7 +262,8 @@ public class AuthService {
         return new TokenPair(accessToken, refreshToken);
     }
 
-    private record TokenPair(String accessToken, String refreshToken) { }
+    private record TokenPair(String accessToken, String refreshToken) {
+    }
 
     @Transactional
     public String refresh(String refreshToken) {
@@ -182,6 +304,63 @@ public class AuthService {
                 .expiresAt(LocalDateTime.now().plusSeconds(expirationMillis / 1000))
                 .build());
         return token;
+    }
+
+    private VerificationToken getPreSignupToken(String token) {
+        return verificationTokenRepository.findByToken(token)
+                .filter(t -> t.getType() == VerificationTokenType.PRE_SIGNUP)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_VERIFICATION_TOKEN));
+    }
+
+    private void validateSignupInfo(VerificationToken verificationToken, SignupCompleteRequest request) {
+        if (verificationToken.isExpired()) {
+            verificationTokenRepository.delete(verificationToken);
+            throw new CustomException(ErrorCode.EXPIRED_VERIFICATION_TOKEN);
+        }
+        if (userRepository.existsByEmail(verificationToken.getEmail())) {
+            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
+        }
+        if (!request.password().equals(request.passwordConfirm())) {
+            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
+        }
+        if (userRepository.existsByLoginId(request.loginId())) {
+            throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
+        }
+        if (userRepository.existsByNickname(request.nickname())) {
+            throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+        }
+    }
+
+    private void validateLoginInfo(User user, LoginRequest request) {
+        if (user.isDeleted()) {
+            throw new CustomException(ErrorCode.WRONG_PASSWORD);
+        }
+
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new CustomException(ErrorCode.WRONG_PASSWORD);
+        }
+
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
+        }
+    }
+
+    private void validateOnboarding(User user, SignupMigrationRequest request) {
+        if (!user.isEmailVerified()) {
+            throw new CustomException(ErrorCode.EMAIL_VERIFICATION_REQUIRED);
+        }
+
+        if (user.getLoginId() != null) {
+            throw new CustomException(ErrorCode.ALREADY_ASSIGN_LOGIN_ID);
+        }
+
+        if (!request.password().equals(request.passwordConfirm())) {
+            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
+        }
+
+        if (userRepository.existsByLoginId(request.loginId())) {
+            throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
+        }
     }
 
     // ========== 이메일 인증 ==========
@@ -289,5 +468,6 @@ public class AuthService {
         refreshTokenRepository.deleteByUserId(user.getId());
     }
 
-    public record LoginResult(Long userId, LoginResponse response, String accessToken, String refreshToken) { }
+    public record LoginResult(Long userId, LoginResponse response, String accessToken, String refreshToken) {
+    }
 }

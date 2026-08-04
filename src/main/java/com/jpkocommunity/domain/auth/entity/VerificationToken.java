@@ -22,7 +22,7 @@ public class VerificationToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column
     private Long userId;
 
     @Column(nullable = false, unique = true, length = 255)
@@ -32,6 +32,9 @@ public class VerificationToken {
     @Column(nullable = false, length = 20)
     private VerificationTokenType type;
 
+    @Column(length = 100)
+    private String email; // 신규 가입 때만 값이 존재함
+
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
@@ -40,8 +43,9 @@ public class VerificationToken {
     private LocalDateTime createdAt;
 
     @Builder
-    public VerificationToken(Long userId, String token, VerificationTokenType type, LocalDateTime expiresAt) {
+    public VerificationToken(Long userId, String email, String token, VerificationTokenType type, LocalDateTime expiresAt) {
         this.userId = userId;
+        this.email = email;
         this.token = token;
         this.type = type;
         this.expiresAt = expiresAt;

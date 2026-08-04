@@ -2,6 +2,7 @@ package com.jpkocommunity.domain.auth.dto.request;
 
 import jakarta.validation.constraints.*;
 
+// TODO 26-feature 작업이 프론트도 반영되면 삭제할 클래스
 public record SignupRequest(
 
         @NotBlank(message = "이메일을 입력해주세요.")

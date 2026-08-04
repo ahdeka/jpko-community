@@ -1,10 +1,8 @@
 package com.jpkocommunity.domain.auth.controller;
 
-import com.jpkocommunity.domain.auth.dto.request.LoginRequest;
-import com.jpkocommunity.domain.auth.dto.request.PasswordResetConfirmRequest;
-import com.jpkocommunity.domain.auth.dto.request.PasswordResetRequest;
-import com.jpkocommunity.domain.auth.dto.request.SignupRequest;
+import com.jpkocommunity.domain.auth.dto.request.*;
 import com.jpkocommunity.domain.auth.dto.response.LoginResponse;
+import com.jpkocommunity.domain.auth.dto.response.PreSignupVerifyResponse;
 import com.jpkocommunity.domain.auth.dto.response.UserInfoResponse;
 import com.jpkocommunity.domain.auth.service.AuthService;
 import com.jpkocommunity.domain.user.entity.User;
@@ -44,25 +42,74 @@ public class AuthController {
         ));
     }
 
-    @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<LoginResponse>> signup(
-            @Valid @RequestBody SignupRequest request,
+    @PostMapping("/signup/init")
+    public ResponseEntity<ApiResponse<Void>> initSignup(
+            @Valid @RequestBody SignupInitRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        String ipAddress = ipUtils.getClientIp(servletRequest);
+        authService.initSignup(request, ipAddress);
+
+        return ResponseEntity.ok(ApiResponse.ok("인증 메일을 보냈습니다. 메일에서 나머지 절차를 진행해주세요."));
+    }
+
+    @GetMapping("/signup/verify")
+    public ResponseEntity<ApiResponse<PreSignupVerifyResponse>> verifySignupToken(
+            @RequestParam String token
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(authService.verifyPreSignupToken(token)));
+    }
+
+    @PostMapping("/signup/complete")
+    public ResponseEntity<ApiResponse<LoginResponse>> completeSignup(
+            @Valid @RequestBody SignupCompleteRequest request,
             HttpServletRequest servletRequest,
-            HttpServletResponse response) {
+            HttpServletResponse response
+    ) {
         String deviceInfo = ipUtils.getDeviceInfo(servletRequest);
         String ipAddress = ipUtils.getClientIp(servletRequest);
 
-        AuthService.LoginResult result = authService.signup(request, deviceInfo, ipAddress);
+        AuthService.LoginResult result = authService.completeSignup(request, deviceInfo, ipAddress);
 
         cookieUtils.add(response, "accessToken", result.accessToken(), jwtProperties.accessTokenMaxAgeSeconds());
         cookieUtils.add(response, "refreshToken", result.refreshToken(), jwtProperties.refreshTokenMaxAgeSeconds());
 
         // signup()의 트랜잭션이 커밋된 뒤(=위 리턴 시점)에만 출첵을 걸 수 있다 — AuthService.checkInAfterSignup 참고.
         LoginResponse.CheckInInfo checkIn = authService.checkInAfterSignup(result.userId());
-        LoginResponse body = new LoginResponse(result.response().nickname(), result.response().role(), checkIn);
+        LoginResponse body = new LoginResponse(
+                result.response().nickname(),
+                result.response().role(),
+                checkIn,
+                result.response().needsOnboarding());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("회원가입이 완료되었습니다.", body));
+    }
+
+    @PatchMapping("/complete-onboarding")
+    public ResponseEntity<ApiResponse<Void>> completeOnboarding(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody SignupMigrationRequest request
+    ) {
+        authService.completeOnBoarding(authUser.userId(), request);
+        return ResponseEntity.ok(ApiResponse.ok("계정 전환이 완료되었습니다."));
+    }
+
+    @PatchMapping("/email")
+    public ResponseEntity<ApiResponse<Void>> requestEmailChange(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody EmailChangeRequest request
+    ) {
+        authService.requestEmailChange(authUser.userId(), request);
+        return ResponseEntity.ok(ApiResponse.ok("입력하신 새 이메일로 인증 메일을 보냈습니다."));
+    }
+
+    @PostMapping("/email/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmEmailChange(
+            @RequestParam String token
+    ) {
+        authService.confirmEmailChange(token);
+        return ResponseEntity.ok(ApiResponse.ok("이메일 인증이 완료되었습니다."));
     }
 
     @PostMapping("/login")
