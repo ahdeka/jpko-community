@@ -91,6 +91,7 @@ public enum ErrorCode {
     INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "포인트 잔액이 부족합니다."),
     INVALID_TRANSACTION_AMOUNT(HttpStatus.BAD_REQUEST, "거래 금액은 0보다 커야 합니다."),
     SYSTEM_ACCOUNT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "시스템 포인트 계정을 찾을 수 없습니다."),
+    USER_ID_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다."),
 
     // Roulette
     UNAUTHORIZED_ROULETTE(HttpStatus.UNAUTHORIZED, "룰렛 기능은 이메일 인증을 해야합니다."),

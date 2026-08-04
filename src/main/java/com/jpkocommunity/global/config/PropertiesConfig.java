@@ -19,7 +19,8 @@ import org.springframework.context.annotation.Configuration;
         TurnstileProperties.class,
         CheckInProperties.class,
         RouletteProperties.class,
-        PointProperties.class
+        PointProperties.class,
+        TransferProperties.class
 })
 public class PropertiesConfig {
 }
