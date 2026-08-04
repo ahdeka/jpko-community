@@ -29,9 +29,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByLoginId(String loginId);
 
-    // 매 요청마다 JwtAuthenticationFilter가 status/온보딩/role을 최신값으로 재확인하는 데 쓴다.
-    @Query("SELECT u.status AS status, u.loginId AS loginId, u.emailVerified AS emailVerified, u.role AS role " +
-            "FROM User u WHERE u.id = :userId")
+    // 매 요청마다 JwtAuthenticationFilter가 status/온보딩/role/정지기한을 최신값으로 재확인하는 데 쓴다.
+    @Query("SELECT u.status AS status, u.loginId AS loginId, u.emailVerified AS emailVerified, u.role AS role, " +
+            "u.suspendedUntil AS suspendedUntil FROM User u WHERE u.id = :userId")
     Optional<UserAuthProjection> findAuthProjectionById(Long userId);
 
     // Admin 기능

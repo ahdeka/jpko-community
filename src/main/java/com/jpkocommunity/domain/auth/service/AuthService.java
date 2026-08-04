@@ -11,6 +11,7 @@ import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.auth.repository.VerificationTokenRepository;
 import com.jpkocommunity.domain.point.dto.response.CheckInOutcome;
 import com.jpkocommunity.domain.point.service.CheckInService;
+import com.jpkocommunity.domain.user.dto.response.SuspendedAccountResponse;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
@@ -341,7 +342,7 @@ public class AuthService {
         }
 
         if (user.getStatus() == UserStatus.SUSPENDED) {
-            throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
+            throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT, new SuspendedAccountResponse(user.getSuspendedUntil()));
         }
     }
 

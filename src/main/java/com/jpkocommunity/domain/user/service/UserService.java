@@ -10,6 +10,7 @@ import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.report.entity.ReportTargetType;
 import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
 import com.jpkocommunity.domain.shop.entity.RolePurchaseStatus;
+import com.jpkocommunity.domain.shop.repository.ActivityBlockRepository;
 import com.jpkocommunity.domain.shop.repository.RolePurchaseRepository;
 import com.jpkocommunity.domain.user.dto.request.UpdateBioRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
@@ -52,6 +53,7 @@ public class UserService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final LikeRepository likeRepository;
     private final RolePurchaseRepository rolePurchaseRepository;
+    private final ActivityBlockRepository activityBlockRepository;
 
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
@@ -209,7 +211,16 @@ public class UserService {
         Page<User> users = (keyword == null || keyword.isBlank())
                 ? userRepository.findAll(pageable)
                 : userRepository.findByNicknameContainingOrEmailContaining(keyword, keyword, pageable);
-        return users.map(AdminUserResponse::from);
+
+        List<Long> userIds = users.getContent().stream().map(User::getId).toList();
+        Map<Long, LocalDateTime> activeBlockExpiryByUserId = activityBlockRepository
+                .findActiveByTargetIds(userIds, LocalDateTime.now()).stream()
+                .collect(Collectors.toMap(
+                        ActivityBlockRepository.ActiveBlockProjection::getTargetId,
+                        ActivityBlockRepository.ActiveBlockProjection::getExpiresAt
+                ));
+
+        return users.map(user -> AdminUserResponse.from(user, activeBlockExpiryByUserId.get(user.getId())));
     }
 
     @Transactional

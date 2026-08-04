@@ -6,16 +6,12 @@ import lombok.Builder;
 @Builder
 public record SuspendDurationPresetResponse(
         Long id,
-        String label,
-        Long minutes,
-        Integer displayOrder
+        Long minutes
 ) {
     public static SuspendDurationPresetResponse from(SuspendDurationPreset preset) {
         return SuspendDurationPresetResponse.builder()
                 .id(preset.getId())
-                .label(preset.getLabel())
                 .minutes(preset.getMinutes())
-                .displayOrder(preset.getDisplayOrder())
                 .build();
     }
 }

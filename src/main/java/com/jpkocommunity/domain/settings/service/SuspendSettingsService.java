@@ -22,7 +22,7 @@ public class SuspendSettingsService {
     private final SuspendDurationPresetRepository presetRepository;
 
     public List<SuspendDurationPresetResponse> getPresets() {
-        return presetRepository.findAllByOrderByDisplayOrderAsc().stream()
+        return presetRepository.findAllByOrderByMinutesAsc().stream()
                 .map(SuspendDurationPresetResponse::from)
                 .toList();
     }
@@ -30,9 +30,7 @@ public class SuspendSettingsService {
     @Transactional
     public void createPreset(CreateSuspendDurationPresetRequest request) {
         presetRepository.save(SuspendDurationPreset.builder()
-                .label(request.label())
                 .minutes(request.minutes())
-                .displayOrder(request.displayOrder())
                 .build());
     }
 

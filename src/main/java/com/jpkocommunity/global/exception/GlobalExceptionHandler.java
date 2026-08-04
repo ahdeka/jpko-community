@@ -23,11 +23,11 @@ public class GlobalExceptionHandler {
 
     // 비즈니스 예외
     @ExceptionHandler(CustomException.class)
-    public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
+    public ResponseEntity<ApiResponse<Object>> handleCustomException(CustomException e) {
         log.warn("CustomException: {} - {}", e.getErrorCode().name(), e.getMessage());
         return ResponseEntity
                 .status(e.getErrorCode().getStatus())
-                .body(ApiResponse.error(e.getErrorCode()));
+                .body(ApiResponse.error(e.getErrorCode(), e.getData()));
     }
 
     // 400 - 유효성 검증 실패 (@Valid)

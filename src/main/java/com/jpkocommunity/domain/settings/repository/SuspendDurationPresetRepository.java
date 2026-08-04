@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface SuspendDurationPresetRepository extends JpaRepository<SuspendDurationPreset, Long> {
 
-    List<SuspendDurationPreset> findAllByOrderByDisplayOrderAsc();
+    List<SuspendDurationPreset> findAllByOrderByMinutesAsc();
 }

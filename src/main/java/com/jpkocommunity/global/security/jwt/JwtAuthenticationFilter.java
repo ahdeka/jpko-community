@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jpkocommunity.domain.auth.repository.UserAuthProjection;
 import com.jpkocommunity.domain.shop.entity.BlockStatus;
 import com.jpkocommunity.domain.shop.repository.ActivityBlockRepository;
+import com.jpkocommunity.domain.user.dto.response.SuspendedAccountResponse;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
@@ -79,7 +80,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserRole role = auth.getRole();
 
             if (auth.getStatus() != UserStatus.ACTIVE) {
-                throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
+                throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT, new SuspendedAccountResponse(auth.getSuspendedUntil()));
             }
 
             // 임시 활동 차단 확인 — 만료 시각을 실시간 비교하므로 스케줄러 없이도 만료 즉시 자동 해제됨
@@ -153,6 +154,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setStatus(e.getErrorCode().getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        objectMapper.writeValue(response.getWriter(), ApiResponse.error(e.getErrorCode()));
+        objectMapper.writeValue(response.getWriter(), ApiResponse.error(e.getErrorCode(), e.getData()));
     }
 }
