@@ -11,7 +11,8 @@ public final class PublicAuthPaths {
     // login/signup: 토큰 없어도 무해하지만 명시적으로 제외
     public static final Set<String> PATHS = Set.of(
             "/api/auth/login",
-            "/api/auth/signup",
+            "/api/auth/signup/init",
+            "/api/auth/signup/complete",
             "/api/auth/refresh",
             "/api/auth/logout",
             "/api/auth/email-verification/confirm",

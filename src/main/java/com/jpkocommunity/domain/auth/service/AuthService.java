@@ -177,32 +177,6 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResult signup(SignupRequest request, String deviceInfo, String ipAddress) {
-        turnstileService.verify(request.turnstileToken(), ipAddress);
-
-        if (!request.password().equals(request.passwordConfirm())) {
-            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
-        }
-        if (userRepository.existsByNickname(request.nickname())) {
-            throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
-        }
-
-        User user = User.builder()
-                .email(request.email())
-                .password(passwordEncoder.encode(request.password()))
-                .nickname(request.nickname())
-                .build();
-
-        userRepository.save(user);
-
-        // 출첵은 이 메서드가 커밋된 뒤 별도로 처리한다(checkInAfterSignup 참고).
-        // 여기서 신규 유저를 대상으로 곧바로 출첵을 걸면, 출첵이 REQUIRES_NEW로 별도 트랜잭션에서
-        // 실행되는 탓에 아직 커밋되지 않은 이 유저 row를 보지 못해 USER_NOT_FOUND로 실패한다.
-        TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);
-        return toLoginResult(user.getId(), user, tokens, CheckInOutcome.none());
-    }
-
-    @Transactional
     public LoginResult login(LoginRequest request, String deviceInfo, String ipAddress) {
         User user = userRepository.findByLoginId(request.loginId())
                 .or(() -> userRepository.findByEmail(request.loginId()))
