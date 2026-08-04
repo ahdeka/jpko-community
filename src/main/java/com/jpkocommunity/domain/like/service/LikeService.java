@@ -7,10 +7,13 @@ import com.jpkocommunity.domain.like.entity.LikeType;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
 import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
+import com.jpkocommunity.domain.point.entity.GrantType;
+import com.jpkocommunity.domain.point.service.PointService;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.service.PostService;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
+import com.jpkocommunity.global.config.properties.PointProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,8 @@ public class LikeService {
     private final PostService postService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
+    private final PointProperties pointProperties;
+    private final PointService pointService;
 
     @Transactional
     public LikeResponse toggle(Long userId, Long postId, LikeRequest request) {
@@ -47,9 +52,10 @@ public class LikeService {
                         .type(request.type())
                         .build());
 
-                // 알림은 LIKE일 때만 발생시킴
+                // 알림, 포인트는 LIKE일 때만 발생시킴
                 if (request.type() == LikeType.LIKE) {
                     publishLikeNotification(post, userId);
+                    grantLikeReward(post, userId);
                 }
             } catch (DataIntegrityViolationException e) {
                 // 동시 요청으로 unique 제약 위반 발생 시
@@ -102,5 +108,17 @@ public class LikeService {
         eventPublisher.publishEvent(new NotificationEvent(
                 receiverId, likerId, NotificationType.LIKE, post.getId(), null, false, null
         ));
+    }
+
+    // 좋아요를 받은 게시글 주인에게 포인트 지급. 자기 글에 좋아요 누른 경우는 제외
+    private void grantLikeReward(Post post, Long likerId) {
+        Long receiverId = post.getUser().getId();
+
+        if (receiverId.equals(likerId)) {
+            return;
+        }
+
+        int point = pointProperties.getPoints().get("get-um-ji-cheok");
+        pointService.grantPointByActivity(receiverId, (long) point, "Like: " + post.getId(), post.getId(), null, GrantType.LIKE);
     }
 }

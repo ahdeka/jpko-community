@@ -14,20 +14,25 @@ public record NotificationResponse(
         Long postId,
         String postTitle,
         Long commentId,
+        String commentContent, // COMMENT_REWARD처럼 어떤 댓글로 받았는지 보여줘야 하는 타입 전용. 그 외 타입은 null
         boolean isRead,
         LocalDateTime createdAt,
         Long amount             // POINT_STOLEN 외 타입은 null
 ) {
     public static NotificationResponse from(Notification n) {
         boolean anonymous = isAnonymousComment(n);
+        // 시스템이 발행한 알림(포인트 지급)은 sender가 없음
+        String senderName = (anonymous || n.getSender() == null) ? null : n.getSender().getDisplayNickname();
+        Comment comment = n.getComment();
         return new NotificationResponse(
                 n.getId(),
                 n.getType(),
                 anonymous,
-                anonymous ? null : n.getSender().getDisplayNickname(),
+                senderName,
                 n.getPost() != null ? n.getPost().getId() : null,
                 n.getPost() != null ? n.getPost().getTitle() : null,
-                n.getComment() != null ? n.getComment().getId() : null,
+                comment != null ? comment.getId() : null,
+                comment != null ? comment.getContent() : null,
                 n.isRead(),
                 n.getCreatedAt(),
                 n.getAmount()

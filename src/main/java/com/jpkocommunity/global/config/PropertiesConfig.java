@@ -18,7 +18,8 @@ import org.springframework.context.annotation.Configuration;
         ImageProcessingProperties.class,
         TurnstileProperties.class,
         CheckInProperties.class,
-        RouletteProperties.class
+        RouletteProperties.class,
+        PointProperties.class
 })
 public class PropertiesConfig {
 }
