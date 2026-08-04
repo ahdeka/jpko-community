@@ -6,5 +6,7 @@ public enum TransactionType {
     ACCOUNT_OPENED,  // 신규 계정 개설 감사 로그 (금액 이동 없음, amount=0)
     CHECKIN, // 시스템 <-> 유저, 매일 로그인 시 자동 출첵. amount는 시스템->유저(GRANT 모양) 또는 유저->시스템(COLLECT 모양) 둘 다 가능
     ROULETTE, // 유저 -> 유저(시스템 경유), 유저가 직접 베팅해 상대와 겨루는 룰렛 승부
-    ROULETTE_FEE // 유저 -> 시스템, 룰렛 판당 수수료
+    ROULETTE_FEE, // 유저 -> 시스템, 룰렛 판당 수수료
+    TRANSFER,// 유저간 송금
+    TRANSFER_FEE
 }

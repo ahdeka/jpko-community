@@ -3,8 +3,10 @@ package com.jpkocommunity.domain.point.service;
 import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.point.dto.LockedAccount;
+import com.jpkocommunity.domain.point.dto.request.TransferRequest;
 import com.jpkocommunity.domain.point.dto.response.PointResponse;
 import com.jpkocommunity.domain.point.dto.response.TransactionResponse;
+import com.jpkocommunity.domain.point.dto.response.TransferResponse;
 import com.jpkocommunity.domain.point.entity.GrantType;
 import com.jpkocommunity.domain.point.entity.Point;
 import com.jpkocommunity.domain.point.entity.Transaction;
@@ -14,6 +16,7 @@ import com.jpkocommunity.domain.point.repository.TransactionRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.service.UserService;
+import com.jpkocommunity.global.config.properties.TransferProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +45,7 @@ public class PointService {
     private final TransactionRepository transactionRepository;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransferProperties transferProperties;
 
     public PointResponse getPointByUserId(Long userId) {
         return PointResponse.from(getOrCreateAccount(userId));
@@ -50,6 +55,67 @@ public class PointService {
         User user = userService.findById(userId);
         return transactionRepository.findBySenderOrRecipient(user, pageable)
                 .map(TransactionResponse::from);
+    }
+
+    public TransferResponse transferPoints(Long senderId, TransferRequest request) {
+        // 이메일 인증 받은 유저만 송금 기능 활성화
+//        if (!userService.findById(senderId).isEmailVerified() || !userService.findById(request.recipientId()).isEmailVerified()) {
+//            throw new CustomException(ErrorCode.USER_ID_NOT_FOUND);
+//        }
+        try {
+
+            if (request.amount() <= 0) {
+                throw new CustomException(ErrorCode.INVALID_TRANSACTION_AMOUNT);
+            }
+
+            Map<Long, LockedAccount> accounts = lockAccounts(senderId, request.recipientId(), null);
+            LockedAccount sender = accounts.get(senderId);
+            LockedAccount recipient = accounts.get(request.recipientId());
+            LockedAccount system = accounts.get(null);
+
+            long transferFee = transferProperties.rollAmount();
+
+            TransactionResponse fee;
+            if (transferFee >= 0) {
+                if (sender.point().getBalance() <= request.amount() + transferFee) {
+                    throw new CustomException(ErrorCode.INSUFFICIENT_BALANCE);
+                }
+                fee = move(sender, system, transferFee, TransactionType.TRANSFER_FEE, "RANDOM TRANSFER FEE WAS " + transferFee);
+
+            } else {
+                if (sender.point().getBalance() - transferFee <= request.amount()) {
+                    throw new CustomException(ErrorCode.INSUFFICIENT_BALANCE);
+                }
+
+                fee = move(system, sender, -transferFee, TransactionType.TRANSFER_FEE, "RANDOM TRANSFER FEE WAS " + transferFee);
+            }
+
+            TransactionResponse transfer = move(sender, recipient, request.amount(), TransactionType.TRANSFER, null);
+
+            eventPublisher.publishEvent(new NotificationEvent(
+                    request.recipientId(), senderId, NotificationType.TRANSFER, null, null, false, request.amount()
+            ));
+
+            return TransferResponse.builder()
+                    .status(HttpStatus.ACCEPTED)
+                    .transfer(transfer)
+                    .fee(fee)
+                    .build();
+
+        } catch (CustomException e) {
+            return TransferResponse.builder()
+                    .status(HttpStatus.NOT_ACCEPTABLE)
+                    .code(e.getErrorCode())
+                    .transfer(null)
+                    .fee(null)
+                    .e(e.getMessage())
+                    .build();
+        } catch (Exception e) {
+            return TransferResponse.builder()
+                    .status(HttpStatus.NOT_ACCEPTABLE)
+                    .e(e.getMessage())
+                    .build();
+        }
     }
 
     public TransactionResponse grantPointByActivity(Long userId, long amount, String message, Long postId, Long commentId, GrantType grantType) {
