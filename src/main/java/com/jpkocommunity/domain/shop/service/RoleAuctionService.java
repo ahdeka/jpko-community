@@ -1,5 +1,7 @@
 package com.jpkocommunity.domain.shop.service;
 
+import com.jpkocommunity.domain.notification.entity.NotificationType;
+import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.point.entity.TransactionType;
 import com.jpkocommunity.domain.point.service.PointService;
 import com.jpkocommunity.domain.shop.dto.request.PlaceBidRequest;
@@ -25,6 +27,7 @@ import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,6 +54,7 @@ public class RoleAuctionService {
     private final ShopItemRepository shopItemRepository;
     private final UserService userService;
     private final PointService pointService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<RoleAuctionRoundResponse> getCurrentRounds() {
         return roundRepository.findByStatus(AuctionRoundStatus.OPEN).stream()
@@ -140,11 +144,18 @@ public class RoleAuctionService {
     public void openRoundsForActiveItems() {
         List<ShopItem> items = shopItemRepository.findByTypeAndActiveTrue(ShopItemType.ROLE_AUCTION);
         for (ShopItem item : items) {
-            boolean hasOpenRound = roundRepository.findByShopItemAndStatus(item, AuctionRoundStatus.OPEN).isPresent();
-            if (!hasOpenRound) {
-                roundRepository.save(RoleAuctionRound.open(item));
-                log.info("권한 경매 회차 개설 - item={}, targetRole={}", item.getName(), item.getTargetRole());
-            }
+            openRoundIfNeeded(item);
+        }
+    }
+
+    // 상품 등록/비활성→활성 전환 시 ShopItemService가 곧바로 호출한다 — 스케줄러의 다음 tick(최대 5분)을
+    // 기다리지 않고 즉시 첫 회차가 열리게 하기 위함. 이미 OPEN인 회차가 있으면 아무 것도 하지 않는다.
+    @Transactional
+    public void openRoundIfNeeded(ShopItem item) {
+        boolean hasOpenRound = roundRepository.findByShopItemAndStatus(item, AuctionRoundStatus.OPEN).isPresent();
+        if (!hasOpenRound) {
+            roundRepository.save(RoleAuctionRound.open(item));
+            log.info("권한 경매 회차 개설 - item={}, targetRole={}", item.getName(), item.getTargetRole());
         }
     }
 
@@ -172,9 +183,15 @@ public class RoleAuctionService {
                 grantRole(bid.getBidder(), round.getTargetRole());
                 log.info("권한 경매 낙찰 - userId={}, round={}, amount={}, role={}",
                         bid.getBidder().getId(), round.getId(), bid.getAmount(), round.getTargetRole());
+                eventPublisher.publishEvent(new NotificationEvent(
+                        bid.getBidder().getId(), null, NotificationType.ROLE_AUCTION_WON, null, null, false, bid.getAmount()
+                ));
             } else {
                 bid.lose();
                 pointService.refund(bid.getBidder().getId(), bid.getAmount(), TransactionType.BID_REFUND, "권한 경매 낙찰 실패 환불");
+                eventPublisher.publishEvent(new NotificationEvent(
+                        bid.getBidder().getId(), null, NotificationType.ROLE_AUCTION_LOST, null, null, false, bid.getAmount()
+                ));
             }
         }
 

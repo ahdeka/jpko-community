@@ -64,11 +64,6 @@ public class JwtProvider {
         return Long.parseLong(parseClaims(token).getSubject());
     }
 
-    public UserRole getRole(String token) {
-        String role = parseClaims(token).get(ROLE_CLAIM, String.class);
-        return UserRole.valueOf(role);
-    }
-
     /**
      * 토큰 파싱 + 유효성 검증 통합 메서드
      */

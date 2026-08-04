@@ -23,6 +23,7 @@ import java.util.List;
 public class ShopItemService {
 
     private final ShopItemRepository shopItemRepository;
+    private final RoleAuctionService roleAuctionService;
 
     public List<ShopItemResponse> getActiveItems() {
         return shopItemRepository.findByActiveTrue().stream().map(ShopItemResponse::from).toList();
@@ -49,6 +50,11 @@ public class ShopItemService {
             }
         };
         shopItemRepository.save(item);
+
+        // ROLE_AUCTION은 등록 즉시(active=true 기본) 첫 회차를 연다 — 스케줄러 tick(최대 5분)을 기다리지 않음.
+        if (item.getType() == ShopItemType.ROLE_AUCTION) {
+            roleAuctionService.openRoundIfNeeded(item);
+        }
     }
 
     @Transactional
@@ -73,6 +79,10 @@ public class ShopItemService {
         if (request.active() != null) {
             if (request.active()) {
                 item.activate();
+                // 비활성 -> 활성으로 막 전환된 ROLE_AUCTION도 등록 때와 동일하게 즉시 회차를 연다.
+                if (item.getType() == ShopItemType.ROLE_AUCTION) {
+                    roleAuctionService.openRoundIfNeeded(item);
+                }
             } else {
                 item.deactivate();
             }

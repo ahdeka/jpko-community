@@ -9,6 +9,8 @@ import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.report.entity.ReportTargetType;
 import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
+import com.jpkocommunity.domain.shop.entity.RolePurchaseStatus;
+import com.jpkocommunity.domain.shop.repository.RolePurchaseRepository;
 import com.jpkocommunity.domain.user.dto.request.UpdateBioRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdateNicknameRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
@@ -49,6 +51,7 @@ public class UserService {
     private final CommentRepository commentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LikeRepository likeRepository;
+    private final RolePurchaseRepository rolePurchaseRepository;
 
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
@@ -271,6 +274,28 @@ public class UserService {
         }
 
         user.updateRole(role);
+    }
+
+    // ROOT가 ADMIN 권한을 즉시 박탈한다. 경매로 얻은 권한이면 그 RolePurchase를 즉시 만료 처리해
+    // 스케줄러가 나중에 다시 손대지 않게 하고 previousRole로 되돌린다. 수동으로 임명된 ADMIN이면
+    // (RolePurchase가 없으므로) 그냥 USER로 되돌린다. JwtAuthenticationFilter가 매 요청마다 role을
+    // DB에서 다시 확인하므로, 이 변경은 대상의 다음 요청부터 곧바로(로그인 세션 종료 없이) 반영된다.
+    @Transactional
+    public void revokeAdmin(Long userId) {
+        User user = findById(userId);
+
+        if (user.getRole() != UserRole.ADMIN) {
+            throw new CustomException(ErrorCode.TARGET_NOT_ADMIN);
+        }
+
+        rolePurchaseRepository.findByUserAndStatus(user, RolePurchaseStatus.ACTIVE)
+                .ifPresentOrElse(
+                        purchase -> {
+                            purchase.expire();
+                            user.updateRole(purchase.getPreviousRole());
+                        },
+                        () -> user.updateRole(UserRole.USER)
+                );
     }
 
     // ========== private 메서드 ==========

@@ -70,11 +70,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             Long userId = jwtProvider.getUserId(token);
-            UserRole role = jwtProvider.getRole(token);
 
-            // 매 요청마다 실시간 유저 상태 확인
+            // 매 요청마다 실시간 유저 상태 확인. role도 토큰에 박힌 로그인 시점 값이 아니라
+            // 여기서 DB로 다시 확인한 최신값을 쓴다 — 그래야 권한 변경(경매 만료, ROOT의 즉시
+            // 박탈 등)이 토큰 만료(최대 1시간)를 기다리지 않고 바로 다음 요청부터 반영된다.
             UserAuthProjection auth = userRepository.findAuthProjectionById(userId)
                     .orElseThrow(() -> new CustomException(ErrorCode.ONBOARDING_INCOMPLETE));
+            UserRole role = auth.getRole();
 
             if (auth.getStatus() != UserStatus.ACTIVE) {
                 throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);

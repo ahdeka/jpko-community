@@ -29,8 +29,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByLoginId(String loginId);
 
-    // 마이그레이션용 조회 쿼리 TODO 마이그레이션 끝나면 정리될 메서드
-    @Query("SELECT u.status AS status, u.loginId AS loginId, u.emailVerified AS emailVerified " +
+    // 매 요청마다 JwtAuthenticationFilter가 status/온보딩/role을 최신값으로 재확인하는 데 쓴다.
+    @Query("SELECT u.status AS status, u.loginId AS loginId, u.emailVerified AS emailVerified, u.role AS role " +
             "FROM User u WHERE u.id = :userId")
     Optional<UserAuthProjection> findAuthProjectionById(Long userId);
 
