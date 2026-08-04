@@ -118,6 +118,18 @@ public class PointService {
         }
     }
 
+    // 유저 -> 시스템. 상점 등 다른 도메인이 포인트 소비 로직을 재구현하지 않고 이 메서드만 호출하도록 한다.
+    public TransactionResponse charge(Long userId, long amount, TransactionType type, String message) {
+        Map<Long, LockedAccount> accounts = lockAccounts(userId, null);
+        return move(accounts.get(userId), accounts.get(null), amount, type, message);
+    }
+
+    // 시스템 -> 유저. 입찰 낙찰 실패/취소 시 예탁금 환불, 차단 관련 환불 등에 사용
+    public TransactionResponse refund(Long userId, long amount, TransactionType type, String message) {
+        Map<Long, LockedAccount> accounts = lockAccounts(userId, null);
+        return move(accounts.get(null), accounts.get(userId), amount, type, message);
+    }
+
     public TransactionResponse grantPointByActivity(Long userId, long amount, String message, Long postId, Long commentId, GrantType grantType) {
         // 포인트 리워드는 이메일 인증을 받은 유저만
         if (!userService.findById(userId).isEmailVerified()) {

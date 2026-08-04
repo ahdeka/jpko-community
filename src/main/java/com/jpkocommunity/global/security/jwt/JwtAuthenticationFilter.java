@@ -2,12 +2,15 @@ package com.jpkocommunity.global.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jpkocommunity.domain.auth.repository.UserAuthProjection;
+import com.jpkocommunity.domain.shop.entity.BlockStatus;
+import com.jpkocommunity.domain.shop.repository.ActivityBlockRepository;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
+import com.jpkocommunity.global.security.BlockAllowedPaths;
 import com.jpkocommunity.global.security.OnboardingAllowedPaths;
 import com.jpkocommunity.global.security.PublicAuthPaths;
 import com.jpkocommunity.global.security.auth.AuthUser;
@@ -27,6 +30,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -41,6 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
+    private final ActivityBlockRepository activityBlockRepository;
 
     // 온보딩전 계정들은 읽기만 허용 TODO 마이그레이션 끝나면 정리
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
@@ -73,6 +78,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (auth.getStatus() != UserStatus.ACTIVE) {
                 throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
+            }
+
+            // 임시 활동 차단 확인 — 만료 시각을 실시간 비교하므로 스케줄러 없이도 만료 즉시 자동 해제됨
+            boolean isBlocked = activityBlockRepository.existsByTarget_IdAndStatusAndExpiresAtAfter(
+                    userId, BlockStatus.ACTIVE, LocalDateTime.now());
+            if (isBlocked && !BlockAllowedPaths.PATHS.contains(request.getRequestURI())) {
+                throw new CustomException(ErrorCode.ACTIVITY_BLOCKED);
             }
 
             // 온보딩 완료 판정 TODO 마이그레이션 끝나면 정리

@@ -6,9 +6,11 @@ import com.jpkocommunity.domain.user.entity.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -58,4 +60,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
             """, nativeQuery = true)
     Optional<Long> findRandomActiveUserIdExcluding(
             @Param("excludeUserId") Long excludeUserId, @Param("betAmount") long betAmount);
+
+    // 기한이 지난 정지를 자동으로 해제 (경매로 획득한 ADMIN 권한이 부여한 기한부 정지 포함)
+    @Modifying
+    @Query("update User u set u.status = 'ACTIVE', u.suspendedUntil = null " +
+            "where u.status = 'SUSPENDED' and u.suspendedUntil is not null and u.suspendedUntil <= :now")
+    int reactivateAllExpiredSuspensions(@Param("now") LocalDateTime now);
 }
