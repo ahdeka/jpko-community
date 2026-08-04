@@ -76,3 +76,4 @@ jwt:
 verification-token:
   email-verification-expiration: 86400000   # 24시간 (ms)
   password-reset-expiration: 1800000        # 30분 (ms)
+  pre-signup-expiration: 86400000           # 24시간 (ms)

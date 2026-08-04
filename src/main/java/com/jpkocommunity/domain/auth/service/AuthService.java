@@ -69,7 +69,7 @@ public class AuthService {
                 .email(request.email())
                 .token(token)
                 .type(VerificationTokenType.PRE_SIGNUP)
-                .expiresAt(LocalDateTime.now().plusSeconds(verificationTokenProperties.preSignupExpiration()))
+                .expiresAt(LocalDateTime.now().plusSeconds(verificationTokenProperties.preSignupExpiration() / 1000))
                 .build());
 
         eventPublisher.publishEvent(new VerificationEmailEvent(request.email(), token, VerificationTokenType.PRE_SIGNUP));
@@ -143,7 +143,7 @@ public class AuthService {
                 .email(request.email()) // 변경할 이메일을 토큰에 보관
                 .token(token)
                 .type(VerificationTokenType.EMAIL_CHANGE)
-                .expiresAt(LocalDateTime.now().plusSeconds(verificationTokenProperties.emailVerificationExpiration()))
+                .expiresAt(LocalDateTime.now().plusSeconds(verificationTokenProperties.emailVerificationExpiration() / 1000))
                 .build());
 
         eventPublisher.publishEvent(
