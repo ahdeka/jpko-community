@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jpkocommunity.domain.auth.repository.UserAuthProjection;
 import com.jpkocommunity.domain.shop.entity.BlockStatus;
 import com.jpkocommunity.domain.shop.repository.ActivityBlockRepository;
-import com.jpkocommunity.domain.user.dto.response.SuspendedAccountResponse;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
@@ -14,6 +13,7 @@ import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.BlockAllowedPaths;
 import com.jpkocommunity.global.security.OnboardingAllowedPaths;
 import com.jpkocommunity.global.security.PublicAuthPaths;
+import com.jpkocommunity.global.security.SuspendAllowedPaths;
 import com.jpkocommunity.global.security.auth.AuthUser;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -79,8 +79,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .orElseThrow(() -> new CustomException(ErrorCode.ONBOARDING_INCOMPLETE));
             UserRole role = auth.getRole();
 
-            if (auth.getStatus() != UserStatus.ACTIVE) {
-                throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT, new SuspendedAccountResponse(auth.getSuspendedUntil()));
+            // SUSPENDED(관리자 정지)는 DELETED와 달리 완전히 막지 않는다 — 정지 현황 확인·포인트로
+            // 즉시 해제(SuspendAllowedPaths)는 허용해, 정지된 계정도 스스로 풀 수 있게 한다.
+            boolean isSuspendedButAllowed =
+                    auth.getStatus() == UserStatus.SUSPENDED && SuspendAllowedPaths.PATHS.contains(request.getRequestURI());
+            if (auth.getStatus() != UserStatus.ACTIVE && !isSuspendedButAllowed) {
+                throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
             }
 
             // 임시 활동 차단 확인 — 만료 시각을 실시간 비교하므로 스케줄러 없이도 만료 즉시 자동 해제됨
@@ -154,6 +158,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setStatus(e.getErrorCode().getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        objectMapper.writeValue(response.getWriter(), ApiResponse.error(e.getErrorCode(), e.getData()));
+        objectMapper.writeValue(response.getWriter(), ApiResponse.error(e.getErrorCode()));
     }
 }

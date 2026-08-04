@@ -11,9 +11,7 @@ import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.auth.repository.VerificationTokenRepository;
 import com.jpkocommunity.domain.point.dto.response.CheckInOutcome;
 import com.jpkocommunity.domain.point.service.CheckInService;
-import com.jpkocommunity.domain.user.dto.response.SuspendedAccountResponse;
 import com.jpkocommunity.domain.user.entity.User;
-import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.config.properties.JwtProperties;
 import com.jpkocommunity.global.config.VerificationTokenProperties;
@@ -332,6 +330,9 @@ public class AuthService {
         }
     }
 
+    // SUSPENDED는 여기서 막지 않는다 — 정지된 계정도 로그인은 되게 해서 출첵이 정상 처리되고,
+    // 포인트로 직접 정지를 해제할 수 있게 한다(SuspendAllowedPaths로 제한된 화면만 쓸 수 있음).
+    // 실제 접근 제한은 JwtAuthenticationFilter가 매 요청마다 담당한다.
     private void validateLoginInfo(User user, LoginRequest request) {
         if (user.isDeleted()) {
             throw new CustomException(ErrorCode.WRONG_PASSWORD);
@@ -339,10 +340,6 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new CustomException(ErrorCode.WRONG_PASSWORD);
-        }
-
-        if (user.getStatus() == UserStatus.SUSPENDED) {
-            throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT, new SuspendedAccountResponse(user.getSuspendedUntil()));
         }
     }
 

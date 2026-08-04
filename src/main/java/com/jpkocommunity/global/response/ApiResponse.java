@@ -92,15 +92,4 @@ public class ApiResponse<T> {
                 .message(message)
                 .build();
     }
-
-    // 에러 - 부가 데이터 포함(CustomException.getData()). data가 null이면(대다수의 경우)
-    // @JsonInclude(NON_NULL)에 의해 응답 JSON에서 그냥 빠지므로 기존 동작과 동일하다.
-    public static <T> ApiResponse<T> error(ErrorCode errorCode, T data) {
-        return ApiResponse.<T>builder()
-                .status(errorCode.getStatus().value())
-                .code(errorCode.name())
-                .message(errorCode.getMessage())
-                .data(data)
-                .build();
-    }
 }

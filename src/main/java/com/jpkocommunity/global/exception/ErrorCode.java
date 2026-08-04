@@ -24,6 +24,7 @@ public enum ErrorCode {
     TARGET_NOT_ADMIN(HttpStatus.BAD_REQUEST, "ADMIN 권한을 가진 계정이 아닙니다."),
     SUSPEND_DURATION_REQUIRED(HttpStatus.BAD_REQUEST, "ADMIN 권한으로는 기한이 있는 정지만 가능합니다."),
     SUSPEND_DURATION_TOO_LONG(HttpStatus.BAD_REQUEST, "정지 기한이 허용된 최대 기간을 초과했습니다."),
+    NOT_SUSPENDED(HttpStatus.CONFLICT, "이미 정지가 해제된 계정입니다."),
     ALREADY_ASSIGN_LOGIN_ID(HttpStatus.CONFLICT, "이미 로그인 아이디가 설정된 계정입니다."), // TODO 마이그레이션 끝나면 정리될 에러 코드
     EMAIL_VERIFICATION_REQUIRED(HttpStatus.FORBIDDEN, "이메일 인증을 먼저 완료해주세요."), // TODO 마이그레이션 끝나면 정리될 에러 코드
     DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
