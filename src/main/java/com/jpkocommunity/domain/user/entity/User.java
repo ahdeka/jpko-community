@@ -56,6 +56,11 @@ public class User extends BaseEntity {
     @Column
     private LocalDateTime deletedAt;
 
+    // 정지 기한. NULL이면 무기한 정지(기존 ADMIN/ROOT 기본 동작).
+    // 경매로 획득한 ADMIN 권한이 정지시킬 때는 반드시 값이 있어야 한다.
+    @Column
+    private LocalDateTime suspendedUntil;
+
     @Column(nullable = false)
     private boolean emailVerified;
 
@@ -111,8 +116,9 @@ public class User extends BaseEntity {
         this.grade = grade;
     }
 
-    public void suspend() {
+    public void suspend(LocalDateTime suspendedUntil) {
         this.status = UserStatus.SUSPENDED;
+        this.suspendedUntil = suspendedUntil;
     }
 
     public void updateRole(UserRole role) {
@@ -121,6 +127,7 @@ public class User extends BaseEntity {
 
     public void activate() {
         this.status = UserStatus.ACTIVE;
+        this.suspendedUntil = null;
     }
 
     public void updateBio(String bio) {

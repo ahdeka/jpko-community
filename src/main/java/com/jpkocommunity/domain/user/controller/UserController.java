@@ -8,8 +8,10 @@ import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
 import com.jpkocommunity.domain.user.dto.request.WithdrawRequest;
 import com.jpkocommunity.domain.user.dto.response.MyCommentResponse;
 import com.jpkocommunity.domain.user.dto.response.MyPostResponse;
+import com.jpkocommunity.domain.user.dto.response.SuspensionStatusResponse;
 import com.jpkocommunity.domain.user.dto.response.UserProfileResponse;
 import com.jpkocommunity.domain.user.dto.response.UserPostResponse;
+import com.jpkocommunity.domain.user.service.SuspensionService;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final SuspensionService suspensionService;
     private final CookieUtils cookieUtils;
     private final ReportService reportService;
 
@@ -112,6 +115,23 @@ public class UserController {
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(ApiResponse.ok(reportService.getMyReports(authUser.userId(), pageable)));
+    }
+
+    // 본인이 정지(SUSPENDED)된 상태에서도 호출 가능 (SuspendAllowedPaths에 등록됨)
+    @GetMapping("/me/suspension")
+    public ResponseEntity<ApiResponse<SuspensionStatusResponse>> getMySuspensionStatus(
+            @AuthenticationPrincipal AuthUser authUser
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(suspensionService.getMyStatus(authUser.userId())));
+    }
+
+    // 본인이 정지(SUSPENDED)된 상태에서도 호출 가능 (SuspendAllowedPaths에 등록됨)
+    @PostMapping("/me/suspension/unlock")
+    public ResponseEntity<ApiResponse<Void>> unlockSuspension(
+            @AuthenticationPrincipal AuthUser authUser
+    ) {
+        suspensionService.unsuspendSelf(authUser.userId());
+        return ResponseEntity.ok(ApiResponse.ok("정지가 해제되었습니다."));
     }
 
 }

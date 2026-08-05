@@ -37,10 +37,9 @@ public class RouletteController {
     @PutMapping("/opponent/{opponentId}")
     public ResponseEntity<ApiResponse<Void>> lockOpponent(
             @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long opponentId,
-            @Valid @RequestBody RouletteSpinRequest request
+            @PathVariable Long opponentId
     ) {
-        rouletteService.lockOpponent(authUser.userId(), opponentId, request.betAmount());
+        rouletteService.lockOpponent(authUser.userId(), opponentId);
         return ResponseEntity.ok(ApiResponse.ok("상대가 고정되었습니다."));
     }
 

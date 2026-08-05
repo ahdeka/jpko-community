@@ -118,6 +118,18 @@ public class PointService {
         }
     }
 
+    // 유저 -> 시스템. 상점 등 다른 도메인이 포인트 소비 로직을 재구현하지 않고 이 메서드만 호출하도록 한다.
+    public TransactionResponse charge(Long userId, long amount, TransactionType type, String message) {
+        Map<Long, LockedAccount> accounts = lockAccounts(userId, null);
+        return move(accounts.get(userId), accounts.get(null), amount, type, message);
+    }
+
+    // 시스템 -> 유저. 입찰 낙찰 실패/취소 시 예탁금 환불, 차단 관련 환불 등에 사용
+    public TransactionResponse refund(Long userId, long amount, TransactionType type, String message) {
+        Map<Long, LockedAccount> accounts = lockAccounts(userId, null);
+        return move(accounts.get(null), accounts.get(userId), amount, type, message);
+    }
+
     public TransactionResponse grantPointByActivity(Long userId, long amount, String message, Long postId, Long commentId, GrantType grantType) {
         // 포인트 리워드는 이메일 인증을 받은 유저만
         if (!userService.findById(userId).isEmailVerified()) {
@@ -158,8 +170,11 @@ public class PointService {
     // 여러 계좌 동시에 락
     // 시스템 계정 -> 유저 id 오름차순으로 잠금
     // 잠그기 전 활성 상태 검증 -> 정지 유저 차단
+    // public이어야 한다 - Spring의 기본 트랜잭션 프록시는 public 메서드만 인터셉트하므로,
+    // package-private이면 이 @Transactional은 조용히 무시된다(지금은 항상 이미 열린 앰비언트
+    // 트랜잭션 안에서만 호출돼 우연히 문제가 없었을 뿐).
     @Transactional
-    Map<Long, LockedAccount> lockAccounts(Long... userIds) {
+    public Map<Long, LockedAccount> lockAccounts(Long... userIds) {
         List<Long> lockOrder = Arrays.stream(userIds).distinct()
                 .sorted(Comparator.nullsFirst(Comparator.naturalOrder()))
                 .toList();
@@ -172,8 +187,9 @@ public class PointService {
     }
 
     // 잠금이 끝난 두 계좌 사이에 잔액 이동 + 원장 기록을 원자적으로 수행하는 포인트 이동
+    // public 이유는 lockAccounts() 주석 참고.
     @Transactional
-    TransactionResponse move(LockedAccount from, LockedAccount to, long amount, TransactionType type, String message) {
+    public TransactionResponse move(LockedAccount from, LockedAccount to, long amount, TransactionType type, String message) {
         if (amount < 0) {
             throw new CustomException(ErrorCode.INVALID_TRANSACTION_AMOUNT);
         }

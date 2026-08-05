@@ -18,10 +18,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // 수수료 징수(ROULETTE_FEE)와 대결 정산(ROULETTE)이 별개의 원장 기록으로 남는지 확인하는 회귀 테스트.
-// 원래는 "상대 잔액이 0이라 0포인트로 승리해도 수수료는 차감되는가"를 검증했지만, isEligibleOpponent가
-// 상대 잔액(>= betAmount)까지 요구하도록 바뀌면서 잔액 부족 상대와의 매칭 자체가 더 이상 공개 API로
-// 재현 불가능해졌다(고정도, 랜덤 선정도, 스핀 시점 재검증도 전부 이 조건에 걸린다). 그래서 상대 잔액을
-// betAmount와 정확히 같은 경계값으로 두어 "경계값에서도 정상 매칭·정산되는가"로 시나리오를 대체했다.
+// 상대 잔액을 0으로 둬서 "잔액이 배팅액보다 적은(심지어 0인) 상대와도 고정·매칭이 되는가"와
+// "0포인트로 승리해도 수수료는 정상 차감되는가"를 함께 검증한다. isEligibleOpponent가 한때 상대 잔액
+// (>= betAmount)까지 요구해서 이 시나리오 자체가 공개 API로 재현 불가능했던 회귀가 있었다.
 @SpringBootTest
 @TestPropertySource(properties = {
         "spring.profiles.active=test",
@@ -82,32 +81,32 @@ class RouletteServiceFeeTest {
         opponent = userRepository.save(opponent);
 
         pointRepository.save(Point.builder().user(initiator).balance(INITIATOR_INITIAL_BALANCE).build());
-        // isEligibleOpponent가 상대 balance >= betAmount를 요구하므로, 경계값(정확히 betAmount)으로 둔다.
-        pointRepository.save(Point.builder().user(opponent).balance(BET_AMOUNT).build());
+        // 상대 잔액은 0 — isEligibleOpponent는 더 이상 잔액을 조건으로 보지 않으므로 고정/매칭이 돼야 한다.
+        pointRepository.save(Point.builder().user(opponent).balance(0L).build());
 
         initiatorId = initiator.getId();
         opponentId = opponent.getId();
 
         // 지속되는(persistent) 테스트 DB에는 다른 테스트가 남긴 유저도 섞여 있어 랜덤 상대 선정에
         // 기댈 수 없다 -> 상대를 명시적으로 고정해 이 테스트가 항상 이 opponent를 상대하게 한다.
-        rouletteService.lockOpponent(initiatorId, opponentId, BET_AMOUNT);
+        rouletteService.lockOpponent(initiatorId, opponentId);
     }
 
     @Test
-    void 상대_잔액이_경계값이어도_정상_매칭되고_수수료와_정산이_각각_기록된다() {
+    void 상대_잔액이_0이어도_정상_매칭되고_수수료는_정상_징수된다() {
         RouletteSpinResponse response = rouletteService.spin(initiatorId, BET_AMOUNT);
 
         assertThat(response.win()).as("승률 1.0으로 고정했으므로 반드시 승리해야 함").isTrue();
-        assertThat(response.resultAmount()).as("상대 잔액이 배팅액과 정확히 같으므로 전액이 오가야 함").isEqualTo(BET_AMOUNT);
+        assertThat(response.resultAmount()).as("상대 잔액이 0이므로 실제로 오간 금액도 0이어야 함").isZero();
         assertThat(response.fee()).as("수수료는 배팅액 기준으로 계산되어 resultAmount와 무관하게 5여야 함").isEqualTo(EXPECTED_FEE);
 
         Point initiatorPoint = pointRepository.findByUser(userRepository.findById(initiatorId).orElseThrow()).orElseThrow();
         assertThat(initiatorPoint.getBalance())
-                .as("수수료 5는 빠지고 배팅액 100은 그대로 얻어야 함")
-                .isEqualTo(INITIATOR_INITIAL_BALANCE - EXPECTED_FEE + BET_AMOUNT);
+                .as("상대에게서 딸 것이 없으므로 수수료 5만 빠져야 함")
+                .isEqualTo(INITIATOR_INITIAL_BALANCE - EXPECTED_FEE);
 
         Point opponentPoint = pointRepository.findByUser(userRepository.findById(opponentId).orElseThrow()).orElseThrow();
-        assertThat(opponentPoint.getBalance()).as("상대는 가진 전부(배팅액만큼)를 잃어야 함").isZero();
+        assertThat(opponentPoint.getBalance()).as("원래 0이었으므로 그대로 0이어야 함").isZero();
 
         var feeTransactions = transactionRepository.findAll().stream()
                 .filter(t -> t.getType() == TransactionType.ROULETTE_FEE)
@@ -123,8 +122,8 @@ class RouletteServiceFeeTest {
                 .filter(t -> t.getRecipient() != null && t.getRecipient().getId().equals(initiatorId))
                 .toList();
         assertThat(duelTransactions)
-                .as("ROULETTE 정산 거래가 정확히 1건 남아야 함(수수료와는 별개 기록)")
+                .as("ROULETTE 정산 거래가 정확히 1건 남아야 함(수수료와는 별개 기록, 금액이 0이어도 기록은 남음)")
                 .hasSize(1);
-        assertThat(duelTransactions.get(0).getAmount()).isEqualTo(BET_AMOUNT);
+        assertThat(duelTransactions.get(0).getAmount()).isZero();
     }
 }
