@@ -20,7 +20,8 @@ import org.springframework.context.annotation.Configuration;
         CheckInProperties.class,
         RouletteProperties.class,
         PointProperties.class,
-        TransferProperties.class
+        TransferProperties.class,
+        NotificationProperties.class
 })
 public class PropertiesConfig {
 }

@@ -24,6 +24,7 @@ public record NotificationResponse(
         // 시스템이 발행한 알림(포인트 지급)은 sender가 없음
         String senderName = (anonymous || n.getSender() == null) ? null : n.getSender().getDisplayNickname();
         Comment comment = n.getComment();
+        boolean commentDeleted = comment != null && comment.isDeleted();
         return new NotificationResponse(
                 n.getId(),
                 n.getType(),
@@ -32,7 +33,7 @@ public record NotificationResponse(
                 n.getPost() != null ? n.getPost().getId() : null,
                 n.getPost() != null ? n.getPost().getTitle() : null,
                 comment != null ? comment.getId() : null,
-                comment != null ? comment.getContent() : null,
+                commentDeleted ? null : (comment != null ? comment.getContent() : null),
                 n.isRead(),
                 n.getCreatedAt(),
                 n.getAmount()
