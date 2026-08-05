@@ -11,6 +11,7 @@ public record PostSummaryResponse(
         String title,
         String author,
         boolean adminAuthor,
+        boolean rootAuthor,
         boolean anonymous,
         int viewCount,
         long commentCount,
@@ -25,6 +26,7 @@ public record PostSummaryResponse(
                 post.getTitle(),
                 resolveAuthor(post),
                 resolveAdminAuthor(post),
+                resolveRootAuthor(post),
                 post.isAnonymous(),
                 post.getViewCount(),
                 commentCount,
@@ -39,9 +41,13 @@ public record PostSummaryResponse(
         return post.getUser().getDisplayNickname();
     }
 
-    // 작성자가 운영진(ADMIN)인지 — 닉네임 옆 "운영진" 뱃지 표시에만 쓴다.
-    // 익명 글이면 false: 운영진이 익명으로 써도 신원이 드러나면 안 되기 때문.
+    // 작성자가 ADMIN 인지 확인
     private static boolean resolveAdminAuthor(Post post) {
         return !post.isAnonymous() && post.getUser().getRole() == UserRole.ADMIN;
+    }
+
+    // 작성자가 ROOT 인지 확인
+    private static boolean resolveRootAuthor(Post post) {
+        return !post.isAnonymous() && post.getUser().getRole() == UserRole.ROOT;
     }
 }

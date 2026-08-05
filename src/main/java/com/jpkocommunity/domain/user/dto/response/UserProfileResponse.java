@@ -13,6 +13,7 @@ public record UserProfileResponse(
         UserGrade grade,
         String displayGradeName,
         boolean adminAuthor,
+        boolean rootAuthor,
         boolean suspended,
         String bio,
         LocalDateTime createdAt
@@ -24,6 +25,7 @@ public record UserProfileResponse(
                 user.getGrade(),
                 user.getGrade().getDisplayGradeName(),
                 user.getRole() == UserRole.ADMIN,
+                user.getRole() == UserRole.ROOT,
                 user.getStatus() == UserStatus.SUSPENDED,
                 user.getBio(),
                 user.getCreatedAt()
