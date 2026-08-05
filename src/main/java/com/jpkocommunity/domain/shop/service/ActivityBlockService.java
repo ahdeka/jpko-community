@@ -131,15 +131,14 @@ public class ActivityBlockService {
     // 않는다 - 차단권 구매 자체를 취소하는 게 아니라 관리자 재량으로 조기 해제해주는 구제 조치이므로
     // unblockSelf()의 포인트 차감과는 별개다.
     @Transactional
-    public void markAppealHandled(Long appealId, boolean unblock) {
+    public void markAppealHandled(Long appealId) {
         BlockAppeal appeal = blockAppealRepository.findById(appealId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
         appeal.markHandled();
-        if (unblock) {
-            ActivityBlock block = activityBlockRepository.findActiveByTargetForUpdate(appeal.getSender())
-                    .orElseThrow(() -> new CustomException(ErrorCode.BLOCK_NOT_FOUND));
-            block.lift();
-        }
+        ActivityBlock block = activityBlockRepository.findActiveByTargetForUpdate(appeal.getSender())
+                .orElseThrow(() -> new CustomException(ErrorCode.BLOCK_NOT_FOUND));
+        block.lift();
+
     }
 
     // ========== private 메서드 ==========
