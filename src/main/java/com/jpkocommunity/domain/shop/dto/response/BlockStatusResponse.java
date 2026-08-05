@@ -21,10 +21,16 @@ public record BlockStatusResponse(
 
     public static BlockStatusResponse from(ActivityBlock block) {
         String blockerNickname = block.getBlocker().getDisplayNickname();
-        String itemName = block.getItem().getName();
+        // item이 null이면 구매한 차단이 아니라 ADMIN이 관리자 페이지에서 건 정지가 이 차단으로
+        // 대체된 것이다 (ActivityBlock.item 문서 참고).
+        boolean isAdminSuspend = block.getItem() == null;
+        String itemName = isAdminSuspend ? "관리자 정지" : block.getItem().getName();
+        String reason = isAdminSuspend
+                ? blockerNickname + "님이 관리자 권한으로 활동을 정지했습니다."
+                : blockerNickname + "님이 [" + itemName + "]을(를) 사용해 활동을 차단했습니다.";
         return BlockStatusResponse.builder()
                 .blocked(true)
-                .reason(blockerNickname + "님이 [" + itemName + "]을(를) 사용해 활동을 차단했습니다.")
+                .reason(reason)
                 .blockerNickname(blockerNickname)
                 .itemName(itemName)
                 .expiresAt(block.getExpiresAt())
