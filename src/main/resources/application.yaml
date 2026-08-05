@@ -59,6 +59,8 @@ app:
       - min-amount: 500
         max-amount: 3000
         weight: 5
+  notification:
+    retention-days: 30 # 알림 보관 기간 (days)
 
 server:
   port: 8080
