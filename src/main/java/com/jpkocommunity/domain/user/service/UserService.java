@@ -9,6 +9,7 @@ import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.report.entity.ReportTargetType;
 import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
+import com.jpkocommunity.domain.shop.entity.RolePurchase;
 import com.jpkocommunity.domain.shop.entity.RolePurchaseStatus;
 import com.jpkocommunity.domain.shop.repository.ActivityBlockRepository;
 import com.jpkocommunity.domain.shop.repository.RolePurchaseRepository;
@@ -81,8 +82,8 @@ public class UserService {
     }
 
     // 일일 포인트 룰렛 피해자 선정용
-    public Optional<Long> findRandomActiveUserIdExcluding(Long excludeUserId, long betAmount) {
-        return userRepository.findRandomActiveUserIdExcluding(excludeUserId, betAmount);
+    public Optional<Long> findRandomActiveUserIdExcluding(Long excludeUserId) {
+        return userRepository.findRandomActiveUserIdExcluding(excludeUserId);
     }
 
 
@@ -283,6 +284,12 @@ public class UserService {
         if (role == UserRole.ROOT) {
             throw new CustomException(ErrorCode.CANNOT_ASSIGN_ROOT_ROLE);
         }
+
+        // 경매로 얻은 role이 아직 활성 상태로 남아있으면, 이 수동 변경을 만료 스케줄러
+        // (RoleAuctionService.expireRolePurchases)가 나중에 조용히 되돌려버릴 수 있다 - 함께
+        // 만료 처리해서 그 경매 건을 무효화한다.
+        rolePurchaseRepository.findByUserAndStatus(user, RolePurchaseStatus.ACTIVE)
+                .ifPresent(RolePurchase::expire);
 
         user.updateRole(role);
     }

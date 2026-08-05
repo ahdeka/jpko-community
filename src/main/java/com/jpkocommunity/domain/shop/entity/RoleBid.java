@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -37,6 +38,12 @@ public class RoleBid extends BaseEntity {
     @Column(nullable = false, length = 20)
     private BidStatus status;
 
+    // 같은 유저의 "입찰 인상" 요청 두 건이 거의 동시에 들어와도 낙관적 락으로 하나는 충돌 처리되게 한다
+    // - 없으면 두 요청 다 포인트는 정상 차감되는데 amount는 나중에 커밋된 쪽 값으로 덮어써져
+    // 실제 지불액보다 낮게 기록될 수 있다(이후 유찰 시 환불 부족).
+    @Version
+    private Long version;
+
     @Builder
     private RoleBid(RoleAuctionRound round, User bidder, Long amount) {
         this.round = round;
@@ -59,9 +66,5 @@ public class RoleBid extends BaseEntity {
 
     public void lose() {
         this.status = BidStatus.LOST;
-    }
-
-    public void cancel() {
-        this.status = BidStatus.CANCELLED;
     }
 }

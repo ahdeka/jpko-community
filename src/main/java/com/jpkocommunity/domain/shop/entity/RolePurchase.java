@@ -63,8 +63,12 @@ public class RolePurchase extends BaseEntity {
                 .build();
     }
 
+    // 스케줄러가 만료 처리를 하기 전(최대 1분 지연)에 재낙찰이 겹치면 expiresAt이 이미 과거일 수 있다.
+    // 그 값에 그대로 plusDays하면 실제 부여 기간이 days보다 짧아지므로, now와 비교해 더 늦은 시각을
+    // 기준으로 삼는다.
     public void extendByDays(int days) {
-        this.expiresAt = this.expiresAt.plusDays(days);
+        LocalDateTime base = this.expiresAt.isBefore(LocalDateTime.now()) ? LocalDateTime.now() : this.expiresAt;
+        this.expiresAt = base.plusDays(days);
     }
 
     public void expire() {

@@ -170,8 +170,11 @@ public class PointService {
     // 여러 계좌 동시에 락
     // 시스템 계정 -> 유저 id 오름차순으로 잠금
     // 잠그기 전 활성 상태 검증 -> 정지 유저 차단
+    // public이어야 한다 - Spring의 기본 트랜잭션 프록시는 public 메서드만 인터셉트하므로,
+    // package-private이면 이 @Transactional은 조용히 무시된다(지금은 항상 이미 열린 앰비언트
+    // 트랜잭션 안에서만 호출돼 우연히 문제가 없었을 뿐).
     @Transactional
-    Map<Long, LockedAccount> lockAccounts(Long... userIds) {
+    public Map<Long, LockedAccount> lockAccounts(Long... userIds) {
         List<Long> lockOrder = Arrays.stream(userIds).distinct()
                 .sorted(Comparator.nullsFirst(Comparator.naturalOrder()))
                 .toList();
@@ -184,8 +187,9 @@ public class PointService {
     }
 
     // 잠금이 끝난 두 계좌 사이에 잔액 이동 + 원장 기록을 원자적으로 수행하는 포인트 이동
+    // public 이유는 lockAccounts() 주석 참고.
     @Transactional
-    TransactionResponse move(LockedAccount from, LockedAccount to, long amount, TransactionType type, String message) {
+    public TransactionResponse move(LockedAccount from, LockedAccount to, long amount, TransactionType type, String message) {
         if (amount < 0) {
             throw new CustomException(ErrorCode.INVALID_TRANSACTION_AMOUNT);
         }

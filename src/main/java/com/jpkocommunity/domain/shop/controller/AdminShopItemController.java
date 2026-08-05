@@ -38,7 +38,7 @@ public class AdminShopItemController {
     @PatchMapping("/{itemId}")
     public ResponseEntity<ApiResponse<Void>> updateItem(
             @PathVariable Long itemId,
-            @RequestBody UpdateShopItemRequest request
+            @Valid @RequestBody UpdateShopItemRequest request
     ) {
         shopItemService.updateItem(itemId, request);
         return ResponseEntity.ok(ApiResponse.ok("상품이 수정되었습니다."));

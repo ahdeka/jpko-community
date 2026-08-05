@@ -29,7 +29,10 @@ public record BlockStatusResponse(
                 .itemName(itemName)
                 .expiresAt(block.getExpiresAt())
                 .unblockItemName(itemName)
-                .unblockPrice(block.getItem().getPrice())
+                // ShopItem.price(현재가)가 아니라 ActivityBlock.price(구매/연장 시점 스냅샷)를 써야
+                // ActivityBlockService.unblockSelf()가 실제로 청구하는 금액과 일치한다. ROOT가 그 사이
+                // 상품 가격을 바꿔도 이미 결제된 차단의 해제가는 바뀌지 않는다.
+                .unblockPrice(block.getPrice())
                 .build();
     }
 }
