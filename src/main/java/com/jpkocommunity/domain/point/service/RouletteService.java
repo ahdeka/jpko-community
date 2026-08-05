@@ -92,14 +92,16 @@ public class RouletteService {
         pointService.move(loserAccount, winnerAccount, actualAmount, TransactionType.ROULETTE, "포인트 룰렛");
 
         // 승자/패자 모두에게 알린다 — initiator든 상대(수동적으로 참여한 쪽)든 결과와 무관하게 동일하게 처리한다.
-        // (initiator는 이 스핀 응답으로 결과를 이미 알지만, 알림 목록/벨에도 동일하게 남도록 별도로 발행한다)
         if (actualAmount > 0) {
-            eventPublisher.publishEvent(new NotificationEvent(
-                    loserId, winnerId, NotificationType.POINT_STOLEN, null, null, false, actualAmount
-            ));
-            eventPublisher.publishEvent(new NotificationEvent(
-                    winnerId, loserId, NotificationType.POINT_WON, null, null, false, actualAmount
-            ));
+            if (initiator.userId().equals(winnerId)) {
+                eventPublisher.publishEvent(new NotificationEvent(
+                        loserId, winnerId, NotificationType.POINT_STOLEN, null, null, false, actualAmount
+                ));
+            } else {
+                eventPublisher.publishEvent(new NotificationEvent(
+                        winnerId, loserId, NotificationType.POINT_WON, null, null, false, actualAmount
+                ));
+            }
         }
 
         return new RouletteSpinResponse(
