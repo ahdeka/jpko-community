@@ -5,6 +5,8 @@ import com.jpkocommunity.domain.point.dto.response.CheckInOutcome;
 import com.jpkocommunity.domain.point.dto.response.TransactionResponse;
 import com.jpkocommunity.domain.point.entity.TransactionType;
 import com.jpkocommunity.domain.point.repository.TransactionRepository;
+import com.jpkocommunity.domain.user.entity.UserStatus;
+import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.properties.CheckInProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.util.KstDateUtils;
@@ -25,6 +27,7 @@ public class CheckInService {
 
     private final TransactionRepository transactionRepository;
     private final PointService pointService;
+    private final UserService userService;
     private final CheckInProperties checkInProperties;
     private final KstDateUtils kstDateUtils;
 
@@ -35,6 +38,14 @@ public class CheckInService {
     public CheckInOutcome checkInIfEligible(Long userId) {
         // 락 없는 사전 체크 -> 하루 중 두 번째 이후 로그인은 대부분 여기서 끝남
         if (alreadyCheckedInToday(userId)) {
+            return CheckInOutcome.none();
+        }
+
+        // 정지된 계정은 출첵 대상에서 제외한다. pointService.lockAccounts()까지 가서 예외로 걸러내면
+        // (별도 @Transactional 프록시 메서드가 던진 예외라) 이 메서드의 REQUIRES_NEW 트랜잭션이
+        // rollback-only로 마킹되어, catch로 흡수해도 커밋 시점에 UnexpectedRollbackException이 터진다.
+        // 그래서 락을 걸기 전에 미리 걸러낸다.
+        if (userService.findById(userId).getStatus() != UserStatus.ACTIVE) {
             return CheckInOutcome.none();
         }
 

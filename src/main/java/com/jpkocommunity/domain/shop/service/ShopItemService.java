@@ -77,10 +77,14 @@ public class ShopItemService {
         }
 
         if (request.active() != null) {
+            boolean wasInactive = !item.isActive();
             if (request.active()) {
                 item.activate();
-                // 비활성 -> 활성으로 막 전환된 ROLE_AUCTION도 등록 때와 동일하게 즉시 회차를 연다.
-                if (item.getType() == ShopItemType.ROLE_AUCTION) {
+                // 비활성 -> 활성으로 막 전환된 ROLE_AUCTION만 등록 때와 동일하게 즉시 회차를 연다.
+                // 이미 활성 상태인 아이템에 (프론트가 현재 값을 그대로 다시 보내는 식으로) active:true가
+                // 반복해서 오는 경우까지 매번 호출할 필요는 없다(openRoundIfNeeded 자체는 멱등이라
+                // 실질적 피해는 없었지만, cadenceDays로 대기 중이던 다음 회차가 의도치 않게 앞당겨질 수 있었음).
+                if (wasInactive && item.getType() == ShopItemType.ROLE_AUCTION) {
                     roleAuctionService.openRoundIfNeeded(item);
                 }
             } else {

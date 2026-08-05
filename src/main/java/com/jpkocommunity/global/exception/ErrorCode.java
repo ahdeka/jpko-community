@@ -117,7 +117,11 @@ public enum ErrorCode {
     CANNOT_AUCTION_ROOT_ROLE(HttpStatus.BAD_REQUEST, "ROOT 권한은 경매 대상으로 등록할 수 없습니다."),
     AUCTION_ROUND_NOT_OPEN(HttpStatus.BAD_REQUEST, "진행 중인 경매 회차가 아니거나 존재하지 않습니다."),
     BID_TOO_LOW(HttpStatus.BAD_REQUEST, "입찰가가 최저가 또는 기존 입찰가보다 낮습니다."),
-    BID_NOT_FOUND(HttpStatus.NOT_FOUND, "입찰 내역이 없습니다.");
+    BID_NOT_FOUND(HttpStatus.NOT_FOUND, "입찰 내역이 없습니다."),
+    CANNOT_BID_AS_ROOT(HttpStatus.BAD_REQUEST, "최고 관리자 계정은 경매에 입찰할 수 없습니다."),
+    BLOCK_PRICE_CHANGED(HttpStatus.CONFLICT, "차단 정보가 변경되었습니다. 다시 시도해주세요."),
+    APPEAL_ALREADY_PENDING(HttpStatus.CONFLICT, "이미 처리 대기 중인 이의제기가 있습니다."),
+    CONFLICTING_REQUEST(HttpStatus.CONFLICT, "다른 요청과 충돌했습니다. 다시 시도해주세요.");
 
 
     private final HttpStatus status;

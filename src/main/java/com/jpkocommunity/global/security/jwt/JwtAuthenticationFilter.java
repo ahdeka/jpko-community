@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -50,6 +52,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     // 온보딩전 계정들은 읽기만 허용 TODO 마이그레이션 끝나면 정리
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
+
+    // 정지(SuspendAllowedPaths)와 활동차단(BlockAllowedPaths)이 동시에 걸린 유저도 두 셀프서비스
+    // 경로 모두에 접근할 수 있어야 한다 - 두 화이트리스트를 따로따로만 검사하면 교집합(로그아웃)
+    // 바깥의 셀프 해제 API가 서로를 막아버려서 관리자 개입 없이는 영구히 못 풀리는 상태가 된다.
+    private static final Set<String> SELF_SERVICE_PATHS =
+            Stream.concat(SuspendAllowedPaths.PATHS.stream(), BlockAllowedPaths.PATHS.stream())
+                    .collect(Collectors.toUnmodifiableSet());
 
     // EXCLUDED_PATHS 요청은 필터 자체를 건너뜀
     @Override
@@ -82,7 +91,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // SUSPENDED(관리자 정지)는 DELETED와 달리 완전히 막지 않는다 — 정지 현황 확인·포인트로
             // 즉시 해제(SuspendAllowedPaths)는 허용해, 정지된 계정도 스스로 풀 수 있게 한다.
             boolean isSuspendedButAllowed =
-                    auth.getStatus() == UserStatus.SUSPENDED && SuspendAllowedPaths.PATHS.contains(request.getRequestURI());
+                    auth.getStatus() == UserStatus.SUSPENDED && SELF_SERVICE_PATHS.contains(request.getRequestURI());
             if (auth.getStatus() != UserStatus.ACTIVE && !isSuspendedButAllowed) {
                 throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
             }
@@ -90,7 +99,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 임시 활동 차단 확인 — 만료 시각을 실시간 비교하므로 스케줄러 없이도 만료 즉시 자동 해제됨
             boolean isBlocked = activityBlockRepository.existsByTarget_IdAndStatusAndExpiresAtAfter(
                     userId, BlockStatus.ACTIVE, LocalDateTime.now());
-            if (isBlocked && !BlockAllowedPaths.PATHS.contains(request.getRequestURI())) {
+            if (isBlocked && !SELF_SERVICE_PATHS.contains(request.getRequestURI())) {
                 throw new CustomException(ErrorCode.ACTIVITY_BLOCKED);
             }
 

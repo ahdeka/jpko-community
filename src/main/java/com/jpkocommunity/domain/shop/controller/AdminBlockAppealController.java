@@ -30,8 +30,11 @@ public class AdminBlockAppealController {
     }
 
     @PatchMapping("/{appealId}")
-    public ResponseEntity<ApiResponse<Void>> markHandled(@PathVariable Long appealId) {
-        activityBlockService.markAppealHandled(appealId);
-        return ResponseEntity.ok(ApiResponse.ok("처리 완료로 표시했습니다."));
+    public ResponseEntity<ApiResponse<Void>> markHandled(
+            @PathVariable Long appealId,
+            @RequestParam(defaultValue = "false") boolean unblock
+    ) {
+        activityBlockService.markAppealHandled(appealId, unblock);
+        return ResponseEntity.ok(ApiResponse.ok(unblock ? "처리 완료로 표시하고 차단을 해제했습니다." : "처리 완료로 표시했습니다."));
     }
 }
