@@ -51,6 +51,8 @@ public class PachinkoService {
             throw new CustomException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
+        pointService.move(user, system, totalCost, TransactionType.PACHINKO_FEE, "파칭코 배팅액");
+
         if (fee > 0) {
             pointService.move(user, system, fee, TransactionType.PACHINKO_FEE, "파칭코 수수료");
         }
@@ -65,9 +67,8 @@ public class PachinkoService {
         }
 
         long net = totalPayout - totalCost;
-        if (net >= 0) {
-            pointService.move(system, user, net, TransactionType.PACHINKO, "파칭코 결과");
-        }
+
+        pointService.move(system, user, totalPayout, TransactionType.PACHINKO, "파칭코 결과");
 
         return new PachinkoPlayResponse(ballCount, ballPrice, totalCost, fee, balls,
                 totalPayout, net, net > 0, user.point().getBalance());
