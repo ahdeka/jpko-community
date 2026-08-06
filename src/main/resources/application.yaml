@@ -73,9 +73,6 @@ app:
   transfer:
     unit: 10
     fee-ranges:
-      - min-amount: -3000
-        max-amount: -500
-        weight: 0
       - min-amount: 0
         max-amount: 0
         weight: 15
