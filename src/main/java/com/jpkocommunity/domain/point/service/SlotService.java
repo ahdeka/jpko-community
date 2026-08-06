@@ -44,18 +44,18 @@ public class SlotService {
             throw new CustomException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
+        pointService.move(user, system, betAmount, TransactionType.SLOT_FEE, "슬롯머신 베팅액");
+
         if (fee > 0) {
             pointService.move(user, system, fee, TransactionType.SLOT_FEE, "슬롯머신 수수료");
         }
 
         SlotProperties.RollResult roll = slotProperties.roll();
         long payout = Math.round(betAmount * roll.multiplier());
-        long net = payout - betAmount;
+        long net = payout;
 
-        if (net >= 0) {
+        if (net > 0) {
             pointService.move(system, user, net, TransactionType.SLOT, "슬롯머신 결과");
-        } else {
-            pointService.move(user, system, -net, TransactionType.SLOT, "슬롯머신 결과");
         }
 
         return new SlotPlayResponse(betAmount, fee, roll.symbols(), roll.win(),
