@@ -107,6 +107,12 @@ public enum ErrorCode {
     ROULETTE_OPPONENT_NOT_FOUND(HttpStatus.CONFLICT, "대결할 상대를 찾을 수 없습니다."),
     SELF_OPPONENT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인을 상대로 지정할 수 없습니다."),
 
+    // Pachinko
+    UNAUTHORIZED_PACHINKO(HttpStatus.UNAUTHORIZED, "파칭코 기능은 이메일 인증을 해야합니다."),
+
+    // Slot
+    UNAUTHORIZED_SLOT(HttpStatus.UNAUTHORIZED, "슬롯머신 기능은 이메일 인증을 해야합니다."),
+
     // Shop
     ACTIVITY_BLOCKED(HttpStatus.FORBIDDEN, "활동이 제한된 상태입니다."),
     SELF_BLOCK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인을 차단할 수 없습니다."),

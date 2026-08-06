@@ -13,5 +13,9 @@ public enum TransactionType {
     BLOCK_UNBLOCK, // 유저 -> 시스템, 본인 차단을 포인트로 즉시 해제
     BID_HOLD, // 유저 -> 시스템, 권한 경매 입찰 시 예탁(에스크로)
     BID_REFUND, // 시스템 -> 유저, 낙찰 실패/입찰 취소 시 예탁금 환불
-    SUSPEND_UNLOCK // 유저 -> 시스템, 관리자 정지(SUSPENDED)를 본인이 직접 포인트로 즉시 해제
+    SUSPEND_UNLOCK, // 유저 -> 시스템, 관리자 정지(SUSPENDED)를 본인이 직접 포인트로 즉시 해제
+    PACHINKO_FEE, // 유저 -> 시스템, 파칭코 판당 수수료
+    PACHINKO, // 유저 <-> 시스템, 파칭코 결과 정산(순손익). amount는 시스템->유저(순이익) 또는 유저->시스템(순손실) 둘 다 가능
+    SLOT_FEE, // 유저 -> 시스템, 슬롯머신 판당 수수료
+    SLOT // 유저 <-> 시스템, 슬롯머신 결과 정산(순손익). amount는 시스템->유저(순이익) 또는 유저->시스템(순손실) 둘 다 가능
 }
