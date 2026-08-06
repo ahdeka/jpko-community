@@ -21,7 +21,9 @@ import org.springframework.context.annotation.Configuration;
         RouletteProperties.class,
         PointProperties.class,
         TransferProperties.class,
-        NotificationProperties.class
+        NotificationProperties.class,
+        PachinkoProperties.class,
+        SlotProperties.class
 })
 public class PropertiesConfig {
 }
