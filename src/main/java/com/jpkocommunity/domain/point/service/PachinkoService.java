@@ -51,6 +51,7 @@ public class PachinkoService {
             throw new CustomException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
+
         if (fee > 0) {
             pointService.move(user, system, fee, TransactionType.PACHINKO_FEE, "파칭코 수수료");
         }
