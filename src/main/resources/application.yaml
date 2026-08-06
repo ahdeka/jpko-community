@@ -45,9 +45,9 @@ app:
     win-probability: 0.45
     fee-rate: 0.05
   pachinko:
-    bet-unit: 100
-    min-bet: 100
-    max-bet: 5000
+    ball-price: 50            # 구슬 1개당 가격
+    min-balls: 1
+    max-balls: 50             # 한 판에 쏠 수 있는 최대 구슬 개수(연출·남용 방지용 상한)
     fee-rate: 0.03            # 배당표 자체가 이미 하우스 엣지를 크게 갖고 있어 룰렛보다 낮게 잡음
     rows: 8                   # 9개 슬롯(0~8)
     right-probability: 0.5    # 못 하나당 우측으로 튕길 확률 — 의도적으로 클라이언트에 노출 안 함

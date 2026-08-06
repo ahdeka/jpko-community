@@ -109,6 +109,7 @@ public enum ErrorCode {
 
     // Pachinko
     UNAUTHORIZED_PACHINKO(HttpStatus.UNAUTHORIZED, "파칭코 기능은 이메일 인증을 해야합니다."),
+    INVALID_BALL_COUNT(HttpStatus.BAD_REQUEST, "구슬 개수가 설정된 범위를 벗어났습니다."),
 
     // Slot
     UNAUTHORIZED_SLOT(HttpStatus.UNAUTHORIZED, "슬롯머신 기능은 이메일 인증을 해야합니다."),
