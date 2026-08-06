@@ -35,6 +35,6 @@ public class PachinkoController {
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody PachinkoPlayRequest request
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(pachinkoService.play(authUser.userId(), request.betAmount())));
+        return ResponseEntity.ok(ApiResponse.ok(pachinkoService.play(authUser.userId(), request.ballCount())));
     }
 }

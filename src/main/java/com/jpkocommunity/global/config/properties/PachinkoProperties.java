@@ -7,34 +7,31 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 파칭코(플린코형 구슬 낙하) 설정. rows개의 못 행을 지날 때마다 독립적으로 좌/우로 튕기고,
- * 우측으로 튕긴 횟수가 곧 최종 슬롯 인덱스가 된다(이항분포 -> 가운데 슬롯일수록 확률이 높음).
+ * 파칭코(플린코형 구슬 낙하) 설정. 구슬 1개당 가격(ballPrice)을 정해두고 유저가 개수를 골라 여러 발을
+ * 쏜다. 구슬 1개는 rows개의 못 행을 지날 때마다 독립적으로 좌/우로 튕기고, 우측으로 튕긴 횟수가 곧
+ * 최종 슬롯 인덱스가 된다(이항분포 -> 가운데 슬롯일수록 확률이 높음). 여러 발을 합산하는 책임은
+ * PachinkoService에 있다 — 이 클래스는 구슬 1개의 결과만 산출한다.
  */
 @ConfigurationProperties(prefix = "app.pachinko")
 public record PachinkoProperties(
-        long betUnit,
-        long minBet,
-        long maxBet,
+        long ballPrice,
+        int minBalls,
+        int maxBalls,
         double feeRate,
         int rows,
         double rightProbability,
         List<Double> slotMultipliers
 ) {
     public PachinkoProperties {
-        if (betUnit <= 0) {
-            throw new IllegalArgumentException("app.pachinko.bet-unit은 0보다 커야 합니다: " + betUnit);
+        if (ballPrice <= 0) {
+            throw new IllegalArgumentException("app.pachinko.ball-price는 0보다 커야 합니다: " + ballPrice);
         }
-        if (minBet <= 0 || minBet % betUnit != 0) {
-            throw new IllegalArgumentException(
-                    "app.pachinko.min-bet(%d)는 bet-unit(%d)의 배수여야 합니다".formatted(minBet, betUnit));
+        if (minBalls < 1) {
+            throw new IllegalArgumentException("app.pachinko.min-balls는 1 이상이어야 합니다: " + minBalls);
         }
-        if (maxBet % betUnit != 0) {
+        if (maxBalls < minBalls) {
             throw new IllegalArgumentException(
-                    "app.pachinko.max-bet(%d)는 bet-unit(%d)의 배수여야 합니다".formatted(maxBet, betUnit));
-        }
-        if (minBet > maxBet) {
-            throw new IllegalArgumentException(
-                    "app.pachinko.min-bet(%d)는 max-bet(%d)보다 클 수 없습니다".formatted(minBet, maxBet));
+                    "app.pachinko.max-balls(%d)는 min-balls(%d)보다 작을 수 없습니다".formatted(maxBalls, minBalls));
         }
         if (feeRate < 0 || feeRate > 1) {
             throw new IllegalArgumentException("app.pachinko.fee-rate는 0~1 사이여야 합니다: " + feeRate);
@@ -58,9 +55,9 @@ public record PachinkoProperties(
         }
     }
 
-    // 베팅액이 유효한 범위·단위인지 검사
-    public boolean isValidBet(long betAmount) {
-        return betAmount >= minBet && betAmount <= maxBet && betAmount % betUnit == 0;
+    // 구슬 개수가 유효한 범위인지 검사
+    public boolean isValidBallCount(int ballCount) {
+        return ballCount >= minBalls && ballCount <= maxBalls;
     }
 
     // 못 행을 rows번 통과시키며 매번 독립적으로 좌/우를 굴린다. 우측 횟수 = 최종 슬롯 인덱스.
