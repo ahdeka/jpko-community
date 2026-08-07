@@ -42,7 +42,7 @@ app:
     bet-unit: 100
     min-bet: 100
     max-bet: 5000
-    win-probability: 0.45
+    win-probability: 0.5
     fee-rate: 0.05
   pachinko:
     ball-price: 50            # 구슬 1개당 가격
