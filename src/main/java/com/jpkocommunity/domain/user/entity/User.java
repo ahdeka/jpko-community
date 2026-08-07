@@ -142,6 +142,10 @@ public class User extends BaseEntity {
         this.rouletteStatus = true;
     }
 
+    public void cancelRouletteAgreement() {
+        this.rouletteStatus = false;
+    }
+
     public void withdraw() {
         this.status = UserStatus.DELETED;
         this.deletedAt = LocalDateTime.now();

@@ -130,6 +130,11 @@ public class RouletteService {
     }
 
     @Transactional
+    public void cancelRouletteAgreement(Long userId) {
+        userService.findById(userId).cancelRouletteAgreement();
+    }
+
+    @Transactional
     public void lockOpponent(Long userId, Long opponentId, String key) {
         if (userId.equals(opponentId)) {
             throw new CustomException(ErrorCode.SELF_OPPONENT_NOT_ALLOWED);
