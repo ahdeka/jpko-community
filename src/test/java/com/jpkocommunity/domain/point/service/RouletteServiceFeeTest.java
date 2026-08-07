@@ -89,7 +89,7 @@ class RouletteServiceFeeTest {
 
         // 지속되는(persistent) 테스트 DB에는 다른 테스트가 남긴 유저도 섞여 있어 랜덤 상대 선정에
         // 기댈 수 없다 -> 상대를 명시적으로 고정해 이 테스트가 항상 이 opponent를 상대하게 한다.
-        rouletteService.lockOpponent(initiatorId, opponentId);
+        rouletteService.lockOpponent(initiatorId, opponentId, null);
     }
 
     @Test

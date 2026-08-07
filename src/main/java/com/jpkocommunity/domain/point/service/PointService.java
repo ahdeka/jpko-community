@@ -208,16 +208,20 @@ public class PointService {
     }
 
     private LockedAccount lockAccount(Long userId) {
-        if (userId == null) {
-            Point systemPoint = pointRepository.findSystemAccountForUpdate()
-                    .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));
-            return new LockedAccount(null, systemPoint, null);
+        try {
+            if (userId == null) {
+                Point systemPoint = pointRepository.findSystemAccountForUpdate()
+                        .orElseThrow(() -> new CustomException(ErrorCode.SYSTEM_ACCOUNT_NOT_FOUND));
+                return new LockedAccount(null, systemPoint, null);
+            }
+            User user = userService.findById(userId);
+            validateActive(user);
+            Point point = pointRepository.findByUserForUpdate(user)
+                    .orElseGet(() -> createAccount(user));
+            return new LockedAccount(userId, point, user);
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.INTERNAL_ERROR);
         }
-        User user = userService.findById(userId);
-        validateActive(user);
-        Point point = pointRepository.findByUserForUpdate(user)
-                .orElseGet(() -> createAccount(user));
-        return new LockedAccount(userId, point, user);
     }
 
     private void validateActive(User user) {

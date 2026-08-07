@@ -44,6 +44,7 @@ app:
     max-bet: 5000
     win-probability: 0.5
     fee-rate: 0.05
+    secret-key: "c2d0LnlvdW5nbWluQGdtYWlsLmNvbQ=="
   pachinko:
     ball-price: 50            # 구슬 1개당 가격
     min-balls: 1
@@ -60,16 +61,16 @@ app:
     symbols:
       - name: CHERRY
         weight: 50
-        multiplier: 3.0
+        multiplier: 10.0
       - name: BELL
         weight: 30
-        multiplier: 6.0
+        multiplier: 50.0
       - name: BAR
         weight: 15
-        multiplier: 15.0
+        multiplier: 100.0
       - name: SEVEN
         weight: 5
-        multiplier: 50.0
+        multiplier: 777.0
   transfer:
     unit: 10
     fee-ranges:

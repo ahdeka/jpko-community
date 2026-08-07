@@ -2,6 +2,7 @@ package com.jpkocommunity.domain.user.repository;
 
 import com.jpkocommunity.domain.auth.repository.UserAuthProjection;
 import com.jpkocommunity.domain.user.entity.User;
+import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -47,11 +49,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = """
             SELECT u.id FROM users u
             WHERE u.status = 'ACTIVE' AND u.role <> 'ROOT' AND u.id <> :excludeUserId
-              AND u.email_verified = true
+              AND u.email_verified = true AND u.roulette_status = true
             OFFSET floor(random() * (
                 SELECT COUNT(*) FROM users u2
                 WHERE u2.status = 'ACTIVE' AND u2.role <> 'ROOT' AND u2.id <> :excludeUserId
-                  AND u2.email_verified = true
+                  AND u2.email_verified = true AND u2.roulette_status = true
             ))::bigint
             LIMIT 1
             """, nativeQuery = true)
@@ -62,4 +64,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("update User u set u.status = 'ACTIVE', u.suspendedUntil = null " +
             "where u.status = 'SUSPENDED' and u.suspendedUntil is not null and u.suspendedUntil <= :now")
     int reactivateAllExpiredSuspensions(@Param("now") LocalDateTime now);
+
+    List<User> findAllByRoleIs(UserRole role);
 }

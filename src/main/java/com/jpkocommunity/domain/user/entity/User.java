@@ -64,6 +64,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private boolean emailVerified;
 
+    @Column
+    private boolean rouletteStatus;
+
     @Builder
     public User(String email, String password, String nickname, String loginId) {
         this.email = email;
@@ -77,6 +80,7 @@ public class User extends BaseEntity {
         LocalDateTime now = LocalDateTime.now();
         this.termsAgreedAt = now;
         this.privacyAgreedAt = now;
+        this.rouletteStatus = false;
     }
 
     // ========== 비즈니스 메서드 ==========

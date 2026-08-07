@@ -31,7 +31,7 @@ public class RouletteController {
     public ResponseEntity<ApiResponse<RouletteOpponentResponse>> getOpponent(
             @AuthenticationPrincipal AuthUser authUser
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(rouletteService.getOpponent(authUser.userId()).orElse(null)));
+        return ResponseEntity.ok(ApiResponse.ok(rouletteService.getOpponent(authUser.userId(), null).orElse(null)));
     }
 
     @PutMapping("/opponent/{opponentId}")
@@ -39,7 +39,7 @@ public class RouletteController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long opponentId
     ) {
-        rouletteService.lockOpponent(authUser.userId(), opponentId);
+        rouletteService.lockOpponent(authUser.userId(), opponentId, null);
         return ResponseEntity.ok(ApiResponse.ok("상대가 고정되었습니다."));
     }
 
@@ -47,7 +47,7 @@ public class RouletteController {
     public ResponseEntity<ApiResponse<Void>> unlockOpponent(
             @AuthenticationPrincipal AuthUser authUser
     ) {
-        rouletteService.unlockOpponent(authUser.userId());
+        rouletteService.unlockOpponent(authUser.userId(), null);
         return ResponseEntity.ok(ApiResponse.ok("고정이 해제되었습니다."));
     }
 

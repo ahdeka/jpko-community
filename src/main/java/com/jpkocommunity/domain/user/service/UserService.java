@@ -72,6 +72,10 @@ public class UserService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
+    public List<User> findAdmins() {
+        return userRepository.findAllByRoleIs(UserRole.ADMIN);
+    }
+
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
     }
