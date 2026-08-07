@@ -5,6 +5,7 @@ import com.jpkocommunity.domain.point.dto.response.RouletteConfigResponse;
 import com.jpkocommunity.domain.point.dto.response.RouletteOpponentResponse;
 import com.jpkocommunity.domain.point.dto.response.RouletteSpinResponse;
 import com.jpkocommunity.domain.point.service.RouletteService;
+import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.properties.RouletteProperties;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.auth.AuthUser;
@@ -21,10 +22,22 @@ public class RouletteController {
 
     private final RouletteService rouletteService;
     private final RouletteProperties rouletteProperties;
+    private final UserService userService;
 
     @GetMapping("/config")
-    public ResponseEntity<ApiResponse<RouletteConfigResponse>> getConfig() {
-        return ResponseEntity.ok(ApiResponse.ok(RouletteConfigResponse.from(rouletteProperties)));
+    public ResponseEntity<ApiResponse<RouletteConfigResponse>> getConfig(
+            @AuthenticationPrincipal AuthUser authUser
+    ) {
+        boolean agreed = userService.findById(authUser.userId()).isRouletteStatus();
+        return ResponseEntity.ok(ApiResponse.ok(RouletteConfigResponse.from(rouletteProperties, agreed)));
+    }
+
+    @PostMapping("/consent")
+    public ResponseEntity<ApiResponse<Void>> agreeToRoulette(
+            @AuthenticationPrincipal AuthUser authUser
+    ) {
+        rouletteService.agreeToRoulette(authUser.userId());
+        return ResponseEntity.ok(ApiResponse.ok("룰렛 참여에 동의했습니다."));
     }
 
     @GetMapping("/opponent")

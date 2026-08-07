@@ -49,8 +49,12 @@ public class RouletteService {
             throw new CustomException(ErrorCode.INVALID_BET_AMOUNT);
         }
 
-        if (!userService.findById(userId).isEmailVerified()) {
+        User self = userService.findById(userId);
+        if (!self.isEmailVerified()) {
             throw new CustomException(ErrorCode.UNAUTHORIZED_ROULETTE);
+        }
+        if (!self.isRouletteStatus()) {
+            throw new CustomException(ErrorCode.ROULETTE_CONSENT_REQUIRED);
         }
 
         Optional<RouletteOpponent> locked = rouletteOpponentRepository.findByUserId(userId);
@@ -118,6 +122,11 @@ public class RouletteService {
 
         return new RouletteSpinResponse(
                 win, betAmount, fee, actualAmount, initiator.point().getBalance(), opponentId, opponent.getNickname(), opponentLocked);
+    }
+
+    @Transactional
+    public void agreeToRoulette(Long userId) {
+        userService.findById(userId).agreeToRoulette();
     }
 
     @Transactional
