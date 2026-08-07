@@ -77,12 +77,12 @@ class RouletteOpponentVisibilityTest {
         userId = user.getId();
         opponentId = opponent.getId();
 
-        rouletteService.lockOpponent(userId, opponentId);
+        rouletteService.lockOpponent(userId, opponentId, null);
     }
 
     @Test
     void 고정된_상대가_정지되면_조회에서_제외된다() {
-        assertThat(rouletteService.getOpponent(userId))
+        assertThat(rouletteService.getOpponent(userId, null))
                 .as("정지 전에는 정상적으로 고정된 상대가 조회돼야 함")
                 .map(RouletteOpponentResponse::opponentId)
                 .contains(opponentId);
@@ -91,7 +91,7 @@ class RouletteOpponentVisibilityTest {
         opponent.suspend(null);
         userRepository.save(opponent);
 
-        Optional<RouletteOpponentResponse> afterSuspend = rouletteService.getOpponent(userId);
+        Optional<RouletteOpponentResponse> afterSuspend = rouletteService.getOpponent(userId, null);
         assertThat(afterSuspend)
                 .as("상대가 정지되면 다음 스핀에서 실제로 쓰이지 않을 것이므로 조회에서도 빠져야 함")
                 .isEmpty();

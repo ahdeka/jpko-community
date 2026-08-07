@@ -11,7 +11,8 @@ public record RouletteProperties(
         long minBet,
         long maxBet,
         double winProbability,
-        double feeRate
+        double feeRate,
+        String secretKey
 ) {
     public RouletteProperties {
         if (betUnit <= 0) {

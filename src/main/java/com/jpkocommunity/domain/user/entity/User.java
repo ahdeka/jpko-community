@@ -64,6 +64,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private boolean emailVerified;
 
+    @Column(nullable = false)
+    private boolean rouletteStatus;
+
     @Builder
     public User(String email, String password, String nickname, String loginId) {
         this.email = email;
@@ -77,6 +80,7 @@ public class User extends BaseEntity {
         LocalDateTime now = LocalDateTime.now();
         this.termsAgreedAt = now;
         this.privacyAgreedAt = now;
+        this.rouletteStatus = false;
     }
 
     // ========== 비즈니스 메서드 ==========
@@ -132,6 +136,14 @@ public class User extends BaseEntity {
 
     public void updateBio(String bio) {
         this.bio = bio;
+    }
+
+    public void agreeToRoulette() {
+        this.rouletteStatus = true;
+    }
+
+    public void cancelRouletteAgreement() {
+        this.rouletteStatus = false;
     }
 
     public void withdraw() {

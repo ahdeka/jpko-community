@@ -106,6 +106,8 @@ public enum ErrorCode {
     INVALID_BET_AMOUNT(HttpStatus.BAD_REQUEST, "배팅액이 설정된 단위·범위를 벗어났습니다."),
     ROULETTE_OPPONENT_NOT_FOUND(HttpStatus.CONFLICT, "대결할 상대를 찾을 수 없습니다."),
     SELF_OPPONENT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인을 상대로 지정할 수 없습니다."),
+    INSUFFICIENT_OPPONENT_BALANCE(HttpStatus.NOT_ACCEPTABLE, "상대방의 잔액이 부족합니다."),
+    ROULETTE_CONSENT_REQUIRED(HttpStatus.FORBIDDEN, "룰렛 참여에 동의해야 합니다."),
 
     // Pachinko
     UNAUTHORIZED_PACHINKO(HttpStatus.UNAUTHORIZED, "파칭코 기능은 이메일 인증을 해야합니다."),

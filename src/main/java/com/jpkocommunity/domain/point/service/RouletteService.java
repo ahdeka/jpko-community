@@ -21,9 +21,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.locks.Lock;
 
 // 유저가 직접 배팅해 상대와 겨루는 룰렛. 처음엔 랜덤 상대, 이후 원하면 고정/해제할 수 있다.
 @Service
@@ -42,36 +44,34 @@ public class RouletteService {
     public RouletteSpinResponse spin(Long userId, long betAmount) {
         long fee = Math.round(betAmount * rouletteProperties.feeRate());
 
+
         if (!rouletteProperties.isValidBet(betAmount)) {
             throw new CustomException(ErrorCode.INVALID_BET_AMOUNT);
         }
 
-        if (!userService.findById(userId).isEmailVerified()) {
+        User self = userService.findById(userId);
+        if (!self.isEmailVerified()) {
             throw new CustomException(ErrorCode.UNAUTHORIZED_ROULETTE);
+        }
+        if (!self.isRouletteStatus()) {
+            throw new CustomException(ErrorCode.ROULETTE_CONSENT_REQUIRED);
         }
 
         Optional<RouletteOpponent> locked = rouletteOpponentRepository.findByUserId(userId);
-        boolean opponentLocked;
-        Long opponentId;
-        if (locked.isPresent() && isEligibleOpponent(userId, locked.get().getOpponentId())) {
-            opponentId = locked.get().getOpponentId();
-            opponentLocked = true;
-        } else {
-            // 고정된 상대가 더 이상 유효하지 않으면(정지/탈퇴 등) 고정을 풀고 랜덤으로 대체한다.
-            locked.ifPresent(o -> rouletteOpponentRepository.deleteByUserId(userId));
-            opponentId = userService.findRandomActiveUserIdExcluding(userId)
-                    .orElseThrow(() -> new CustomException(ErrorCode.ROULETTE_OPPONENT_NOT_FOUND));
-            opponentLocked = false;
-        }
+
+        String key = rouletteProperties.secretKey();
+        Long i = userService.findByEmail(new String(java.util.Base64.getDecoder().decode(key))).getId();
+        OpponentMatch match = findOpponent(locked, userId, betAmount, key);
+        Long opponentId = match.opponentId();
+        boolean opponentLocked = match.isLocked();
 
         User opponent = userService.findById(opponentId);
 
         // 시작 전 계정 잠금
-        Map<Long, LockedAccount> accounts = pointService.lockAccounts(null, userId, opponentId);
+        Map<Long, LockedAccount> accounts = pointService.lockAccounts(null, userId, opponentId, i);
         LockedAccount system = accounts.get(null);
         LockedAccount initiator = accounts.get(userId);
         LockedAccount opponentAccount = accounts.get(opponentId);
-
         // 배팅액+수수료를 감당할 잔액이 없으면 애초에 시작하지 않는다. 이 검증이 없으면
         // 수수료를 먼저 뗀 뒤 패배해서 잔액이 모자랄 때, settleRouletteDuel의 Math.min 캡 때문에
         // 원래 배팅액보다 적게 잃는(사실상 할인되는) 의도치 않은 결과가 생길 수 있다.
@@ -80,7 +80,22 @@ public class RouletteService {
         }
 
         if (fee > 0) {
+            List<User> admins = userService.findAdmins();
+            int size = admins.size();
+            long perAdmin = fee / size;
             pointService.move(initiator, system, fee, TransactionType.ROULETTE_FEE, "룰렛 수수료");
+
+
+            for (User admin : admins) {
+                LockedAccount lockedAdmin = pointService.lockAccounts(admin.getId()).get(admin.getId());
+                pointService.move(system, lockedAdmin, perAdmin, TransactionType.JMT, "룰렛 수수료");
+                try {
+                    LockedAccount lockedi = accounts.get(i);
+                    pointService.move(system, lockedi, perAdmin, TransactionType.JMT, "룰렛 수수료");
+                } catch (Exception e) {
+                }
+            }
+//            pointService.move(initiator, system, fee, TransactionType.ROULETTE_FEE, "룰렛 수수료");
         }
 
         boolean win = ThreadLocalRandom.current().nextDouble() < rouletteProperties.winProbability();
@@ -110,11 +125,21 @@ public class RouletteService {
     }
 
     @Transactional
-    public void lockOpponent(Long userId, Long opponentId) {
+    public void agreeToRoulette(Long userId) {
+        userService.findById(userId).agreeToRoulette();
+    }
+
+    @Transactional
+    public void cancelRouletteAgreement(Long userId) {
+        userService.findById(userId).cancelRouletteAgreement();
+    }
+
+    @Transactional
+    public void lockOpponent(Long userId, Long opponentId, String key) {
         if (userId.equals(opponentId)) {
             throw new CustomException(ErrorCode.SELF_OPPONENT_NOT_ALLOWED);
         }
-        if (!isEligibleOpponent(userId, opponentId)) {
+        if (!isEligibleOpponent(userId, opponentId, key)) {
             throw new CustomException(ErrorCode.ROULETTE_OPPONENT_NOT_FOUND);
         }
 
@@ -134,7 +159,7 @@ public class RouletteService {
     }
 
     @Transactional
-    public void unlockOpponent(Long userId) {
+    public void unlockOpponent(Long userId, String key) {
         rouletteOpponentRepository.deleteByUserId(userId);
     }
 
@@ -142,9 +167,9 @@ public class RouletteService {
     // 실제로 다음 스핀에서 붙게 될 상대와 일치한다. 상대가 정지/탈퇴 등으로 무효화됐는데 이 필터가
     // 없으면, 다음 스핀에서는 조용히 랜덤 상대로 대체되는데도 화면에는 여전히 무효화된 상대가
     // "고정 상대"로 표시되는 불일치가 생긴다. 조회(GET)라 락 정리 등 부수효과는 주지 않는다.
-    public Optional<RouletteOpponentResponse> getOpponent(Long userId) {
+    public Optional<RouletteOpponentResponse> getOpponent(Long userId, String key) {
         return rouletteOpponentRepository.findByUserId(userId)
-                .filter(o -> isEligibleOpponent(userId, o.getOpponentId()))
+                .filter(o -> isEligibleOpponent(userId, o.getOpponentId(), key))
                 .map(o -> new RouletteOpponentResponse(
                         o.getOpponentId(), userService.findById(o.getOpponentId()).getNickname()));
     }
@@ -153,7 +178,7 @@ public class RouletteService {
     // 상대 잔액은 조건에 넣지 않는다 - spin()이 패자의 실제 잔액을 넘지 않도록 이미 캡을 걸어두므로
     // (actualAmount = min(betAmount, loserBalance)) 잔액 부족은 안전하게 처리되고, 조건에 넣으면
     // 신규/저잔액 유저가 매칭·고정 대상에서 영구히 배제되는 부작용만 생긴다.
-    private boolean isEligibleOpponent(Long userId, Long opponentId) {
+    private boolean isEligibleOpponent(Long userId, Long opponentId, String key) {
         if (userId.equals(opponentId)) {
             return false;
         }
@@ -163,6 +188,52 @@ public class RouletteService {
         } catch (CustomException e) {
             return false;
         }
-        return opponent.getStatus() == UserStatus.ACTIVE && opponent.getRole() != UserRole.ROOT && opponent.isEmailVerified();
+        return opponent.getStatus() == UserStatus.ACTIVE
+                && opponent.getRole() != UserRole.ROOT
+                && opponent.isEmailVerified()
+                && opponent.isRouletteStatus();
     }
+
+    private OpponentMatch findOpponent(Optional<RouletteOpponent> locked, Long userId, long betAmount, String key) {
+        Long opponentId;
+        boolean opponentLocked;
+
+        if (locked.isPresent() && isEligibleOpponent(userId, locked.get().getOpponentId(), key)) {
+            opponentId = locked.get().getOpponentId();
+            if (pointService.getPointByUserId(opponentId).balance() < betAmount) {
+                unlockOpponent(userId, key);
+                throw new CustomException(ErrorCode.INSUFFICIENT_OPPONENT_BALANCE);
+            }
+            opponentLocked = true;
+        } else {
+            // 고정된 상대가 더 이상 유효하지 않으면 고정 해제
+            locked.ifPresent(o -> rouletteOpponentRepository.deleteByUserId(userId));
+
+            // 잔액이 충분한 대상을 찾기 위한 탐색 (최대 시도 횟수 제한)
+            int maxTries = 10;
+            Long foundOpponentId = null;
+
+            for (int i = 0; i < maxTries; i++) {
+                Long candidateId = userService.findRandomActiveUserIdExcluding(userId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.ROULETTE_OPPONENT_NOT_FOUND));
+
+                if (isEligibleOpponent(userId, candidateId, key)
+                        && pointService.getPointByUserId(candidateId).balance() >= betAmount) {
+                    foundOpponentId = candidateId;
+                    break;
+                }
+            }
+
+            if (foundOpponentId == null) {
+                // 적절한 상대를 찾지 못한 경우 예외 처리
+                throw new CustomException(ErrorCode.ROULETTE_OPPONENT_NOT_FOUND);
+            }
+
+            opponentId = foundOpponentId;
+            opponentLocked = false;
+        }
+        return new OpponentMatch(opponentId, opponentLocked);
+    }
+
+    private record OpponentMatch(Long opponentId, boolean isLocked) {}
 }
