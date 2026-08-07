@@ -18,7 +18,7 @@ public class ActivityBlockExpiryScheduler {
 
     private final ActivityBlockRepository activityBlockRepository;
 
-    @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul")
     @Transactional
     public void expireBlocks() {
         int expired = activityBlockRepository.expireAllPast(LocalDateTime.now());

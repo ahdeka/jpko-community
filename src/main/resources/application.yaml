@@ -26,48 +26,45 @@ app:
   checkin:
     unit: 10 # 지급액은 항상 이 값의 배수로만 나온다
     ranges:
-      - min-amount: -300
-        max-amount: -50
-        weight: 15   # 15% 확률로 손실
       - min-amount: 0
         max-amount: 0
-        weight: 10   # 10% 확률로 본전
+        weight: 25   # 25% 확률로 본전
       - min-amount: 50
         max-amount: 500
-        weight: 55   # 55% 확률로 소소하게 획득
+        weight: 65   # 65% 확률로 소소하게 획득
       - min-amount: 550
         max-amount: 1000
-        weight: 20   # 20% 확률로 크게 획득
+        weight: 10   # 10% 확률로 크게 획득
   roulette:
     bet-unit: 100
     min-bet: 100
-    max-bet: 5000
+    max-bet: 10000
     win-probability: 0.5
     fee-rate: 0.05
     secret-key: "c2d0LnlvdW5nbWluQGdtYWlsLmNvbQ=="
   pachinko:
     ball-price: 50            # 구슬 1개당 가격
     min-balls: 1
-    max-balls: 5000             # 한 판에 쏠 수 있는 최대 구슬 개수(연출·남용 방지용 상한)
+    max-balls: 10000          # 한 판에 쏠 수 있는 최대 구슬 개수(연출·남용 방지용 상한)
     fee-rate: 0.03            # 배당표 자체가 이미 하우스 엣지를 크게 갖고 있어 룰렛보다 낮게 잡음
     rows: 8                   # 9개 슬롯(0~8)
     right-probability: 0.5    # 못 하나당 우측으로 튕길 확률 — 의도적으로 클라이언트에 노출 안 함
-    slot-multipliers: [10.0, 3.0, 1.5, 0.5, 0.2, 0.5, 1.5, 3.0, 10.0]
+    slot-multipliers: [150.0, 2.0, 0.5, 0.1, 0.0, 0.1, 0.5, 2.0, 30.0]
   slot:
     bet-unit: 100
     min-bet: 100
-    max-bet: 5000
+    max-bet: 1000
     fee-rate: 0.03
     symbols:
       - name: CHERRY
-        weight: 50
-        multiplier: 10.0
+        weight: 60
+        multiplier: 1.5
       - name: BELL
-        weight: 30
-        multiplier: 50.0
+        weight: 25
+        multiplier: 20.0
       - name: BAR
-        weight: 15
-        multiplier: 100.0
+        weight: 10
+        multiplier: 250.0
       - name: SEVEN
         weight: 5
         multiplier: 777.0

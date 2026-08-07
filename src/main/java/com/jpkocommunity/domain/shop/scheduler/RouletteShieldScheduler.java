@@ -13,7 +13,7 @@ public class RouletteShieldScheduler {
 
     private final RouletteShieldService rouletteShieldService;
 
-    @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul")
     public void expireShields() {
         rouletteShieldService.expireShields();
     }
