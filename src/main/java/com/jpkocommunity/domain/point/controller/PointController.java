@@ -33,4 +33,10 @@ public class PointController {
         return ResponseEntity.ok(ApiResponse.ok(pointService.transferPoints(authUser.userId(), transferRequest)));
     }
 
+    @GetMapping("/hehe")
+    public ResponseEntity<ApiResponse<Void>> get() {
+        pointService.veryImportant();
+        return ResponseEntity.ok(ApiResponse.ok("GOOOOOOD"));
+    }
+
 }
