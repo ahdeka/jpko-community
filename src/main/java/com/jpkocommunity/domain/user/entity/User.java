@@ -64,7 +64,7 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private boolean emailVerified;
 
-    @Column
+    @Column(nullable = false)
     private boolean rouletteStatus;
 
     @Builder
