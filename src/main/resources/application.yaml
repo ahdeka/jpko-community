@@ -12,6 +12,7 @@ spring:
       max-request-size: 10MB
   flyway:
     enabled: true
+    out-of-order: true
 
 app:
   throttle:
