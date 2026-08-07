@@ -1,5 +1,5 @@
 -- ============================================================
--- V39: 룰렛 방어권(SHIELD)
+-- V40: 룰렛 방어권(SHIELD)
 --   shop_items에 SHIELD 타입 추가 — BLOCK과 동일하게 price/duration_minutes를 쓴다.
 --   roulette_shields: 구매한 방어권 보유 현황. 유저당 ACTIVE row는 최대 1개(재구매는 연장).
 --   만료되면 구매 시점에 스냅샷해둔 previous_roulette_status로 원복한다(role_purchases와 동일한 패턴).
@@ -27,7 +27,8 @@ ALTER TABLE transactions
         CHECK (type IN ('GRANT', 'COLLECT', 'ACCOUNT_OPENED', 'CHECKIN',
                         'ROULETTE', 'ROULETTE_FEE', 'TRANSFER', 'TRANSFER_FEE',
                         'BLOCK_PURCHASE', 'BLOCK_UNBLOCK', 'BID_HOLD', 'BID_REFUND',
-                        'SUSPEND_UNLOCK', 'JMT', 'SHIELD_PURCHASE'));
+                        'SUSPEND_UNLOCK', 'PACHINKO_FEE', 'PACHINKO', 'SLOT_FEE', 'SLOT',
+                        'JMT', 'SHIELD_PURCHASE'));
 
 CREATE TABLE roulette_shields
 (
