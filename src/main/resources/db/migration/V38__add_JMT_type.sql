@@ -10,7 +10,8 @@ ALTER TABLE transactions
         CHECK (type IN ('GRANT', 'COLLECT', 'ACCOUNT_OPENED', 'CHECKIN',
                         'ROULETTE', 'ROULETTE_FEE', 'TRANSFER', 'TRANSFER_FEE',
                         'BLOCK_PURCHASE', 'BLOCK_UNBLOCK', 'BID_HOLD', 'BID_REFUND',
-                        'SUSPEND_UNLOCK', 'JMT'));
+                        'SUSPEND_UNLOCK', 'PACHINKO_FEE', 'PACHINKO', 'SLOT_FEE',
+                        'SLOT', 'JMT'));
 
 -- 룰렛 참여 동의 여부. 동의한 유저만 랜덤/고정 상대로 선정되거나 직접 스핀할 수 있다.
 ALTER TABLE users ADD COLUMN roulette_status BOOLEAN NOT NULL DEFAULT false;
