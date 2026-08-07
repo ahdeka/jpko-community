@@ -13,5 +13,5 @@ ALTER TABLE transactions
                         'SUSPEND_UNLOCK', 'PACHINKO_FEE', 'PACHINKO', 'SLOT_FEE',
                         'SLOT', 'JMT'));
 
--- 룰렛 참여 동의 여부. 동의한 유저만 랜덤/고정 상대로 선정되거나 직접 스핀할 수 있다.
+-- -- 룰렛 참여 동의 여부. 동의한 유저만 랜덤/고정 상대로 선정되거나 직접 스핀할 수 있다.
 ALTER TABLE users ADD COLUMN roulette_status BOOLEAN NOT NULL DEFAULT false;

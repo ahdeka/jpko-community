@@ -42,6 +42,10 @@ public class ShopItemService {
                 requireNonNull(request.price(), request.durationMinutes());
                 yield ShopItem.createBlockItem(request.name(), request.price(), request.durationMinutes());
             }
+            case SHIELD -> {
+                requireNonNull(request.price(), request.durationMinutes());
+                yield ShopItem.createShieldItem(request.name(), request.price(), request.durationMinutes());
+            }
             case ROLE_AUCTION -> {
                 requireNonNull(request.targetRole(), request.quantity(), request.minPrice(),
                         request.durationDays(), request.cadenceDays());
@@ -62,8 +66,8 @@ public class ShopItemService {
         ShopItem item = shopItemRepository.findById(itemId)
                 .orElseThrow(() -> new CustomException(ErrorCode.ITEM_NOT_FOUND));
 
-        if (item.getType() == ShopItemType.BLOCK) {
-            item.updateBlockPricing(
+        if (item.getType() == ShopItemType.BLOCK || item.getType() == ShopItemType.SHIELD) {
+            item.updatePricing(
                     request.price() != null ? request.price() : item.getPrice(),
                     request.durationMinutes() != null ? request.durationMinutes() : item.getDurationMinutes()
             );

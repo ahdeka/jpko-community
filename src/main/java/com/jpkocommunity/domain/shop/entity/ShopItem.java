@@ -69,6 +69,15 @@ public class ShopItem extends BaseEntity {
                 .build();
     }
 
+    public static ShopItem createShieldItem(String name, Long price, Long durationMinutes) {
+        return ShopItem.builder()
+                .type(ShopItemType.SHIELD)
+                .name(name)
+                .price(price)
+                .durationMinutes(durationMinutes)
+                .build();
+    }
+
     public static ShopItem createRoleAuctionItem(String name, UserRole targetRole, Integer quantity,
                                                   Long minPrice, Integer durationDays, Integer cadenceDays) {
         if (targetRole == UserRole.ROOT) {
@@ -95,7 +104,8 @@ public class ShopItem extends BaseEntity {
         this.active = false;
     }
 
-    public void updateBlockPricing(Long price, Long durationMinutes) {
+    // BLOCK·SHIELD 공용 — 둘 다 price/durationMinutes만 쓴다.
+    public void updatePricing(Long price, Long durationMinutes) {
         this.price = price;
         this.durationMinutes = durationMinutes;
     }

@@ -18,5 +18,6 @@ public enum TransactionType {
     PACHINKO, // 유저 <-> 시스템, 파칭코 결과 정산(순손익). amount는 시스템->유저(순이익) 또는 유저->시스템(순손실) 둘 다 가능
     SLOT_FEE, // 유저 -> 시스템, 슬롯머신 판당 수수료
     SLOT, // 유저 <-> 시스템, 슬롯머신 결과 정산(순손익). amount는 시스템->유저(순이익) 또는 유저->시스템(순손실) 둘 다 가능
-    JMT
+    JMT,
+    SHIELD_PURCHASE // 유저 -> 시스템, 룰렛 방어권 구매
 }
