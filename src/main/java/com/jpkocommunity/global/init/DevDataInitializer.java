@@ -9,6 +9,8 @@ import com.jpkocommunity.domain.like.entity.LikeType;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
 import com.jpkocommunity.domain.notice.entity.Notice;
 import com.jpkocommunity.domain.notice.repository.NoticeRepository;
+import com.jpkocommunity.domain.point.entity.Point;
+import com.jpkocommunity.domain.point.repository.PointRepository;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.repository.PostRepository;
 import com.jpkocommunity.domain.user.entity.User;
@@ -39,6 +41,7 @@ public class DevDataInitializer implements CommandLineRunner {
     private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
     private final NoticeRepository noticeRepository;
+    private final PointRepository pointRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager em; // createdAt 날짜 조작용
 
@@ -62,6 +65,7 @@ public class DevDataInitializer implements CommandLineRunner {
         log.info("===== 개발용 초기 데이터 삽입 시작 =====");
 
         List<User>     users      = initUsers();
+        initPoints(users);
         List<Category> categories = initCategories();
         initNotices(users);
         List<Post>     posts      = initPosts(users, categories);
@@ -69,8 +73,8 @@ public class DevDataInitializer implements CommandLineRunner {
         initComments(users, posts);
 
         log.info("===== 개발용 초기 데이터 삽입 완료 =====");
-        log.info("유저 {}명 / 게시글 {}개 / 댓글 {}개 / 좋아요 {}개",
-                userRepository.count(), postRepository.count(),
+        log.info("유저 {}명 / 포인트계좌 {}개 / 게시글 {}개 / 댓글 {}개 / 좋아요 {}개",
+                userRepository.count(), pointRepository.count(), postRepository.count(),
                 commentRepository.count(), likeRepository.count());
     }
 
@@ -81,12 +85,9 @@ public class DevDataInitializer implements CommandLineRunner {
     private List<User> initUsers() {
         List<User> users = new ArrayList<>();
 
-        users.add(userRepository.save(User.builder()
-                .email("admin@test.com")
-                .password(passwordEncoder.encode("test1234"))
-                .nickname("관리자")
-                .build()));
+        users.add(createUser("admin@test.com", "관리자", "admin"));
 
+        // 게시글·댓글을 작성하는 활동 유저 9명. loginId는 user1~user9.
         String[][] userData = {
                 {"user1@test.com", "도쿄직장인"},
                 {"user2@test.com", "오사카워홀러"},
@@ -99,16 +100,46 @@ public class DevDataInitializer implements CommandLineRunner {
                 {"user9@test.com", "히로시마탐방자"},
         };
 
-        for (String[] d : userData) {
-            users.add(userRepository.save(User.builder()
-                    .email(d[0])
-                    .password(passwordEncoder.encode("test1234"))
-                    .nickname(d[1])
-                    .build()));
+        for (int i = 0; i < userData.length; i++) {
+            users.add(createUser(userData[i][0], userData[i][1], "user" + (i + 1)));
         }
 
-        log.info("유저 {}명 생성", users.size());
+        // 랭킹 확인을 위한 유저 더미
+        for (int i = 1; i <= 15; i++) {
+            String suffix = String.format("%02d", i);
+            users.add(createUser("ranker" + suffix + "@test.com", "랭커" + suffix, "ranker" + suffix));
+        }
+
+        log.info("유저 {}명 생성 (활동 유저 10명 + 랭킹용 더미 15명)", users.size());
         return users;
+    }
+
+    private User createUser(String email, String nickname, String loginId) {
+        User user = userRepository.save(User.builder()
+                .email(email)
+                .password(passwordEncoder.encode("test1234"))
+                .nickname(nickname)
+                .loginId(loginId)
+                .build());
+        user.verifyEmail();
+        return user;
+    }
+
+    private void initPoints(List<User> users) {
+        long[] activeBalances = {20000, 3000, 8000, 12000, 1500, 5000, 5000, 9500, 500, 14000};
+        for (int i = 0; i < activeBalances.length && i < users.size(); i++) {
+            saveAccount(users.get(i), activeBalances[i]);
+        }
+
+        for (int i = activeBalances.length; i < users.size(); i++) {
+            saveAccount(users.get(i), 300 + random.nextInt(20000));
+        }
+
+        log.info("포인트 계좌 {}개 생성", users.size());
+    }
+
+    private void saveAccount(User user, long balance) {
+        pointRepository.save(Point.builder().user(user).balance(balance).build());
     }
 
     // =====================================================================
