@@ -83,6 +83,9 @@ app:
         weight: 5
   notification:
     retention-days: 30 # 알림 보관 기간 (days)
+  ranking:
+    top-size: 5
+    neighbor-size: 5
 
 server:
   port: 8080
