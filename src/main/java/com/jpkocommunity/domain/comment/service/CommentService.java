@@ -103,19 +103,13 @@ public class CommentService {
         Comment comment = findActiveComment(commentId);
         validateAuthor(comment, authUser);
 
-        boolean isPrivileged = authUser.role() == UserRole.ROOT || authUser.role() == UserRole.ADMIN;
-        boolean isOwner = comment.getUser().getId().equals(authUser.userId());
+        Long commentAuthorId = comment.getUser().getId();
+        Long postId = comment.getPost().getId();
 
-        comment.delete();
+        applyDelete(comment, commentId);
 
         eventPublisher.publishEvent(new ContentDeletedEvent(ReportTargetType.COMMENT, commentId));
-
-        if (isPrivileged && !isOwner) {
-            eventPublisher.publishEvent(new NotificationEvent(
-                    comment.getUser().getId(), authUser.userId(), NotificationType.CONTENT_REMOVED,
-                    comment.getPost().getId(), commentId, false, null
-            ));
-        }
+        notifyIfRemovedByAdmin(authUser, commentAuthorId, postId, commentId);
     }
 
     public Optional<Comment> findByIdOptional(Long commentId) {
@@ -196,5 +190,46 @@ public class CommentService {
                 .ifPresent(last -> {
                     throw new CustomException(ErrorCode.COMMENT_TOO_FREQUENT);
                 });
+    }
+
+    // 대댓글이 살아 있으면 소프트 삭제, 없으면 부모까지 하드 삭제
+    private void applyDelete(Comment comment, Long commentId) {
+        boolean hasLiveReplies = comment.getReplies().stream().anyMatch(reply -> !reply.isDeleted());
+        if (hasLiveReplies) {
+            comment.delete();
+            return;
+        }
+
+        Comment parent = comment.getParent();
+        hardDelete(comment);
+
+        // 부모가 삭제 됐고 자식이 없으면 부모까지 하드 삭제
+        if (parent != null && parent.isDeleted() && !hasOtherLiveReplies(parent, commentId)) {
+            hardDelete(parent);
+        }
+    }
+
+    private boolean hasOtherLiveReplies(Comment parent, Long commentId) {
+        return parent.getReplies().stream()
+                .anyMatch(reply -> !reply.isDeleted() && !reply.getId().equals(commentId));
+    }
+
+    private void hardDelete(Comment comment) {
+        List<Comment> replies = comment.getReplies();
+        if (!replies.isEmpty()) {
+            commentRepository.deleteAll(replies);
+        }
+        commentRepository.delete(comment);
+    }
+
+    private void notifyIfRemovedByAdmin(AuthUser authUser, Long authorId, Long postId, Long commentId) {
+        boolean isPrivileged = authUser.role() == UserRole.ROOT || authUser.role() == UserRole.ADMIN;
+        boolean isOwner = authorId.equals(authUser.userId());
+
+        if (isPrivileged && !isOwner) {
+            eventPublisher.publishEvent(new NotificationEvent(
+                    authorId, authUser.userId(), NotificationType.CONTENT_REMOVED,
+                    postId, commentId, false, null));
+        }
     }
 }
