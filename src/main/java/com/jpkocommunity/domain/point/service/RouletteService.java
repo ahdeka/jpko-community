@@ -129,10 +129,11 @@ public class RouletteService {
         userService.findById(userId).agreeToRoulette();
     }
 
-    @Transactional
-    public void cancelRouletteAgreement(Long userId) {
-        userService.findById(userId).cancelRouletteAgreement();
-    }
+    // 20260817 주석처리 hd
+//    @Transactional
+//    public void cancelRouletteAgreement(Long userId) {
+//        userService.findById(userId).cancelRouletteAgreement();
+//    }
 
     @Transactional
     public void lockOpponent(Long userId, Long opponentId, String key) {

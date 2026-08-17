@@ -40,13 +40,14 @@ public class RouletteController {
         return ResponseEntity.ok(ApiResponse.ok("룰렛 참여에 동의했습니다."));
     }
 
-    @DeleteMapping("/consent")
-    public ResponseEntity<ApiResponse<Void>> cancelRouletteAgreement(
-            @AuthenticationPrincipal AuthUser authUser
-    ) {
-        rouletteService.cancelRouletteAgreement(authUser.userId());
-        return ResponseEntity.ok(ApiResponse.ok("룰렛 참여 동의를 취소했습니다."));
-    }
+    // 20260817 주석처리 hd
+//    @DeleteMapping("/consent")
+//    public ResponseEntity<ApiResponse<Void>> cancelRouletteAgreement(
+//            @AuthenticationPrincipal AuthUser authUser
+//    ) {
+//        rouletteService.cancelRouletteAgreement(authUser.userId());
+//        return ResponseEntity.ok(ApiResponse.ok("룰렛 참여 동의를 취소했습니다."));
+//    }
 
     @GetMapping("/opponent")
     public ResponseEntity<ApiResponse<RouletteOpponentResponse>> getOpponent(
