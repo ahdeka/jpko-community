@@ -7,6 +7,7 @@ import com.jpkocommunity.domain.comment.entity.Comment;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
+import com.jpkocommunity.domain.notification.repository.NotificationRepository;
 import com.jpkocommunity.domain.point.entity.GrantType;
 import com.jpkocommunity.domain.point.service.PointService;
 import com.jpkocommunity.domain.post.entity.Post;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +45,7 @@ public class CommentService {
     private final ThrottleProperties throttleProperties;
     private final PointProperties pointProperties;
     private final PointService pointService;
+    private final NotificationRepository notificationRepository;
 
     public List<CommentResponse> getComments(Long postId, Long currentUserId) {
         postService.findActivePostById(postId);
@@ -201,11 +204,12 @@ public class CommentService {
         }
 
         Comment parent = comment.getParent();
-        hardDelete(comment);
 
-        // 부모가 삭제 됐고 자식이 없으면 부모까지 하드 삭제
+        // 부모가 이미 삭제됐고 이 댓글 외 살아있는 대댓글이 없으면 부모 서브트리를 통째로 하드 삭제
         if (parent != null && parent.isDeleted() && !hasOtherLiveReplies(parent, commentId)) {
             hardDelete(parent);
+        } else {
+            hardDelete(comment);
         }
     }
 
@@ -216,6 +220,14 @@ public class CommentService {
 
     private void hardDelete(Comment comment) {
         List<Comment> replies = comment.getReplies();
+
+        // 물리 삭제 전에 알림 삭제 (참조성 해결)
+        List<Long> deletingIds = Stream.concat(
+                        Stream.of(comment.getId()),
+                        replies.stream().map(Comment::getId))
+                .toList();
+        notificationRepository.deleteByCommentIdIn(deletingIds);
+
         if (!replies.isEmpty()) {
             commentRepository.deleteAll(replies);
         }

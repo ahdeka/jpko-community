@@ -53,6 +53,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("delete from Notification n where n.createdAt < :cutoff")
     int deleteAllOlderThan(@Param("cutoff") LocalDateTime cutoff);
 
+    // 댓글 하드 삭제 시, 그 댓글을 참조하는 알림을 먼저 끊기 위한 벌크 삭제
+    @Modifying
+    @Query("delete from Notification n where n.comment.id in :commentIds")
+    void deleteByCommentIdIn(@Param("commentIds") List<Long> commentIds);
+
     // 좋아요 재클릭 중복 알림 억제용
     Optional<Notification> findTopByReceiverIdAndSenderIdAndPostIdAndTypeOrderByCreatedAtDesc(
             Long receiverId, Long senderId, Long postId, NotificationType type
