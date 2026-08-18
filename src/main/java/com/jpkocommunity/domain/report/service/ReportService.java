@@ -205,8 +205,8 @@ public class ReportService {
             case COMMENT -> commentService.findAllWithUserByIdIn(ids).stream()
                     .collect(Collectors.toMap(
                             c -> new TargetKey(ReportTargetType.COMMENT, c.getId()),
-                            c -> new TargetView(c.getPost().getId(), truncate(c.getContent()),
-                                    c.getUser().getNickname(), c.isDeleted() || c.getPost().isDeleted())));
+                            c -> new TargetView(c.getTargetId(), truncate(c.getContent()),
+                                    c.getUser().getNickname(), c.isDeleted())));
             case USER -> userService.findAllByIdIn(ids).stream()
                     .collect(Collectors.toMap(
                             u -> new TargetKey(ReportTargetType.USER, u.getId()),
@@ -251,9 +251,11 @@ public class ReportService {
     }
 
     // 배치 조회 결과를 (타입, 대상 id)로 찾기 위한 복합 키
-    private record TargetKey(ReportTargetType targetType, Long targetId) { }
+    private record TargetKey(ReportTargetType targetType, Long targetId) {
+    }
 
     // 신고 목록/집계에 노출할 대상 미리보기 + 작성자 닉네임 (postId: 원문 게시글 이동용, 게시글 신고는 자기 자신)
-    private record TargetView(Long postId, String preview, String authorNickname, boolean deleted) { }
+    private record TargetView(Long postId, String preview, String authorNickname, boolean deleted) {
+    }
 
 }

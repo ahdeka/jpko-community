@@ -1,5 +1,7 @@
 package com.jpkocommunity.domain.notice.entity;
 
+import com.jpkocommunity.domain.comment.entity.CommentTargetType;
+import com.jpkocommunity.domain.comment.entity.Commentable;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -13,7 +15,7 @@ import static lombok.AccessLevel.PROTECTED;
 @Entity
 @NoArgsConstructor(access = PROTECTED)
 @Table(name = "notices")
-public class Notice extends BaseEntity {
+public class Notice extends BaseEntity implements Commentable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -57,5 +59,20 @@ public class Notice extends BaseEntity {
 
     public void confirmContent(String content) {
         this.content = content;
+    }
+
+    @Override
+    public User getAuthor() {
+        return user;
+    }
+
+    @Override
+    public boolean isCommentActive() {
+        return true;
+    }
+
+    @Override
+    public CommentTargetType getTargetType() {
+        return CommentTargetType.NOTICE;
     }
 }

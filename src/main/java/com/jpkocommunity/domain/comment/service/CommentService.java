@@ -2,15 +2,18 @@ package com.jpkocommunity.domain.comment.service;
 
 import com.jpkocommunity.domain.comment.dto.request.CommentCreateRequest;
 import com.jpkocommunity.domain.comment.dto.request.CommentUpdateRequest;
+import com.jpkocommunity.domain.comment.dto.response.CommentPageResponse;
 import com.jpkocommunity.domain.comment.dto.response.CommentResponse;
 import com.jpkocommunity.domain.comment.entity.Comment;
+import com.jpkocommunity.domain.comment.entity.CommentTargetType;
+import com.jpkocommunity.domain.comment.entity.Commentable;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
+import com.jpkocommunity.domain.notice.service.NoticeService;
 import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.notification.repository.NotificationRepository;
 import com.jpkocommunity.domain.point.entity.GrantType;
 import com.jpkocommunity.domain.point.service.PointService;
-import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.post.service.PostService;
 import com.jpkocommunity.domain.report.entity.ReportTargetType;
 import com.jpkocommunity.domain.report.event.ContentDeletedEvent;
@@ -25,6 +28,8 @@ import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.auth.AuthUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,47 +50,55 @@ public class CommentService {
     private final ThrottleProperties throttleProperties;
     private final PointProperties pointProperties;
     private final PointService pointService;
+    private final NoticeService noticeService;
     private final NotificationRepository notificationRepository;
 
-    public List<CommentResponse> getComments(Long postId, Long currentUserId) {
-        postService.findActivePostById(postId);
-        return commentRepository.findTopLevelWithRepliesByPostId(postId)
-                .stream()
-                .map(comment -> CommentResponse.from(comment, currentUserId))
-                .toList();
+    public CommentPageResponse getComments(CommentTargetType type, Long targetId, Long currentUserId, Pageable pageable) {
+        loadTarget(type, targetId);
+        Page<CommentResponse> page = commentRepository.findTopLevelByTarget(type, targetId, pageable)
+                .map(comment -> CommentResponse.from(comment, currentUserId));
+        long total = commentRepository.countByTarget(type, targetId);
+        return CommentPageResponse.of(page, total);
     }
 
     @Transactional
-    public CommentResponse createComment(Long userId, Long postId,
-                                         CommentCreateRequest request, String ipAddress) {
+    public CommentResponse createComment(
+            Long userId, CommentTargetType type, Long targetId,
+            CommentCreateRequest request, String ipAddress
+    ) {
         User user = userService.findById(userId);
         validateThrottle(user);
 
-        Post post = postService.findActivePostById(postId);
+        Commentable target = loadTarget(type, targetId);
 
-        Comment parent = resolveParent(request.parentId(), postId);
+        Comment parent = resolveParent(request.parentId(), type, targetId);
 
-        Comment comment = Comment.builder()
-                .post(post)
+        Comment comment = commentRepository.save(Comment.builder()
+                .targetType(type)
+                .targetId(targetId)
                 .user(user)
                 .parent(parent)
                 .content(request.content())
                 .anonymous(request.anonymous())
                 .ipAddress(ipAddress)
-                .build();
+                .build());
 
-        Comment saved = commentRepository.save(comment);
-        publishNotificationEvent(saved, post, parent, userId);
-
-        // 본인 게시글에 남긴 댓글은 포인트 지급 대상에서 제외
-        if (!post.getUser().getId().equals(userId)) {
-            int point = pointProperties.getPoints().get("create-comment");
-            pointService.grantPointByActivity(userId, (long) point, "Comment: " + comment.getId(), postId, comment.getId(), GrantType.COMMENT);
+        // 공지 댓글은 알림 대상에서 제외
+        if (type == CommentTargetType.POST) {
+            publishNotificationEvent(comment, target, parent, userId);
+            grantCommentPointIfEligible(userId, target, comment, targetId);
         }
 
         return request.parentId() == null
-                ? CommentResponse.from(saved, userId)
-                : CommentResponse.fromReply(saved, userId);
+                ? CommentResponse.from(comment, userId)
+                : CommentResponse.fromReply(comment, userId);
+    }
+
+    private Commentable loadTarget(CommentTargetType type, Long targetId) {
+        return switch (type) {
+            case POST -> postService.findActivePostById(targetId);
+            case NOTICE -> noticeService.findActiveNotice(targetId);
+        };
     }
 
     @Transactional
@@ -107,12 +120,15 @@ public class CommentService {
         validateAuthor(comment, authUser);
 
         Long commentAuthorId = comment.getUser().getId();
-        Long postId = comment.getPost().getId();
+        CommentTargetType type = comment.getTargetType();
+        Long targetId = comment.getTargetId();
 
         applyDelete(comment, commentId);
 
         eventPublisher.publishEvent(new ContentDeletedEvent(ReportTargetType.COMMENT, commentId));
-        notifyIfRemovedByAdmin(authUser, commentAuthorId, postId, commentId);
+        if (type == CommentTargetType.POST) {
+            notifyIfRemovedByAdmin(authUser, commentAuthorId, targetId, commentId);
+        }
     }
 
     public Optional<Comment> findByIdOptional(Long commentId) {
@@ -143,7 +159,7 @@ public class CommentService {
         }
     }
 
-    private Comment resolveParent(Long parentId, Long postId) {
+    private Comment resolveParent(Long parentId, CommentTargetType type, Long targetId) {
         if (parentId == null) return null;
 
         Comment parent = commentRepository.findById(parentId)
@@ -155,7 +171,7 @@ public class CommentService {
         }
 
         // 2. 같은 게시글에 속한 댓글인지 확인
-        if (!parent.getPost().getId().equals(postId)) {
+        if (!parent.isSameTarget(type, targetId)) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
 
@@ -168,18 +184,24 @@ public class CommentService {
     }
 
     // 댓글은 게시글 작성자에게 알림, 대댓글은 부모 댓글 작성자에게 알림
-    private void publishNotificationEvent(Comment saved, Post post, Comment parent, Long commenterId) {
-        Long receiverId = (parent == null) ? post.getUser().getId() : parent.getUser().getId();
+    private void publishNotificationEvent(Comment saved, Commentable target, Comment parent, Long commenterId) {
+        Long receiverId = (parent == null) ? target.getAuthor().getId() : parent.getUser().getId();
 
         // 작성자와 수신자가 같으면 알림 발송하지 않음
-        if (receiverId.equals(commenterId)) {
-            return;
-        }
+        if (receiverId.equals(commenterId)) return;
 
         NotificationType type = (parent == null) ? NotificationType.COMMENT : NotificationType.REPLY;
         eventPublisher.publishEvent(new NotificationEvent(
-                receiverId, commenterId, type, post.getId(), saved.getId(), saved.isAnonymous(), null
+                receiverId, commenterId, type, target.getId(), saved.getId(), saved.isAnonymous(), null
         ));
+    }
+
+    private void grantCommentPointIfEligible(Long userId, Commentable target, Comment comment, Long postId) {
+        if (target.getAuthor().getId().equals(userId)) return;
+
+        int point = pointProperties.getPoints().get("create-comment");
+        pointService.grantPointByActivity(userId, point, "Comment: " + comment.getId(),
+                postId, comment.getId(), GrantType.COMMENT);
     }
 
     // Throttling 검증

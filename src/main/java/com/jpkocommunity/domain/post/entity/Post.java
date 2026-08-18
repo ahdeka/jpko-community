@@ -1,6 +1,8 @@
 package com.jpkocommunity.domain.post.entity;
 
 import com.jpkocommunity.domain.category.entity.Category;
+import com.jpkocommunity.domain.comment.entity.CommentTargetType;
+import com.jpkocommunity.domain.comment.entity.Commentable;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -16,7 +18,7 @@ import static lombok.AccessLevel.PROTECTED;
 @Entity
 @NoArgsConstructor(access = PROTECTED)
 @Table(name = "posts")
-public class Post extends BaseEntity {
+public class Post extends BaseEntity implements Commentable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -93,5 +95,20 @@ public class Post extends BaseEntity {
             return parts[0] + "." + parts[1];
         }
         return "알 수 없음";
+    }
+
+    @Override
+    public User getAuthor() {
+        return user;
+    }
+
+    @Override
+    public boolean isCommentActive() {
+        return !isDeleted();
+    }
+
+    @Override
+    public CommentTargetType getTargetType() {
+        return CommentTargetType.POST;
     }
 }

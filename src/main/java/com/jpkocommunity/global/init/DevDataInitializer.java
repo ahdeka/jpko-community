@@ -3,6 +3,7 @@ package com.jpkocommunity.global.init;
 import com.jpkocommunity.domain.category.entity.Category;
 import com.jpkocommunity.domain.category.repository.CategoryRepository;
 import com.jpkocommunity.domain.comment.entity.Comment;
+import com.jpkocommunity.domain.comment.entity.CommentTargetType;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.like.entity.Like;
 import com.jpkocommunity.domain.like.entity.LikeType;
@@ -578,7 +579,8 @@ public class DevDataInitializer implements CommandLineRunner {
     private Comment save(Post post, User user, Comment parent,
                          String content, boolean anonymous, String ip) {
         return commentRepository.save(Comment.builder()
-                .post(post).user(user).parent(parent)
+                .targetType(CommentTargetType.POST).targetId(post.getId())
+                .user(user).parent(parent)
                 .content(content).anonymous(anonymous).ipAddress(ip).build());
     }
 }

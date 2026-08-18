@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -21,9 +22,12 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "comments")
 public class Comment extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
-    private Post post;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", nullable = false, length = 20)
+    private CommentTargetType targetType;
+
+    @Column(name = "target_id", nullable = false)
+    private Long targetId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -37,6 +41,7 @@ public class Comment extends BaseEntity {
     // 대댓글 목록 - cascade 없음 (부모 삭제해도 대댓글은 "삭제된 댓글" 표시 유지)
     @OneToMany(mappedBy = "parent")
     @OrderBy("createdAt ASC")
+    @BatchSize(size = 100)
     private List<Comment> replies = new ArrayList<>();
 
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -52,9 +57,10 @@ public class Comment extends BaseEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    public Comment(Post post, User user, Comment parent,
+    public Comment(CommentTargetType targetType, Long targetId, User user, Comment parent,
                    String content, boolean anonymous, String ipAddress) {
-        this.post = post;
+        this.targetType = targetType;
+        this.targetId = targetId;
         this.user = user;
         this.parent = parent;
         this.content = content;
@@ -74,6 +80,10 @@ public class Comment extends BaseEntity {
 
     public boolean isDeleted() {
         return this.deletedAt != null;
+    }
+
+    public boolean isSameTarget(CommentTargetType type, Long id) {
+        return this.targetType == type && this.targetId.equals(id);
     }
 
     // Post와 동일한 마스킹 로직
