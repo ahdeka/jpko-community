@@ -139,8 +139,7 @@ public class UserService {
     }
 
     public Page<MyCommentResponse> getMyComments(Long userId, Pageable pageable) {
-        return commentRepository.findByUserIdWithPost(userId, pageable)
-                .map(MyCommentResponse::from);
+        return commentRepository.findMyPostComments(userId, pageable);
     }
 
     @Transactional

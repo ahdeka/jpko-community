@@ -1,5 +1,7 @@
 package com.jpkocommunity.domain.notice.service;
 
+import com.jpkocommunity.domain.comment.entity.CommentTargetType;
+import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.image.service.ImageService;
 import com.jpkocommunity.domain.notice.dto.request.NoticeCreateRequest;
 import com.jpkocommunity.domain.notice.dto.request.NoticeUpdateRequest;
@@ -26,6 +28,7 @@ import java.util.List;
 public class NoticeService {
 
     private final NoticeRepository noticeRepository;
+    private final CommentRepository commentRepository;
     private final UserService userService;
     private final ImageService imageService;
 
@@ -98,8 +101,13 @@ public class NoticeService {
     @Transactional
     public void deleteNotice(Long noticeId) {
         Notice notice = findById(noticeId);
+        commentRepository.deleteByTargetTypeAndTargetId(CommentTargetType.NOTICE, noticeId);
         imageService.deleteAllNoticeImages(notice.getContent(), noticeId);
         noticeRepository.delete(notice);
+    }
+
+    public Notice findActiveNotice(Long noticeId) {
+        return findById(noticeId);
     }
 
     // ========== private 메서드 ==========

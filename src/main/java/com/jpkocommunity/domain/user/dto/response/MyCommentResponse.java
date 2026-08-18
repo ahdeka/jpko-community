@@ -1,7 +1,5 @@
 package com.jpkocommunity.domain.user.dto.response;
 
-import com.jpkocommunity.domain.comment.entity.Comment;
-
 import java.time.LocalDateTime;
 
 public record MyCommentResponse(
@@ -11,13 +9,4 @@ public record MyCommentResponse(
         String content,
         LocalDateTime createdAt
 ) {
-    public static MyCommentResponse from(Comment comment) {
-        return new MyCommentResponse(
-                comment.getId(),
-                comment.getPost().getId(),
-                comment.getPost().getTitle(),
-                comment.getContent(),
-                comment.getCreatedAt()
-        );
-    }
 }

@@ -1,6 +1,8 @@
 package com.jpkocommunity.domain.comment.repository;
 
 import com.jpkocommunity.domain.comment.entity.Comment;
+import com.jpkocommunity.domain.comment.entity.CommentTargetType;
+import com.jpkocommunity.domain.user.dto.response.MyCommentResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,26 +16,46 @@ import java.util.Optional;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    // 최상위 댓글 + 대댓글을 한 번의 쿼리로 fetch
-    // DISTINCT: LEFT JOIN FETCH 시 중복 row 방지
-    @Query("SELECT DISTINCT c FROM Comment c " +
-            "LEFT JOIN FETCH c.replies " +
-            "WHERE c.post.id = :postId AND c.parent IS NULL " +
-            "ORDER BY c.createdAt ASC")
-    List<Comment> findTopLevelWithRepliesByPostId(@Param("postId") Long postId);
+    // 최상위 댓글만 페이징 조회 (대댓글은 @BatchSize로 묶음 로딩)
+    @Query("SELECT c FROM Comment c " +
+            "WHERE c.targetType = :type AND c.targetId = :targetId AND c.parent IS NULL " +
+            "ORDER BY c.createdAt ASC, c.id ASC")
+    Page<Comment> findTopLevelByTarget(@Param("type") CommentTargetType type,
+                                       @Param("targetId") Long targetId,
+                                       Pageable pageable);
 
-    // 게시글 목록용 - 게시글별 댓글 수를 한 번의 쿼리로 집계
-    @Query("SELECT c.post.id AS postId, COUNT(c) AS commentCount FROM Comment c " +
-            "WHERE c.post.id IN :postIds GROUP BY c.post.id")
+    // 게시글 목록 댓글 수 (POST 전용)
+    @Query("SELECT c.targetId AS postId, COUNT(c) AS commentCount FROM Comment c " +
+            "WHERE c.targetType = com.jpkocommunity.domain.comment.entity.CommentTargetType.POST " +
+            "AND c.targetId IN :postIds " +
+            "AND c.deletedAt IS NULL " +
+            "GROUP BY c.targetId")
     List<PostCommentCount> countByPostIdIn(@Param("postIds") List<Long> postIds);
 
-    // 사용자별 댓글 조회 (삭제 제외)
-    @Query("SELECT c FROM Comment c JOIN FETCH c.post WHERE c.user.id = :userId AND c.deletedAt IS NULL AND c.post.deletedAt IS NULL")
-    Page<Comment> findByUserIdWithPost(@Param("userId") Long userId, Pageable pageable);
+    // 헤더용 댓글 수 조회
+    @Query("SELECT COUNT(c) FROM Comment c " +
+            "WHERE c.targetType = :type AND c.targetId = :targetId " +
+            "AND c.deletedAt IS NULL")
+    long countByTarget(@Param("type") CommentTargetType type,
+                       @Param("targetId") Long targetId);
+
+    // 내 댓글 조회
+    @Query("SELECT new com.jpkocommunity.domain.user.dto.response.MyCommentResponse(" +
+            "c.id, p.id, p.title, c.content, c.createdAt) " +
+            "FROM Comment c, Post p " +
+            "WHERE c.targetType = com.jpkocommunity.domain.comment.entity.CommentTargetType.POST " +
+            "AND c.targetId = p.id " +
+            "AND c.user.id = :userId AND c.deletedAt IS NULL AND p.deletedAt IS NULL")
+    Page<MyCommentResponse> findMyPostComments(@Param("userId") Long userId, Pageable pageable);
 
     // 신고 목록/집계 미리보기용 - id 목록으로 작성자·소속 게시글까지 함께 조회 (소프트 삭제 포함)
-    @Query("SELECT c FROM Comment c JOIN FETCH c.user JOIN FETCH c.post WHERE c.id IN :ids")
+    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.id IN :ids")
     List<Comment> findAllWithUserByIdIn(@Param("ids") List<Long> ids);
+
+    // 공지 하드삭제 CASCADE
+    @Modifying
+    @Query("DELETE FROM Comment c WHERE c.targetType = :type AND c.targetId = :targetId")
+    void deleteByTargetTypeAndTargetId(@Param("type") CommentTargetType type, @Param("targetId") Long targetId);
 
     // IP 주소 익명화
     @Modifying
