@@ -47,6 +47,9 @@ public class Comment extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "image_url", length = 512)
+    private String imageUrl;
+
     @Column(nullable = false)
     private boolean anonymous;
 
@@ -58,12 +61,13 @@ public class Comment extends BaseEntity {
 
     @Builder
     public Comment(CommentTargetType targetType, Long targetId, User user, Comment parent,
-                   String content, boolean anonymous, String ipAddress) {
+                   String content, String imageUrl, boolean anonymous, String ipAddress) {
         this.targetType = targetType;
         this.targetId = targetId;
         this.user = user;
         this.parent = parent;
         this.content = content;
+        this.imageUrl = imageUrl;
         this.anonymous = anonymous;
         this.ipAddress = ipAddress;
     }

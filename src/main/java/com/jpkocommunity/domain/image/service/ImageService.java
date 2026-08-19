@@ -35,6 +35,7 @@ public class ImageService {
     private static final String TEMP_PREFIX = "temp";
     private static final String POSTS_PREFIX = "posts";
     private static final String NOTICES_PREFIX = "notices";
+    private static final String COMMENTS_PREFIX = "comments";
 
     // content HTML에서 임시 이미지 URL 추출을 위한 패턴
     private static final Pattern TEMP_URL_PATTERN =
@@ -62,6 +63,39 @@ public class ImageService {
 
     public void deleteAllNoticeImages(String content, Long noticeId) {
         Set<String> keys = extractImageKeys(content, NOTICES_PREFIX + "/" + noticeId);
+        if (keys.isEmpty()) return;
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                keys.forEach(s3ImageUploader::delete);
+            }
+        });
+    }
+
+    // ========== Comment 용 ==========
+
+    // temp 이미지를 comments/ 로 이동 -> 커밋 시 temp 이미지 삭제
+    public String moveTempImageToComment(String tempUrl) {
+        String tempKey = s3ImageUploader.extractKeyIfOwned(tempUrl);
+        if (tempKey == null || !tempKey.startsWith(TEMP_PREFIX + "/")) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        String filename = tempKey.substring(TEMP_PREFIX.length() + 1);
+        String newKey = COMMENTS_PREFIX + "/" + filename;
+        String newUrl = s3ImageUploader.copy(tempKey, newKey);
+
+        registerMoveCleanup(List.of(newKey), List.of(tempKey));
+        return newUrl;
+    }
+
+    // 댓글 하드 삭제에 따른 이미지 파일 정리
+    public void deleteCommentImages(List<String> imageUrls) {
+        List<String> keys = imageUrls.stream()
+                .map(s3ImageUploader::extractKeyIfOwned) // 우리 버킷 소속만
+                .filter(Objects::nonNull)
+                .toList();
         if (keys.isEmpty()) return;
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

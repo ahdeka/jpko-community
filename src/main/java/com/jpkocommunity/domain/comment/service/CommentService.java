@@ -8,6 +8,7 @@ import com.jpkocommunity.domain.comment.entity.Comment;
 import com.jpkocommunity.domain.comment.entity.CommentTargetType;
 import com.jpkocommunity.domain.comment.entity.Commentable;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
+import com.jpkocommunity.domain.image.service.ImageService;
 import com.jpkocommunity.domain.notice.service.NoticeService;
 import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
@@ -32,9 +33,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -46,6 +49,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostService postService;
     private final UserService userService;
+    private final ImageService imageService;
     private final ApplicationEventPublisher eventPublisher;
     private final ThrottleProperties throttleProperties;
     private final PointProperties pointProperties;
@@ -70,18 +74,9 @@ public class CommentService {
         validateThrottle(user);
 
         Commentable target = loadTarget(type, targetId);
-
         Comment parent = resolveParent(request.parentId(), type, targetId);
 
-        Comment comment = commentRepository.save(Comment.builder()
-                .targetType(type)
-                .targetId(targetId)
-                .user(user)
-                .parent(parent)
-                .content(request.content())
-                .anonymous(request.anonymous())
-                .ipAddress(ipAddress)
-                .build());
+        Comment comment = saveComment(type, targetId, user, parent, request.content(), request.imageUrl(), request.anonymous(), ipAddress);
 
         // 공지 댓글은 알림 대상에서 제외
         if (type == CommentTargetType.POST) {
@@ -157,6 +152,28 @@ public class CommentService {
         if (!isOwner && !isPrivileged) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
+    }
+
+    private Comment saveComment(CommentTargetType type, Long targetId, User user, Comment parent, String content, String tempImageUrl, boolean anonymous, String ipAddress) {
+        boolean hasImage = tempImageUrl != null && !tempImageUrl.isEmpty();
+        boolean hasText = StringUtils.hasText(content);
+
+        if (!hasText && !hasImage) throw new CustomException(ErrorCode.INVALID_INPUT);
+
+        String imageUrl = hasImage
+                ? imageService.moveTempImageToComment(tempImageUrl)
+                : null;
+
+        return commentRepository.save(Comment.builder()
+                .targetType(type)
+                .targetId(targetId)
+                .user(user)
+                .parent(parent)
+                .content(hasText ? content : "")
+                .imageUrl(imageUrl)
+                .anonymous(anonymous)
+                .ipAddress(ipAddress)
+                .build());
     }
 
     private Comment resolveParent(Long parentId, CommentTargetType type, Long targetId) {
@@ -249,6 +266,12 @@ public class CommentService {
                         replies.stream().map(Comment::getId))
                 .toList();
         notificationRepository.deleteByCommentIdIn(deletingIds);
+
+        List<String> imageUrls = Stream.concat(Stream.of(comment), replies.stream())
+                .map(Comment::getImageUrl)
+                .filter(Objects::nonNull)
+                .toList();
+        imageService.deleteCommentImages(imageUrls);
 
         if (!replies.isEmpty()) {
             commentRepository.deleteAll(replies);

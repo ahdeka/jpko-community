@@ -14,6 +14,7 @@ public record CommentResponse(
         boolean anonymous,
         boolean isOwner,
         String content,
+        String imageUrl,
         boolean deleted,
         LocalDateTime createdAt,
         List<CommentResponse> replies  // 대댓글은 항상 빈 리스트
@@ -28,6 +29,7 @@ public record CommentResponse(
                 comment.isAnonymous(),
                 isOwner(comment, currentUserId),
                 resolveContent(comment),
+                resolveImageUrl(comment),
                 comment.isDeleted(),
                 comment.getCreatedAt(),
                 comment.getReplies().stream()
@@ -46,6 +48,7 @@ public record CommentResponse(
                 comment.isAnonymous(),
                 isOwner(comment, currentUserId),
                 resolveContent(comment),
+                resolveImageUrl(comment),
                 comment.isDeleted(),
                 comment.getCreatedAt(),
                 List.of()
@@ -54,6 +57,10 @@ public record CommentResponse(
 
     private static String resolveContent(Comment comment) {
         return comment.isDeleted() ? "삭제된 댓글입니다." : comment.getContent();
+    }
+
+    private static String resolveImageUrl(Comment comment) {
+        return comment.isDeleted() ? null : comment.getImageUrl();
     }
 
     private static String resolveAuthor(Comment comment) {
