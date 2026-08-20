@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -31,7 +32,8 @@ public class ImageService {
 
     private final S3ImageUploader s3ImageUploader;
 
-    private static final int MAX_IMAGES_PER_CONTENT = 5;
+    private static final int MAX_IMAGES_PER_CONTENT = 10;
+    private static final int MAX_VIDEOS_PER_CONTENT = 2;
     private static final String TEMP_PREFIX = "temp";
     private static final String POSTS_PREFIX = "posts";
     private static final String NOTICES_PREFIX = "notices";
@@ -43,26 +45,26 @@ public class ImageService {
 
     // ========== Post 용 ==========
 
-    public String moveTempImagesToPost(String content, Long postId) {
-        return moveTempImages(content, POSTS_PREFIX + "/" + postId);
+    public String moveTempMediaToPost(String content, Long postId) {
+        return moveTempMedia(content, POSTS_PREFIX + "/" + postId);
     }
 
-    public void deleteOrphanedImages(String oldContent, String newContent, Long postId) {
-        deleteOrphanedImagesByFolder(oldContent, newContent, POSTS_PREFIX + "/" + postId);
+    public void deleteOrphanedMedia(String oldContent, String newContent, Long postId) {
+        deleteOrphanedMediaByFolder(oldContent, newContent, POSTS_PREFIX + "/" + postId);
     }
 
     // ========== Notice 용 ==========
 
-    public String moveTempImagesToNotice(String content, Long noticeId) {
-        return moveTempImages(content, NOTICES_PREFIX + "/" + noticeId);
+    public String moveTempMediaToNotice(String content, Long noticeId) {
+        return moveTempMedia(content, NOTICES_PREFIX + "/" + noticeId);
     }
 
-    public void deleteOrphanedImagesForNotice(String oldContent, String newContent, Long noticeId) {
-        deleteOrphanedImagesByFolder(oldContent, newContent, NOTICES_PREFIX + "/" + noticeId);
+    public void deleteOrphanedMediaForNotice(String oldContent, String newContent, Long noticeId) {
+        deleteOrphanedMediaByFolder(oldContent, newContent, NOTICES_PREFIX + "/" + noticeId);
     }
 
-    public void deleteAllNoticeImages(String content, Long noticeId) {
-        Set<String> keys = extractImageKeys(content, NOTICES_PREFIX + "/" + noticeId);
+    public void deleteAllNoticeMedia(String content, Long noticeId) {
+        Set<String> keys = extractMediaKeys(content, NOTICES_PREFIX + "/" + noticeId);
         if (keys.isEmpty()) return;
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -76,13 +78,15 @@ public class ImageService {
     // ========== Comment 용 ==========
 
     // temp 이미지를 comments/ 로 이동 -> 커밋 시 temp 이미지 삭제
-    public String moveTempImageToComment(String tempUrl) {
+    public String moveTempMediaToComment(String tempUrl) {
         String tempKey = s3ImageUploader.extractKeyIfOwned(tempUrl);
         if (tempKey == null || !tempKey.startsWith(TEMP_PREFIX + "/")) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
 
         String filename = tempKey.substring(TEMP_PREFIX.length() + 1);
+        validateNotVideo(filename);
+
         String newKey = COMMENTS_PREFIX + "/" + filename;
         String newUrl = s3ImageUploader.copy(tempKey, newKey);
 
@@ -111,17 +115,20 @@ public class ImageService {
     // 저장 전 XSS 방어 + 이미지 수 제한 검증
     public String sanitizeAndValidate(String content) {
         String sanitized = sanitize(content);
-        validateImageCount(sanitized);
+        validateMediaCount(sanitized);
         return sanitized;
     }
 
-    // 목록에서 이미지 포함 여부 확인
+    // 목록에서 미디어 파일 포함 여부 확인
     public boolean hasImage(String content) {
         if (content == null) {
             return false;
         }
-        return Jsoup.parse(content).select("img").stream()
-                .anyMatch(img -> StringUtils.hasText(img.attr("src")));
+        Document doc = Jsoup.parse(content);
+        return doc.select("img").stream().anyMatch(el ->
+                StringUtils.hasText(el.attr("src")))
+                || doc.select("video[src], video source[src]").stream().anyMatch(el ->
+                StringUtils.hasText(el.attr("src")));
     }
 
     // ========== S3 업로드 ==========
@@ -136,19 +143,35 @@ public class ImageService {
 
     // HTML content 저장 전 악성 태그 제거 *XSS 방어
     private String sanitize(String html) {
-        Safelist safelist = Safelist.relaxed().addTags("hr"); // hr 태그 허용
+        Safelist safelist = Safelist.relaxed()
+                .addTags("hr", "video", "source") // hr, 동영상 태그 허용
+                .addAttributes("video", "src", "controls", "width", "height", "poster", "preload", "playsinline")
+                .addAttributes("source", "src", "type")
+                .addProtocols("video", "src", "http", "https")
+                .addProtocols("video", "poster", "http", "https")
+                .addProtocols("source", "src", "http", "https");
         Document.OutputSettings settings = new Document.OutputSettings().prettyPrint(false); // 연속 공백 보존
         return Jsoup.clean(html, "", safelist, settings);
     }
 
-    private void validateImageCount(String content) {
-        int count = Jsoup.parse(content).select("img").size();
-        if (count > MAX_IMAGES_PER_CONTENT) {
+    private void validateMediaCount(String content) {
+        Document doc = Jsoup.parse(content);
+        if (doc.select("img").size() > MAX_IMAGES_PER_CONTENT) {
             throw new CustomException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
+        }
+        if (doc.select("video").size() > MAX_VIDEOS_PER_CONTENT) {
+            throw new CustomException(ErrorCode.VIDEO_LIMIT_EXCEEDED);
         }
     }
 
-    private String moveTempImages(String content, String targetFolder) {
+    private void validateNotVideo(String filename) {
+        String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+        if (ext.equals("mp4") || ext.equals("mov")) {
+            throw new CustomException(ErrorCode.INVALID_FILE_TYPE);
+        }
+    }
+
+    private String moveTempMedia(String content, String targetFolder) {
         Matcher matcher = TEMP_URL_PATTERN.matcher(content);
         List<String[]> replacements = new ArrayList<>(); // [원본 URL, 새 URL]
         List<String> copiedKeys = new ArrayList<>();     // 새로 생긴 키
@@ -186,9 +209,9 @@ public class ImageService {
     }
 
     // 고아 이미지 삭제
-    private void deleteOrphanedImagesByFolder(String oldContent, String newContent, String folder) {
-        Set<String> oldKeys = extractImageKeys(oldContent, folder);
-        Set<String> newKeys = extractImageKeys(newContent, folder);
+    private void deleteOrphanedMediaByFolder(String oldContent, String newContent, String folder) {
+        Set<String> oldKeys = extractMediaKeys(oldContent, folder);
+        Set<String> newKeys = extractMediaKeys(newContent, folder);
         oldKeys.removeAll(newKeys);
 
         if (oldKeys.isEmpty()) return;
@@ -202,10 +225,14 @@ public class ImageService {
     }
 
     // 이미지 URL에서 S3 키 추출
-    private Set<String> extractImageKeys(String content, String folder) {
+    private Set<String> extractMediaKeys(String content, String folder) {
         String prefix = folder + "/";
-        return Jsoup.parse(content).select("img").stream()
-                .map(img -> img.attr("src"))
+        Document doc = Jsoup.parse(content);
+        Stream<String> srcs = Stream.concat(
+                doc.select("img").stream().map(el -> el.attr("src")),
+                doc.select("video[src], video source[src]").stream().map(el -> el.attr("src"))
+        );
+        return srcs
                 .map(s3ImageUploader::extractKeyIfOwned)
                 .filter(Objects::nonNull)
                 .filter(key -> key.startsWith(prefix))

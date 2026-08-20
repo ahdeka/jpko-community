@@ -1,9 +1,9 @@
 package com.jpkocommunity.global.infra.s3;
 
-import com.jpkocommunity.global.config.properties.ImageProcessingProperties;
 import com.jpkocommunity.global.entity.ConvertedFile;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
+import com.jpkocommunity.global.infra.media.MediaConverterResolver;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class S3ImageUploader {
 
     private static final List<String> ALLOWED_EXTENSIONS =
-            List.of("jpg", "jpeg", "png", "gif", "webp");
+            List.of("jpg", "jpeg", "png", "gif", "webp", "mp4", "mov");
     private static final int MAGIC_BYTES_READ_LENGTH = 12;
 
     private static final Map<String, String> EXTENSION_CONTENT_TYPE = Map.of(
@@ -43,18 +43,18 @@ public class S3ImageUploader {
             "jpeg", "image/jpeg",
             "png", "image/png",
             "gif", "image/gif",
-            "webp", "image/webp"
+            "webp", "image/webp",
+            "mp4", "video/mp4"
     );
 
-    private static final long DEFAULT_MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final long DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     private static final Map<String, Long> MAX_FILE_SIZE_BY_EXTENSION = Map.of(
-            "gif", 10 * 1024 * 1024L // 10MB
+            "mp4", 30 * 1024 * 1024L, // 30MB
+            "mov", 30 * 1024 * 1024L // 30MB
     );
-    private static final int GIF2WEBP_TIMEOUT_SECONDS = 15; // 프로세스 hang 방지
-    private static final int GIF2WEBP_QUALITY = 50; // 품질 수치
 
     private final S3Client s3Client;
-    private final ImageProcessingProperties imageProcessingProperties;
+    private final MediaConverterResolver mediaConverterResolver;
 
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
@@ -71,10 +71,7 @@ public class S3ImageUploader {
         String extension = extractExtension(file.getOriginalFilename());
         validate(file, extension);
 
-        ConvertedFile toUpload = "gif".equals(extension)
-                ? convertGifToWebp(file)
-                : ConvertedFile.of(file, extension);
-
+        ConvertedFile toUpload = mediaConverterResolver.convert(file, extension);
         String s3Key = buildKey(s3KeyPrefix, toUpload.extension());
         putObject(toUpload, s3Key);
 
@@ -128,56 +125,6 @@ public class S3ImageUploader {
 
     // ========== private 메서드============
 
-    private ConvertedFile convertGifToWebp(MultipartFile file) {
-        Path input = null, output = null;
-        try {
-            input = Files.createTempFile("gif2webp-in-", ".gif");
-            output = Files.createTempFile("gif2webp-out-", ".webp");
-            Files.write(input, file.getBytes());
-
-            Process process = new ProcessBuilder(
-                    imageProcessingProperties.gif2webpPath(), "-lossy", "-q", String.valueOf(GIF2WEBP_QUALITY),
-                    input.toString(), "-o", output.toString()
-            )
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start();
-
-            boolean finished = process.waitFor(GIF2WEBP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-                log.warn("gif2webp 타임아웃 - 업로드 거부");
-                throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
-            }
-            if (process.exitValue() != 0) {
-                log.warn("gif2webp 변환 실패 - exitCode: {}", process.exitValue());
-                throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
-            }
-
-            return ConvertedFile.of(Files.readAllBytes(output), "webp", "image/webp");
-
-        } catch (IOException e) {
-            throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
-        }
-        finally {
-            deleteQuietly(input);
-            deleteQuietly(output);
-        }
-    }
-
-    private void deleteQuietly(Path path) {
-        if (path == null) return;
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException e) {
-            log.warn("임시 파일 삭제 실패: {}", path);
-        }
-    }
-
     @PostConstruct
     private void initPrefixes() {
         List<String> p = new ArrayList<>();
@@ -221,6 +168,7 @@ public class S3ImageUploader {
             case "gif" -> startsWith(header, 0, 'G', 'I', 'F', '8');
             case "webp" -> startsWith(header, 0, 'R', 'I', 'F', 'F')
                     && startsWith(header, 8, 'W', 'E', 'B', 'P');
+            case "mp4", "mov" -> startsWith(header, 4, 'f', 't', 'y', 'p');
             default -> false;
         };
 
@@ -254,7 +202,7 @@ public class S3ImageUploader {
             PutObjectRequest request = PutObjectRequest.builder()
                     .bucket(bucket)
                     .key(s3Key)
-                    .contentType(file.contentType())
+                    .contentType(resolveContentType(file.extension()))
                     .build();
 
             s3Client.putObject(request, RequestBody.fromBytes(file.bytes()));
@@ -262,6 +210,11 @@ public class S3ImageUploader {
             log.error("S3 업로드 실패 - key: {}, error: {}", s3Key, e.getMessage());
             throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
         }
+    }
+
+    // 검증된 확장자 기준으로 Content-Type 결정
+    private String resolveContentType(String extension) {
+        return EXTENSION_CONTENT_TYPE.getOrDefault(extension, "application/octet-stream");
     }
 
     /**

@@ -11,6 +11,8 @@ spring:
 app:
   image:
     gif2webp-path: /usr/bin/gif2webp
+    cwebp-path: /usr/bin/cwebp
+    ffmpeg-path: /usr/bin/ffmpeg
 
 jwt:
   secret: ${JWT_SECRET}

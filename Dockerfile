@@ -2,7 +2,7 @@
 FROM amazoncorretto:21-alpine
 
 # gif2webp 도구 설치
-RUN apk add --no-cache libwebp-tools
+RUN apk add --no-cache libwebp-tools ffmpeg
 
 # 작업 디렉토리 설정
 WORKDIR /app

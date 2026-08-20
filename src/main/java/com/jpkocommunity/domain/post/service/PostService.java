@@ -189,7 +189,7 @@ public class PostService {
                 .ipAddress(ipAddress)
                 .build());
 
-        String movedContent = imageService.moveTempImagesToPost(sanitizedContent, post.getId());
+        String movedContent = imageService.moveTempMediaToPost(sanitizedContent, post.getId());
         post.confirmContent(movedContent);
 
         int point = pointProperties.getPoints().get("create-post");
@@ -215,8 +215,8 @@ public class PostService {
 
         String oldContent = post.getContent(); // 삭제된 이미지 비교용
         String sanitizedContent = imageService.sanitizeAndValidate(request.content());
-        String movedContent = imageService.moveTempImagesToPost(sanitizedContent, postId);
-        imageService.deleteOrphanedImages(oldContent, movedContent, postId);
+        String movedContent = imageService.moveTempMediaToPost(sanitizedContent, postId);
+        imageService.deleteOrphanedMedia(oldContent, movedContent, postId);
 
         post.update(category, request.title(), movedContent);
 

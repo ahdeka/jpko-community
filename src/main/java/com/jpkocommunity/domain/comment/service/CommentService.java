@@ -161,7 +161,7 @@ public class CommentService {
         if (!hasText && !hasImage) throw new CustomException(ErrorCode.INVALID_INPUT);
 
         String imageUrl = hasImage
-                ? imageService.moveTempImageToComment(tempImageUrl)
+                ? imageService.moveTempMediaToComment(tempImageUrl)
                 : null;
 
         return commentRepository.save(Comment.builder()

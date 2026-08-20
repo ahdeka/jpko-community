@@ -78,7 +78,7 @@ public class NoticeService {
                 .featured(request.featured())
                 .build());
 
-        String movedContent = imageService.moveTempImagesToNotice(sanitizedContent, notice.getId());
+        String movedContent = imageService.moveTempMediaToNotice(sanitizedContent, notice.getId());
         notice.confirmContent(movedContent);
 
         return NoticeResponse.from(notice.getId());
@@ -90,8 +90,8 @@ public class NoticeService {
 
         String oldContent = notice.getContent();
         String sanitizedContent = imageService.sanitizeAndValidate(request.content());
-        String movedContent = imageService.moveTempImagesToNotice(sanitizedContent, noticeId);
-        imageService.deleteOrphanedImagesForNotice(oldContent, movedContent, noticeId);
+        String movedContent = imageService.moveTempMediaToNotice(sanitizedContent, noticeId);
+        imageService.deleteOrphanedMediaForNotice(oldContent, movedContent, noticeId);
 
         notice.update(request.title(), movedContent, request.pinned(), request.featured());
 
@@ -102,7 +102,7 @@ public class NoticeService {
     public void deleteNotice(Long noticeId) {
         Notice notice = findById(noticeId);
         commentRepository.deleteByTargetTypeAndTargetId(CommentTargetType.NOTICE, noticeId);
-        imageService.deleteAllNoticeImages(notice.getContent(), noticeId);
+        imageService.deleteAllNoticeMedia(notice.getContent(), noticeId);
         noticeRepository.delete(notice);
     }
 

@@ -66,12 +66,14 @@ public enum ErrorCode {
     SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인 또는 본인이 작성한 컨텐츠는 신고할 수 없습니다."),
     CANNOT_REPORT_ROOT(HttpStatus.FORBIDDEN, "최고 관리자 계정은 신고할 수 없습니다."),
 
-    // Image
+    // Upload
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 이미지입니다."),
-    IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "게시글당 이미지는 최대 5장까지 업로드할 수 있습니다."),
-    FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일 크기는 5MB 이하여야 합니다."),
+    IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "게시글당 이미지는 최대 10장까지 업로드할 수 있습니다."),
+    VIDEO_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "게시글당 동영상은 최대 2개까지 업로드할 수 있습니다."),
+    FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "허용된 파일 용량을 초과했습니다."),
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "지원하지 않는 파일 형식입니다."),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
+    MEDIA_CONVERT_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "동영상 변환 요청이 많아 잠시 후 다시 시도해주세요."),
 
     // Email Verification
     INVALID_VERIFICATION_TOKEN(HttpStatus.BAD_REQUEST, "유효하지 않은 토큰입니다."),
