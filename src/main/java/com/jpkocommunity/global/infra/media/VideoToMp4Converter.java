@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +50,7 @@ public class VideoToMp4Converter implements MediaConverter{
                 throw new CustomException(ErrorCode.MEDIA_CONVERT_BUSY);
             }
 
-            byte[] mp4 = processRunner.run(
+            Path mp4 = processRunner.runToFile(
                     file, ".video", ".mp4",
                     (input, output) -> List.of(
                             imageProcessingProperties.ffmpegPath(),
@@ -58,16 +59,16 @@ public class VideoToMp4Converter implements MediaConverter{
                             // 세로 720 상한(업스케일 방지) + 짝수 보정, 가로는 -2로 자동 짝수
                             "-vf", "scale=-2:trunc(min(" + MAX_HEIGHT + "\\,ih)/2)*2",
                             "-c:v", "libx264",
-                            "-preset", "veryfast",
+                            "-preset", "ultrafast",
+                            "-threads", "1",
                             "-crf", String.valueOf(CRF),
                             "-pix_fmt", "yuv420p",       // 구형 브라우저/사파리 호환
                             "-movflags", "+faststart",   // 재생 시작 빠르게
-                            "-c:a", "aac",
-                            "-b:a", "128k",
+                            "-c:a", "aac", "-b:a", "128k",
                             output.toString()),
                     TIMEOUT_SECONDS);
 
-            return ConvertedFile.of(mp4, "mp4");
+            return ConvertedFile.ofFile(mp4, "mp4");
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

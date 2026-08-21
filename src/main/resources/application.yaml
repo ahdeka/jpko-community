@@ -10,6 +10,7 @@ spring:
     multipart:
       max-file-size: 31MB
       max-request-size: 31MB
+      file-size-threshold: 0B
   flyway:
     enabled: true
     out-of-order: true

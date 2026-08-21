@@ -33,7 +33,7 @@ public class ImageService {
     private final S3ImageUploader s3ImageUploader;
 
     private static final int MAX_IMAGES_PER_CONTENT = 10;
-    private static final int MAX_VIDEOS_PER_CONTENT = 2;
+    private static final int MAX_VIDEOS_PER_CONTENT = 3;
     private static final String TEMP_PREFIX = "temp";
     private static final String POSTS_PREFIX = "posts";
     private static final String NOTICES_PREFIX = "notices";

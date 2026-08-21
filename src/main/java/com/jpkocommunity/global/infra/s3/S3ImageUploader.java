@@ -72,10 +72,18 @@ public class S3ImageUploader {
         validate(file, extension);
 
         ConvertedFile toUpload = mediaConverterResolver.convert(file, extension);
-        String s3Key = buildKey(s3KeyPrefix, toUpload.extension());
-        putObject(toUpload, s3Key);
 
-        return new S3UploadResult(s3Key, buildUrl(s3Key));
+        try {
+            String s3Key = buildKey(s3KeyPrefix, toUpload.extension());
+            putObject(toUpload, s3Key);
+            return new S3UploadResult(s3Key, buildUrl(s3Key));
+        } finally {
+            // 동영상 임시파일 정리 책임 해결
+            if (toUpload.isFileBased()) {
+                try { Files.deleteIfExists(toUpload.path()); }
+                catch (IOException e) { log.warn("변환 임시파일 삭제 실패: {}", toUpload.path()); }
+            }
+        }
     }
 
     public String copy(String sourceKey, String destinationKey) {
@@ -205,7 +213,11 @@ public class S3ImageUploader {
                     .contentType(resolveContentType(file.extension()))
                     .build();
 
-            s3Client.putObject(request, RequestBody.fromBytes(file.bytes()));
+            RequestBody body = file.isFileBased()
+                    ? RequestBody.fromFile(file.path())
+                    : RequestBody.fromBytes(file.bytes());
+
+            s3Client.putObject(request, body);
         } catch (SdkException e) {
             log.error("S3 업로드 실패 - key: {}, error: {}", s3Key, e.getMessage());
             throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);

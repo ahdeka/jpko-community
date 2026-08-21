@@ -17,7 +17,7 @@ public class MediaConverterResolver {
         return converters.stream()
                 .filter(converter -> converter.supports(extension))
                 .findFirst()
-                .map(converter -> converter.convert(file))
+                .map(converter -> converter.convert(file)) // 지원하는 변환기 있으면 전환
                 .orElseGet(() -> ConvertedFile.of(file, extension));
 
     }
