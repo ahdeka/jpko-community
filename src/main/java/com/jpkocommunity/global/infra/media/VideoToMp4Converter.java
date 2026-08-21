@@ -59,7 +59,7 @@ public class VideoToMp4Converter implements MediaConverter{
                             // 세로 720 상한(업스케일 방지) + 짝수 보정, 가로는 -2로 자동 짝수
                             "-vf", "scale=-2:trunc(min(" + MAX_HEIGHT + "\\,ih)/2)*2",
                             "-c:v", "libx264",
-                            "-preset", "ultrafast",
+                            "-preset", "veryfast",
                             "-threads", "1",
                             "-crf", String.valueOf(CRF),
                             "-pix_fmt", "yuv420p",       // 구형 브라우저/사파리 호환
