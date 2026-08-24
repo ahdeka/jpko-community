@@ -50,7 +50,7 @@ jobs:
           DB_HOST: localhost
           DB_USER: jpko
           DB_PASSWORD: jpko
-          JWT_SECRET: ci-test-secret-not-real
+          JWT_SECRET: ci-test-secret-not-real-but-long-enough-for-hs256-signing-32bytes+
         run: |
           chmod +x gradlew
           ./gradlew build
