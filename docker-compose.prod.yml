@@ -11,6 +11,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always
+    logging: # docker logs 용량 제한 설정 (무제한 방지)
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   app:
     image: ${APP_IMAGE}
@@ -29,6 +34,13 @@ services:
     depends_on:
       - postgres
     restart: always
+    volumes:
+      - ./logs:/app/logs # 하루별 로그 txt 호스트에 저장
+    logging: # docker logs 용량 제한 설정 (무제한 방지)
+        driver: "json-file"
+        options:
+            max-size: "10m"
+            max-file: "3"
 
 volumes:
   postgres_data:

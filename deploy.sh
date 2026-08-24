@@ -66,6 +66,17 @@ done
 
 if [ "$healthy" = true ]; then
   echo "헬스체크 통과 — 배포 성공"
+
+  # 불필요한 옛 이미지 정리 (현재 이미지랑 롤백 대상을 제외)
+  APP_REPO=${APP_IMAGE%%:*} # 태그 부분 제거
+  docker images "$APP_REPO" --format '{{.Repository}}:{{.Tag}}' | while read -r img; do
+    if [ "$img" != "$APP_IMAGE" ] && [ "$img" != "$PREV_IMAGE" ]; then
+      echo "옛 이미지 삭제: $img"
+      docker rmi "$img" || true # 다른 게 참조 중이면 실패할 수 있으나 무시
+    fi
+  done
+
+  # 그 외 태그 없는 잔여 레이어 정리
   docker image prune -f
   exit 0
 fi
