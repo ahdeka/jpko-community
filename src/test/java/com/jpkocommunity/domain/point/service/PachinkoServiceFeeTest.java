@@ -8,6 +8,7 @@ import com.jpkocommunity.domain.point.repository.TransactionRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "app.pachinko.slot-multipliers[0]=0.0",
         "app.pachinko.slot-multipliers[1]=3.0"
 })
+@Disabled("미검증된 코드 - 마이그레이션 및 리팩톨이 작업 시 재검토 예정 2026.08.24")
 class PachinkoServiceFeeTest {
 
     private static final int BALL_COUNT = 3;

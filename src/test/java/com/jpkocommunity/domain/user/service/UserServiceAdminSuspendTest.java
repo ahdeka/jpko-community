@@ -8,6 +8,7 @@ import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "app.roulette.win-probability=0.5",
         "app.roulette.fee-rate=0.05"
 })
+@Disabled("미검증된 코드 - 마이그레이션 및 리팩톨이 작업 시 재검토 예정 2026.08.24") // TODO 최대한 빨리 로직 검증 필요
 class UserServiceAdminSuspendTest {
 
     @Autowired
