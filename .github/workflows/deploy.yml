@@ -42,6 +42,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'corretto'
+          cache: 'gradle'
 
       - name: Build and test with Gradle
         env:
@@ -51,7 +52,7 @@ jobs:
           JWT_SECRET: ci-test-secret-not-real
         run: |
           chmod +x gradlew
-          ./gradlew bootJar
+          ./gradlew build
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
