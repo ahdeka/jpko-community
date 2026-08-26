@@ -3,7 +3,6 @@ package com.jpkocommunity.domain.user.repository;
 import com.jpkocommunity.domain.auth.repository.UserAuthProjection;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserRole;
-import com.jpkocommunity.domain.user.entity.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,13 +16,23 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    Optional<User> findByNickname(String nickname);
+    // IgnoreCase는 쿼리메서드가 자동으로 UPPER()로 파생하지만 -> lower처리를 위해 JPQL로 처리
+    @Query("SELECT u FROM User u WHERE LOWER(u.nickname) = LOWER(:nickname)")
+    Optional<User> findByNicknameIgnoreCase(@Param("nickname") String nickname);
 
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
 
-    boolean existsByNickname(String nickname);
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END " +
+            "FROM User u WHERE LOWER(u.nickname) = LOWER(:nickname)")
+    boolean existsByNicknameIgnoreCase(@Param("nickname") String nickname);
+
+    // 본인 닉네임 대소문자 변경 시 검사 제외
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END " +
+            "FROM User u WHERE LOWER(u.nickname) = LOWER(:nickname) AND u.id <> :userId")
+    boolean existsByNicknameIgnoreCaseAndIdNot(@Param("nickname") String nickname,
+                                               @Param("userId") Long userId);
 
     boolean existsByLoginId(String loginId);
 
@@ -37,7 +46,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<UserAuthProjection> findAuthProjectionById(Long userId);
 
     // Admin 기능
-    Page<User> findByNicknameContainingOrEmailContaining(String nickname, String email, Pageable pageable);
+    Page<User> findByNicknameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+            String nickname, String email, Pageable pageable);
 
     // 룰렛 랜덤 상대 선정용(고정 상대가 없거나 무효화된 경우 매 스핀마다 호출): 본인을 제외한 활성 유저 중 무작위 1명.
     // ROOT는 정지/권한변경 등 다른 관리 기능에서도 보호 대상이라 룰렛 피해자에서도 제외한다.

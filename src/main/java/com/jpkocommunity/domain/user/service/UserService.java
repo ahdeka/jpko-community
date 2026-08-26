@@ -30,6 +30,7 @@ import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -76,14 +77,6 @@ public class UserService {
         return userRepository.findAllByRoleIs(UserRole.ADMIN);
     }
 
-    public boolean existsByEmail(String email) {
-        return userRepository.existsByEmail(email);
-    }
-
-    public boolean existsByNickname(String nickname) {
-        return userRepository.existsByNickname(nickname);
-    }
-
     public List<User> findAllByIdIn(List<Long> ids) {
         return userRepository.findAllById(ids);
     }
@@ -97,7 +90,7 @@ public class UserService {
     // =========== 공개 프로필 기능 ==========
 
     private User findPublicUserByNickname(String nickname) {
-        User user = userRepository.findByNickname(nickname)
+        User user = userRepository.findByNicknameIgnoreCase(nickname)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         validateWithdrawUser(user);
 
@@ -145,16 +138,25 @@ public class UserService {
     @Transactional
     public void updateNickname(Long userId, UpdateNicknameRequest request) {
         User user = findById(userId);
+        String newNickname = request.nickname();
 
-        if (user.getNickname().equals(request.nickname())) {
+        if (user.getNickname().equals(newNickname)) {
             throw new CustomException(ErrorCode.SAME_AS_CURRENT_NICKNAME);
         }
 
-        if (userRepository.existsByNickname(request.nickname())) {
+        // TODO 닉네임 변경 쿨타임 주기 메서드 작성하기
+
+        if (userRepository.existsByNicknameIgnoreCaseAndIdNot(newNickname, userId)) {
             throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
         user.updateNickname(request.nickname());
+
+        try {
+            userRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+        }
     }
 
     @Transactional
@@ -217,7 +219,7 @@ public class UserService {
     public Page<AdminUserResponse> getUsers(String keyword, Pageable pageable) {
         Page<User> users = (keyword == null || keyword.isBlank())
                 ? userRepository.findAll(pageable)
-                : userRepository.findByNicknameContainingOrEmailContaining(keyword, keyword, pageable);
+                : userRepository.findByNicknameContainingIgnoreCaseOrEmailContainingIgnoreCase(keyword, keyword, pageable);
 
         List<Long> userIds = users.getContent().stream().map(User::getId).toList();
         Map<Long, LocalDateTime> activeBlockExpiryByUserId = activityBlockRepository

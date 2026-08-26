@@ -44,11 +44,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                                        @Param("keyword") String keyword,
                                        Pageable pageable);
 
-    // 닉네임 검색 - 정확 일치
+    // 닉네임 검색 - 대소문자 구별 X
     @Query("SELECT p FROM Post p JOIN p.user u WHERE p.deletedAt IS NULL " +
             "AND p.anonymous = false " +
             "AND (:categoryId IS NULL OR p.category.id = :categoryId) " +
-            "AND u.nickname = :keyword")
+            "AND LOWER(u.nickname) = LOWER(:keyword)")
     Page<Post> searchByNickname(@Param("categoryId") Long categoryId,
                                 @Param("keyword") String keyword,
                                 Pageable pageable);

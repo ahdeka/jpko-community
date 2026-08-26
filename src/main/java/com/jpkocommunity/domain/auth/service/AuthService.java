@@ -22,6 +22,7 @@ import com.jpkocommunity.global.util.EmailDomainValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,11 +99,28 @@ public class AuthService {
                 .build();
         user.verifyEmail();
 
-        userRepository.save(user);
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            // validate 3개를 뚫고온 후이므로, 이 예외는 "동시 요청 선점" 밖에 없음
+            throw new CustomException(resolveDuplicate(e));
+        }
+
         verificationTokenRepository.delete(verificationToken);
 
         TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);
         return toLoginResult(user.getId(), user, tokens, CheckInOutcome.none());
+    }
+
+    private ErrorCode resolveDuplicate(DataIntegrityViolationException e) {
+        String cause = String.valueOf(e.getMostSpecificCause().getMessage());
+        if (cause.contains("uk_users_login_id")) return ErrorCode.DUPLICATE_LOGIN_ID;
+        if (cause.contains("uk_users_email")) return ErrorCode.DUPLICATE_EMAIL;
+        if (cause.contains("uk_users_nickname_ci")) return ErrorCode.DUPLICATE_NICKNAME;
+
+        // unique 위반이 아닌 무결성일 경우, 로그를 남기고 일반 오류로 처리
+        log.error("[회원가입] 예상치 못한 무결성 위반", e);
+        return ErrorCode.INTERNAL_ERROR;
     }
 
     @Transactional
@@ -297,7 +315,7 @@ public class AuthService {
         if (userRepository.existsByLoginId(request.loginId())) {
             throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
-        if (userRepository.existsByNickname(request.nickname())) {
+        if (userRepository.existsByNicknameIgnoreCase(request.nickname())) {
             throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
         }
     }
