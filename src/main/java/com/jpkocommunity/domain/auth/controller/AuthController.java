@@ -5,6 +5,7 @@ import com.jpkocommunity.domain.auth.dto.response.LoginResponse;
 import com.jpkocommunity.domain.auth.dto.response.PreSignupVerifyResponse;
 import com.jpkocommunity.domain.auth.dto.response.UserInfoResponse;
 import com.jpkocommunity.domain.auth.service.AuthService;
+import com.jpkocommunity.domain.auth.service.TurnstileService;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.properties.JwtProperties;
@@ -33,6 +34,7 @@ public class AuthController {
     private final CookieUtils cookieUtils;
     private final IpUtils ipUtils;
     private final JwtProperties jwtProperties;
+    private final TurnstileService turnstileService;
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserInfoResponse>> me(@AuthenticationPrincipal AuthUser authUser) {
@@ -48,7 +50,8 @@ public class AuthController {
             HttpServletRequest servletRequest
     ) {
         String ipAddress = ipUtils.getClientIp(servletRequest);
-        authService.initSignup(request, ipAddress);
+        turnstileService.verify(request.turnstileToken(), ipAddress);
+        authService.initSignup(request);
 
         return ResponseEntity.ok(ApiResponse.ok("인증 메일을 보냈습니다. 메일에서 나머지 절차를 진행해주세요."));
     }
@@ -118,8 +121,9 @@ public class AuthController {
             HttpServletRequest servletRequest,
             HttpServletResponse response
     ) {
-        String deviceInfo = ipUtils.getDeviceInfo(servletRequest);
         String ipAddress = ipUtils.getClientIp(servletRequest);
+        turnstileService.verify(request.turnstileToken(), ipAddress);
+        String deviceInfo = ipUtils.getDeviceInfo(servletRequest);
 
         AuthService.LoginResult result = authService.login(request, deviceInfo, ipAddress);
 

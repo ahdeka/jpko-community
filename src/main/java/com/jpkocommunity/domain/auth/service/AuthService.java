@@ -44,18 +44,16 @@ public class AuthService {
     private final EmailDomainValidator emailDomainValidator;
     private final VerificationTokenProperties verificationTokenProperties;
     private final ApplicationEventPublisher eventPublisher;
-    private final TurnstileService turnstileService;
     private final CheckInService checkInService;
 
     // TODO: 이메일 반복 요청 방어 처리 필요
     @Transactional
-    public void initSignup(SignupInitRequest request, String ipAddress) {
-        turnstileService.verify(request.turnstileToken(), ipAddress);
-
+    public void initSignup(SignupInitRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
 
+        // TODO: 이 메서드는 회원가입 트랜잭션 안에 DNS 조회가 있는 문제임 (문제될시 처리)
         if (!emailDomainValidator.hasMxRecord(request.email())) {
             throw new CustomException(ErrorCode.INVALID_EMAIL_DOMAIN);
         }

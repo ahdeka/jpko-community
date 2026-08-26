@@ -22,7 +22,6 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          SPRING_PROFILES_ACTIVE: test
           POSTGRES_DB: jpko_community
           POSTGRES_USER: jpko
           POSTGRES_PASSWORD: jpko
@@ -47,6 +46,7 @@ jobs:
 
       - name: Build and test with Gradle
         env:
+          SPRING_PROFILES_ACTIVE: test
           DB_HOST: localhost
           DB_USER: jpko
           DB_PASSWORD: jpko
