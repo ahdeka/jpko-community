@@ -26,7 +26,6 @@ app:
   points:
     create-post: 50
     create-comment: 10
-    get-um-ji-cheok: 10
     daily-activity-limit: 1000 # 활동 보상으로 일일 받을 포인트 총량
   checkin:
     unit: 10 # 지급액은 항상 이 값의 배수로만 나온다
