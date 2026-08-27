@@ -27,6 +27,7 @@ app:
     create-post: 50
     create-comment: 10
     get-um-ji-cheok: 10
+    daily-activity-limit: 1000 # 활동 보상으로 일일 받을 포인트 총량
   checkin:
     unit: 10 # 지급액은 항상 이 값의 배수로만 나온다
     ranges:
@@ -45,7 +46,6 @@ app:
     max-bet: 10000
     win-probability: 0.5
     fee-rate: 0.05
-    secret-key: "c2d0LnlvdW5nbWluQGdtYWlsLmNvbQ=="
   pachinko:
     ball-price: 50            # 구슬 1개당 가격
     min-balls: 1

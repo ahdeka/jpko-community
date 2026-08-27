@@ -34,4 +34,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("type") TransactionType type,
             @Param("since") LocalDateTime since
     );
+
+    // since 이후 유저가 활동 보상으로 실제 지급받은 합계
+    // 오늘 활동으로 번 포인트 조회 에서 일일상한 계산에 사용
+    @Query("""
+        select coalesce(sum(t.amount), 0) from Transaction t
+        where t.type = com.jpkocommunity.domain.point.entity.TransactionType.GRANT
+          and t.recipient.id = :userId
+          and t.createdAt >= :since
+        """)
+    long sumActivityGrantSince(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 }

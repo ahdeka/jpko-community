@@ -74,6 +74,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("update User u set u.status = 'ACTIVE', u.suspendedUntil = null " +
             "where u.status = 'SUSPENDED' and u.suspendedUntil is not null and u.suspendedUntil <= :now")
     int reactivateAllExpiredSuspensions(@Param("now") LocalDateTime now);
-
-    List<User> findAllByRoleIs(UserRole role);
 }

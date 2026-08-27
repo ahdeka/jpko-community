@@ -68,15 +68,6 @@ public class UserService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
-    public User findByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-    }
-
-    public List<User> findAdmins() {
-        return userRepository.findAllByRoleIs(UserRole.ADMIN);
-    }
-
     public List<User> findAllByIdIn(List<Long> ids) {
         return userRepository.findAllById(ids);
     }

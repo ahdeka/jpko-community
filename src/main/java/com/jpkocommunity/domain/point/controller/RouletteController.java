@@ -40,20 +40,11 @@ public class RouletteController {
         return ResponseEntity.ok(ApiResponse.ok("룰렛 참여에 동의했습니다."));
     }
 
-    // 20260817 주석처리 hd
-//    @DeleteMapping("/consent")
-//    public ResponseEntity<ApiResponse<Void>> cancelRouletteAgreement(
-//            @AuthenticationPrincipal AuthUser authUser
-//    ) {
-//        rouletteService.cancelRouletteAgreement(authUser.userId());
-//        return ResponseEntity.ok(ApiResponse.ok("룰렛 참여 동의를 취소했습니다."));
-//    }
-
     @GetMapping("/opponent")
     public ResponseEntity<ApiResponse<RouletteOpponentResponse>> getOpponent(
             @AuthenticationPrincipal AuthUser authUser
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(rouletteService.getOpponent(authUser.userId(), null).orElse(null)));
+        return ResponseEntity.ok(ApiResponse.ok(rouletteService.getOpponent(authUser.userId()).orElse(null)));
     }
 
     @PutMapping("/opponent/{opponentId}")
@@ -61,7 +52,7 @@ public class RouletteController {
             @AuthenticationPrincipal AuthUser authUser,
             @PathVariable Long opponentId
     ) {
-        rouletteService.lockOpponent(authUser.userId(), opponentId, null);
+        rouletteService.lockOpponent(authUser.userId(), opponentId);
         return ResponseEntity.ok(ApiResponse.ok("상대가 고정되었습니다."));
     }
 
@@ -69,7 +60,7 @@ public class RouletteController {
     public ResponseEntity<ApiResponse<Void>> unlockOpponent(
             @AuthenticationPrincipal AuthUser authUser
     ) {
-        rouletteService.unlockOpponent(authUser.userId(), null);
+        rouletteService.unlockOpponent(authUser.userId());
         return ResponseEntity.ok(ApiResponse.ok("고정이 해제되었습니다."));
     }
 

@@ -16,9 +16,11 @@ import com.jpkocommunity.domain.point.repository.TransactionRepository;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.service.UserService;
+import com.jpkocommunity.global.config.properties.PointProperties;
 import com.jpkocommunity.global.config.properties.TransferProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
+import com.jpkocommunity.global.util.KstDateUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,6 +48,8 @@ public class PointService {
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
     private final TransferProperties transferProperties;
+    private final PointProperties pointProperties;
+    private final KstDateUtils kstDateUtils;
 
     public PointResponse getPointByUserId(Long userId) {
         return PointResponse.from(getOrCreateAccount(userId));
@@ -131,6 +135,10 @@ public class PointService {
     }
 
     public TransactionResponse grantPointByActivity(Long userId, long amount, String message, Long postId, Long commentId, GrantType grantType) {
+        if (amount <= 0) {
+            return null;
+        }
+
         // 포인트 리워드는 이메일 인증을 받은 유저만
         if (!userService.findById(userId).isEmailVerified()) {
             return null;
@@ -140,7 +148,13 @@ public class PointService {
         LockedAccount system = accounts.get(null);
         LockedAccount target = accounts.get(userId);
 
-        TransactionResponse res = move(system, target, amount, TransactionType.GRANT, message);
+        long limit = pointProperties.dailyActivityLimit();
+        long earnedToday = transactionRepository.sumActivityGrantSince(userId, kstDateUtils.startOfToday());
+        long remaining = Math.max(0, limit - earnedToday);
+        long grantable = Math.min(amount, remaining);
+        if (grantable == 0) return null;
+
+        TransactionResponse res = move(system, target, grantable, TransactionType.GRANT, message);
 
         NotificationType notificationType = switch (grantType) {
             case LIKE -> NotificationType.LIKE_REWARD;
@@ -149,7 +163,7 @@ public class PointService {
         };
 
         eventPublisher.publishEvent(new NotificationEvent(
-                userId, null, notificationType, postId, commentId, false, amount
+                userId, null, notificationType, postId, commentId, false, grantable
         ));
 
         return res;
