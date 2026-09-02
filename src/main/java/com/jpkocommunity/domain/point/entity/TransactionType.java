@@ -7,17 +7,8 @@ public enum TransactionType {
     CHECKIN, // 시스템 <-> 유저, 매일 로그인 시 자동 출첵. amount는 시스템->유저(GRANT 모양) 또는 유저->시스템(COLLECT 모양) 둘 다 가능
     ROULETTE, // 유저 -> 유저(시스템 경유), 유저가 직접 베팅해 상대와 겨루는 룰렛 승부
     ROULETTE_FEE, // 유저 -> 시스템, 룰렛 판당 수수료
-    TRANSFER,// 유저간 송금
-    TRANSFER_FEE,
-    BLOCK_PURCHASE, // 유저 -> 시스템, 다른 유저에게 활동 차단권 사용
-    BLOCK_UNBLOCK, // 유저 -> 시스템, 본인 차단을 포인트로 즉시 해제
-    BID_HOLD, // 유저 -> 시스템, 권한 경매 입찰 시 예탁(에스크로)
-    BID_REFUND, // 시스템 -> 유저, 낙찰 실패/입찰 취소 시 예탁금 환불
-    SUSPEND_UNLOCK, // 유저 -> 시스템, 관리자 정지(SUSPENDED)를 본인이 직접 포인트로 즉시 해제
     PACHINKO_FEE, // 유저 -> 시스템, 파칭코 판당 수수료
     PACHINKO, // 유저 <-> 시스템, 파칭코 결과 정산(순손익). amount는 시스템->유저(순이익) 또는 유저->시스템(순손실) 둘 다 가능
     SLOT_FEE, // 유저 -> 시스템, 슬롯머신 판당 수수료
-    SLOT, // 유저 <-> 시스템, 슬롯머신 결과 정산(순손익). amount는 시스템->유저(순이익) 또는 유저->시스템(순손실) 둘 다 가능
-    JMT, // TODO 배포서버에서 관련된 데이터 지우고 Type 제거 필요
-    SHIELD_PURCHASE // 유저 -> 시스템, 룰렛 방어권 구매
+    SLOT // 유저 <-> 시스템, 슬롯머신 결과 정산(순손익). amount는 시스템->유저(순이익) 또는 유저->시스템(순손실) 둘 다 가능
 }

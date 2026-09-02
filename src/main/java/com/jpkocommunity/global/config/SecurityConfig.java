@@ -1,7 +1,6 @@
 package com.jpkocommunity.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jpkocommunity.domain.shop.repository.ActivityBlockRepository;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
 import com.jpkocommunity.global.security.PublicAuthPaths;
@@ -47,7 +46,6 @@ public class SecurityConfig {
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
-    private final ActivityBlockRepository activityBlockRepository;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -85,7 +83,7 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtProvider, objectMapper, userRepository, activityBlockRepository);
+        return new JwtAuthenticationFilter(jwtProvider, objectMapper, userRepository);
     }
 
     @Bean

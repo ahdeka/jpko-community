@@ -24,7 +24,6 @@ public enum ErrorCode {
     TARGET_NOT_ADMIN(HttpStatus.BAD_REQUEST, "ADMIN 권한을 가진 계정이 아닙니다."),
     SUSPEND_DURATION_REQUIRED(HttpStatus.BAD_REQUEST, "ADMIN 권한으로는 기한이 있는 정지만 가능합니다."),
     SUSPEND_DURATION_TOO_LONG(HttpStatus.BAD_REQUEST, "정지 기한이 허용된 최대 기간을 초과했습니다."),
-    NOT_SUSPENDED(HttpStatus.CONFLICT, "이미 정지가 해제된 계정입니다."),
     ALREADY_ASSIGN_LOGIN_ID(HttpStatus.CONFLICT, "이미 로그인 아이디가 설정된 계정입니다."), // TODO 마이그레이션 끝나면 정리될 에러 코드
     EMAIL_VERIFICATION_REQUIRED(HttpStatus.FORBIDDEN, "이메일 인증을 먼저 완료해주세요."), // TODO 마이그레이션 끝나면 정리될 에러 코드
     DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
@@ -118,20 +117,6 @@ public enum ErrorCode {
     // Slot
     UNAUTHORIZED_SLOT(HttpStatus.UNAUTHORIZED, "슬롯머신 기능은 이메일 인증을 해야합니다."),
 
-    // Shop
-    ACTIVITY_BLOCKED(HttpStatus.FORBIDDEN, "활동이 제한된 상태입니다."),
-    SELF_BLOCK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인을 차단할 수 없습니다."),
-    TARGET_NOT_BLOCKABLE(HttpStatus.BAD_REQUEST, "차단할 수 없는 대상입니다."),
-    BLOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "활성화된 차단이 없습니다."),
-    ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 상품입니다."),
-    ITEM_INACTIVE(HttpStatus.BAD_REQUEST, "판매 중지된 상품입니다."),
-    CANNOT_AUCTION_ROOT_ROLE(HttpStatus.BAD_REQUEST, "ROOT 권한은 경매 대상으로 등록할 수 없습니다."),
-    AUCTION_ROUND_NOT_OPEN(HttpStatus.BAD_REQUEST, "진행 중인 경매 회차가 아니거나 존재하지 않습니다."),
-    BID_TOO_LOW(HttpStatus.BAD_REQUEST, "입찰가가 최저가 또는 기존 입찰가보다 낮습니다."),
-    BID_NOT_FOUND(HttpStatus.NOT_FOUND, "입찰 내역이 없습니다."),
-    CANNOT_BID_AS_ROOT(HttpStatus.BAD_REQUEST, "최고 관리자 계정은 경매에 입찰할 수 없습니다."),
-    BLOCK_PRICE_CHANGED(HttpStatus.CONFLICT, "차단 정보가 변경되었습니다. 다시 시도해주세요."),
-    APPEAL_ALREADY_PENDING(HttpStatus.CONFLICT, "이미 처리 대기 중인 이의제기가 있습니다."),
     CONFLICTING_REQUEST(HttpStatus.CONFLICT, "다른 요청과 충돌했습니다. 다시 시도해주세요.");
 
 

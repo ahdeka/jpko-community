@@ -2,15 +2,12 @@ package com.jpkocommunity.global.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jpkocommunity.domain.auth.repository.UserAuthProjection;
-import com.jpkocommunity.domain.shop.entity.BlockStatus;
-import com.jpkocommunity.domain.shop.repository.ActivityBlockRepository;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
-import com.jpkocommunity.global.security.BlockAllowedPaths;
 import com.jpkocommunity.global.security.OnboardingAllowedPaths;
 import com.jpkocommunity.global.security.PublicAuthPaths;
 import com.jpkocommunity.global.security.SuspendAllowedPaths;
@@ -31,11 +28,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -48,17 +42,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
-    private final ActivityBlockRepository activityBlockRepository;
 
     // 온보딩전 계정들은 읽기만 허용 TODO 마이그레이션 끝나면 정리
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
-
-    // 정지(SuspendAllowedPaths)와 활동차단(BlockAllowedPaths)이 동시에 걸린 유저도 두 셀프서비스
-    // 경로 모두에 접근할 수 있어야 한다 - 두 화이트리스트를 따로따로만 검사하면 교집합(로그아웃)
-    // 바깥의 셀프 해제 API가 서로를 막아버려서 관리자 개입 없이는 영구히 못 풀리는 상태가 된다.
-    private static final Set<String> SELF_SERVICE_PATHS =
-            Stream.concat(SuspendAllowedPaths.PATHS.stream(), BlockAllowedPaths.PATHS.stream())
-                    .collect(Collectors.toUnmodifiableSet());
 
     // EXCLUDED_PATHS 요청은 필터 자체를 건너뜀
     @Override
@@ -88,19 +74,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .orElseThrow(() -> new CustomException(ErrorCode.ONBOARDING_INCOMPLETE));
             UserRole role = auth.getRole();
 
-            // SUSPENDED(관리자 정지)는 DELETED와 달리 완전히 막지 않는다 — 정지 현황 확인·포인트로
-            // 즉시 해제(SuspendAllowedPaths)는 허용해, 정지된 계정도 스스로 풀 수 있게 한다.
-            boolean isSuspendedButAllowed =
-                    auth.getStatus() == UserStatus.SUSPENDED && SELF_SERVICE_PATHS.contains(request.getRequestURI());
+            // SUSPENDED(관리자 정지)는 DELETED와 달리 완전히 막지 않는다 — 정지 사유·기한 확인과
+            // 로그아웃(SuspendAllowedPaths)은 허용해, 정지된 계정도 상황을 볼 수 있게 한다.
+            boolean isSuspendedButAllowed = auth.getStatus() == UserStatus.SUSPENDED
+                    && SuspendAllowedPaths.PATHS.contains(request.getRequestURI());
             if (auth.getStatus() != UserStatus.ACTIVE && !isSuspendedButAllowed) {
                 throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
-            }
-
-            // 임시 활동 차단 확인 — 만료 시각을 실시간 비교하므로 스케줄러 없이도 만료 즉시 자동 해제됨
-            boolean isBlocked = activityBlockRepository.existsByTarget_IdAndStatusAndExpiresAtAfter(
-                    userId, BlockStatus.ACTIVE, LocalDateTime.now());
-            if (isBlocked && !SELF_SERVICE_PATHS.contains(request.getRequestURI())) {
-                throw new CustomException(ErrorCode.ACTIVITY_BLOCKED);
             }
 
             // 온보딩 완료 판정 TODO 마이그레이션 끝나면 정리

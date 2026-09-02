@@ -20,7 +20,6 @@ import org.springframework.context.annotation.Configuration;
         CheckInProperties.class,
         RouletteProperties.class,
         PointProperties.class,
-        TransferProperties.class,
         NotificationProperties.class,
         PachinkoProperties.class,
         SlotProperties.class,
