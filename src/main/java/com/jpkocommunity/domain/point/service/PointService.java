@@ -22,6 +22,7 @@ import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.util.KstDateUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -30,14 +31,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 // 포인트 계좌(Point)와 원장(Transaction)을 함께 관리하는 단일 서비스.
 // move(): 포인트 이동(잠금 -> 잔액 변경 -> 원장 기록을 원자적으로 수행)
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -157,7 +155,6 @@ public class PointService {
         TransactionResponse res = move(system, target, grantable, TransactionType.GRANT, message);
 
         NotificationType notificationType = switch (grantType) {
-            case LIKE -> NotificationType.LIKE_REWARD;
             case POST -> NotificationType.POST_REWARD;
             case COMMENT -> NotificationType.COMMENT_REWARD;
         };
@@ -233,7 +230,12 @@ public class PointService {
             Point point = pointRepository.findByUserForUpdate(user)
                     .orElseGet(() -> createAccount(user));
             return new LockedAccount(userId, point, user);
+        } catch (CustomException e) {
+            // 의미가 있는 도메인 에러는 그대로 올려보냄 (ex. 정지된 계정 포인트 건드릴 때)
+            throw e;
         } catch (Exception e) {
+            // 락 타임아웃, 커넥션 소진 등 진짜 예상 못한 실패만 서버에러 처리
+            log.error("[포인트 계좌 잠금 실패] userId={}", userId, e);
             throw new CustomException(ErrorCode.INTERNAL_ERROR);
         }
     }

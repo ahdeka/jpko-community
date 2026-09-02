@@ -9,7 +9,6 @@ public enum NotificationType {
     POINT_WON,       // 룰렛 대결에서 승리해 포인트를 얻음
     POST_REWARD,
     COMMENT_REWARD,
-    LIKE_REWARD,
     TRANSFER,
     ROLE_AUCTION_WON,  // 포인트 기반 ADMIN 권한 경매 낙찰
     ROLE_AUCTION_LOST  // 포인트 기반 ADMIN 권한 경매 낙첨(입찰 환불)

@@ -31,17 +31,7 @@ public class NotificationController {
     public SseEmitter subscribe(
             @AuthenticationPrincipal AuthUser authUser
     ) {
-        SseEmitter emitter = sseEmitterRepository.save(authUser.userId());
-
-        // 연결 직후 더미 이벤트 전송
-        try {
-            // 초기 연결 시, 클라이언트에게 연결 성공 이벤트 전송
-            emitter.send(SseEmitter.event().name("connect").data("connected"));
-        } catch (Exception e) {
-            emitter.completeWithError(e);
-        }
-
-        return emitter;
+        return sseEmitterRepository.save(authUser.userId());
     }
 
     @GetMapping

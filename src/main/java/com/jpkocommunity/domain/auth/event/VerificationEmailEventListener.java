@@ -7,13 +7,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import static org.springframework.transaction.event.TransactionPhase.AFTER_COMMIT;
+
 @Component
 @RequiredArgsConstructor
 public class VerificationEmailEventListener {
 
     private final EmailService emailService;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = AFTER_COMMIT)
     public void handle(VerificationEmailEvent event) {
         switch (event.type()) {
             case EMAIL_VERIFICATION -> emailService.sendVerificationEmail(event.email(), event.token());

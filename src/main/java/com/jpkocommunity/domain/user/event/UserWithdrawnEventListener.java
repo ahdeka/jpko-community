@@ -9,6 +9,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
+import static org.springframework.transaction.event.TransactionPhase.AFTER_COMMIT;
 
 @Slf4j
 @Component
@@ -17,7 +18,7 @@ public class UserWithdrawnEventListener {
 
     private final VerificationTokenRepository verificationTokenRepository;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = AFTER_COMMIT)
     @Transactional(propagation = REQUIRES_NEW)
     public void handle(UserWithdrawnEvent event) {
         long deleted = verificationTokenRepository.deleteByUserId(event.userId());
