@@ -23,7 +23,7 @@ public record PopularPostProperties(
     /**
      * @param days              조회 기간(일)
      * @param gravity           시간 경과에 따른 점수 감소 정도 - 클수록 오래된 글이 빨리 밀려감
-     * @param minEngagement     최소 참여 수(좋아요 + 댓글 + 조회수)
+     * @param minEngagement     인기글 후보 진입 문턱 - 집계 기간 내(좋아요 + 댓글)수
      */
     public record Period(int days, double gravity, long minEngagement) {}
 
