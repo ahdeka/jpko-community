@@ -53,14 +53,50 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                                 @Param("keyword") String keyword,
                                 Pageable pageable);
 
-    // 인기글: since 이후 작성된 글을 좋아요 수 → 조회수 → 최신순으로 정렬
-    // LEFT JOIN: 좋아요 0개인 글도 결과에 포함시키기 위함
-    @Query("SELECT p FROM Post p " +
-            "LEFT JOIN Like l ON l.post = p AND l.type = com.jpkocommunity.domain.like.entity.LikeType.LIKE " +
-            "WHERE p.deletedAt IS NULL AND p.createdAt >= :since " +
-            "GROUP BY p " +
-            "ORDER BY COUNT(l) DESC, p.viewCount DESC, p.createdAt DESC")
-    List<Post> findPopularPosts(@Param("since") LocalDateTime since, Pageable pageable);
+    // 인기글 후보 id를 점수순으로 뽑음
+    // JPQL에는 ln() 이나 power()가 없어 네이티브 쿼리 사용
+    @Query(value = """
+            SELECT p.id
+            FROM posts p
+            LEFT JOIN (
+                SELECT post_id, COUNT(*) AS cnt
+                FROM likes
+                WHERE type = 'LIKE' AND created_at >= :since
+                GROUP BY post_id
+            ) l ON l.post_id = p.id
+            LEFT JOIN (
+                SELECT target_id, COUNT(*) AS cnt
+                FROM comments
+                WHERE target_type = 'POST' AND deleted_at IS NULL AND created_at >= :since
+                GROUP BY target_id
+            ) c ON c.target_id = p.id
+            WHERE p.deleted_at IS NULL
+              AND p.created_at >= :since
+              AND COALESCE(l.cnt, 0) + COALESCE(c.cnt, 0) >= :minEngagement
+            ORDER BY (
+                      COALESCE(l.cnt, 0) * :likeWeight
+                    + COALESCE(c.cnt, 0) * :commentWeight
+                    + LN(p.view_count + 1) * :viewWeight
+                  ) / POWER(
+                      EXTRACT(EPOCH FROM (CAST(:now AS timestamp) - p.created_at)) / 3600.0 + 2,
+                      :gravity
+                  ) DESC,
+                  p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Long> findPopularPostIds(@Param("since") LocalDateTime since,
+                                  @Param("now") LocalDateTime now,
+                                  @Param("likeWeight") double likeWeight,
+                                  @Param("commentWeight") double commentWeight,
+                                  @Param("viewWeight") double viewWeight,
+                                  @Param("gravity") double gravity,
+                                  @Param("minEngagement") long minEngagement,
+                                  @Param("limit") int limit);
+
+    // 인기글 렌더링 용 - id 목록으로 카테고리, 작성자까지 함께 조회
+    @Query("SELECT p FROM Post p JOIN FETCH p.category JOIN FETCH p.user " +
+            "WHERE p.id IN :ids AND p.deletedAt IS NULL")
+    List<Post> findActiveByIdInWithCategoryAndUser(@Param("ids") List<Long> ids);
 
     // 사용자별 게시글 조회 (삭제 제외)
     @Query("SELECT p FROM Post p JOIN FETCH p.category WHERE p.user.id = :userId AND p.deletedAt IS NULL")

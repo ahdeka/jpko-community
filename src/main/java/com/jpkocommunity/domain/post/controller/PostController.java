@@ -1,5 +1,6 @@
 package com.jpkocommunity.domain.post.controller;
 
+import com.jpkocommunity.domain.post.dto.request.PopularPeriod;
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
 import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
 import com.jpkocommunity.domain.post.dto.request.SearchType;
@@ -65,10 +66,9 @@ public class PostController {
 
     @GetMapping("/popular")
     public ResponseEntity<ApiResponse<List<PostSummaryResponse>>> getPopularPosts(
-            @RequestParam(defaultValue = "7") int days,
-            @RequestParam(defaultValue = "6") int limit
+            @RequestParam(defaultValue = "WEEKLY") PopularPeriod period
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(postService.getPopularPosts(days, limit)));
+        return ResponseEntity.ok(ApiResponse.ok(postService.getPopularPosts(period)));
     }
 
     @GetMapping("/{postId}")

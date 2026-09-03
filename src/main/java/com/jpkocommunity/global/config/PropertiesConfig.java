@@ -23,7 +23,8 @@ import org.springframework.context.annotation.Configuration;
         NotificationProperties.class,
         PachinkoProperties.class,
         SlotProperties.class,
-        RankingProperties.class
+        RankingProperties.class,
+        PopularPostProperties.class
 })
 public class PropertiesConfig {
 }

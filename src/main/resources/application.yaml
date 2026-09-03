@@ -76,6 +76,20 @@ app:
   ranking:
     top-size: 5
     neighbor-size: 5
+  popular-post:
+    like-weight: 3.0
+    comment-weight: 2.0
+    view-weight: 1.0
+    refresh-interval-minutes: 10
+    display-size: 5           # 메인 노출 개수
+    today:
+      days: 1
+      gravity: 0.4            # 약한 감쇠 - 하루 동안만 상위권에 남도록
+      min-engagement: 0       # 초기화 시점에 좋아요/댓글 0인 글도 포함
+    weekly:
+      days: 7                 # 오늘 포함 7일
+      gravity: 0.6            # 완만한 감쇠 - 좋은 글이 며칠 동안 상위권에 남도록
+      min-engagement: 1       # 좋아요/댓글 0인 글은 주간 인기글에서 제외
 
 server:
   port: 8080

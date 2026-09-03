@@ -14,6 +14,7 @@ import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
 import com.jpkocommunity.domain.point.entity.GrantType;
 import com.jpkocommunity.domain.point.service.PointService;
+import com.jpkocommunity.domain.post.dto.request.PopularPeriod;
 import com.jpkocommunity.domain.post.dto.request.PostCreateRequest;
 import com.jpkocommunity.domain.post.dto.request.PostUpdateRequest;
 import com.jpkocommunity.domain.post.dto.request.SearchType;
@@ -30,6 +31,7 @@ import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.ThrottleLockClassifier;
 import com.jpkocommunity.global.config.properties.PointProperties;
+import com.jpkocommunity.global.config.properties.PopularPostProperties;
 import com.jpkocommunity.global.config.properties.ThrottleProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
@@ -38,7 +40,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,7 +47,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,9 +58,9 @@ import java.util.stream.Collectors;
 public class PostService {
 
     private static final int MIN_KEYWORD_LENGTH = 2;
-    private static final int MAX_POPULAR_LIMIT = 50;
-    private static final int MAX_POPULAR_DAYS = 30;
     private static final int EDIT_ALLOWED_MINUTES = 30;
+    // 캐시된 인기글 중 그 사이 삭제된 글을 감안한 여유분
+    private static final int DELETED_BUFFER = 5;
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
@@ -70,6 +73,8 @@ public class PostService {
     private final ThrottleProperties throttleProperties;
     private final PointProperties pointProperties;
     private final PointService pointService;
+    private final PopularPostCache popularPostCache;
+    private final PopularPostProperties popularPostProperties;
 
     private List<PostSummaryResponse> toSummaryList(List<Post> posts) {
         List<Long> postIds = posts.stream().map(Post::getId).toList();
@@ -141,16 +146,26 @@ public class PostService {
     /**
      * 인기 게시글 조회
      *
-     * @param days  최근 N일 (1=실시간, 7=주간)
-     * @param limit 노출 개수
+     * @param period 집계 기간 (TODAY, WEEKLY)
      */
-    public List<PostSummaryResponse> getPopularPosts(int days, int limit) {
-        // 잘못된 파라미터로 500 떨어지는 걸 막기 위해 clamp
-        int safeDays = Math.clamp(days, 1, MAX_POPULAR_DAYS);
-        int safeLimit = Math.clamp(limit, 1, MAX_POPULAR_LIMIT);
+    public List<PostSummaryResponse> getPopularPosts(PopularPeriod period) {
+        int size = popularPostProperties.displaySize();
 
-        LocalDateTime since = LocalDateTime.now().minusDays(safeDays);
-        List<Post> posts = postRepository.findPopularPosts(since, PageRequest.of(0, safeLimit));
+        // 캐시 갱신 뒤 삭제된 게시글 까지 예상해서 집계
+        List<Long> orderedIds = popularPostCache.getPopularPostIds(period, size + DELETED_BUFFER);
+
+        if (orderedIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Post> byId = postRepository.findActiveByIdInWithCategoryAndUser(orderedIds).stream()
+                .collect(Collectors.toMap(Post::getId, Function.identity()));
+
+        List<Post> posts = orderedIds.stream()
+                .map(byId::get)
+                .filter(Objects::nonNull)
+                .limit(size)
+                .toList();
         return toSummaryList(posts);
     }
 

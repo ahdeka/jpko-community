@@ -15,4 +15,9 @@ public class KstDateUtils {
     public LocalDateTime startOfToday() {
         return LocalDate.now(KST).atStartOfDay();
     }
+
+    // 현재 시각 (KST 기준)
+    public LocalDateTime now() {
+        return LocalDateTime.now(KST);
+    }
 }
