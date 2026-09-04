@@ -5,6 +5,8 @@ import com.jpkocommunity.domain.category.service.CategoryService;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.comment.repository.PostCommentCount;
 import com.jpkocommunity.domain.image.service.ImageService;
+import com.jpkocommunity.domain.level.entity.ExpAction;
+import com.jpkocommunity.domain.level.service.LevelService;
 import com.jpkocommunity.domain.like.entity.LikeType;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
 import com.jpkocommunity.domain.like.repository.PostLikeCount;
@@ -75,6 +77,7 @@ public class PostService {
     private final PointService pointService;
     private final PopularPostCache popularPostCache;
     private final PopularPostProperties popularPostProperties;
+    private final LevelService levelService;
 
     private List<PostSummaryResponse> toSummaryList(List<Post> posts) {
         List<Long> postIds = posts.stream().map(Post::getId).toList();
@@ -209,6 +212,7 @@ public class PostService {
 
         int point = pointProperties.getPoints().get("create-post");
         pointService.grantPointByActivity(userId, (long) point, "Post: " + post.getId(), post.getId(), null, GrantType.POST);
+        levelService.gainExp(userId, ExpAction.CREATE_POST);
         return PostResponse.from(post.getId());
     }
 

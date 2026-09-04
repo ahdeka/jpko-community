@@ -24,7 +24,8 @@ import org.springframework.context.annotation.Configuration;
         PachinkoProperties.class,
         SlotProperties.class,
         RankingProperties.class,
-        PopularPostProperties.class
+        PopularPostProperties.class,
+        LevelProperties.class
 })
 public class PropertiesConfig {
 }

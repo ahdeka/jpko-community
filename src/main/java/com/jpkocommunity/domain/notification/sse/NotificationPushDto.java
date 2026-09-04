@@ -15,7 +15,7 @@ public record NotificationPushDto(
         Long postId,
         Long commentId,
         LocalDateTime createdAt,
-        Long amount            // POINT_STOLEN 외 타입은 null
+        Long amount            // 타입별 의미가 다름
 ) {
     public static NotificationPushDto of(Notification saved, NotificationEvent event) {
         return new NotificationPushDto(

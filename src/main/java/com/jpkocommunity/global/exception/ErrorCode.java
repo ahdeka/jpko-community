@@ -17,7 +17,6 @@ public enum ErrorCode {
     SAME_AS_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "현재 비밀번호와 동일합니다."),
     ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "이미 탈퇴한 계정입니다."),
     SUSPENDED_ACCOUNT(HttpStatus.FORBIDDEN, "이용이 제한된 계정입니다."),
-    SHOGUN_REQUIRES_ADMIN_ROLE(HttpStatus.BAD_REQUEST, "해당 등급은 관리자 계정에만 부여할 수 있습니다."),
     CANNOT_SUSPEND_ROOT(HttpStatus.BAD_REQUEST, "최고 관리자 계정은 정지할 수 없습니다."),
     CANNOT_MODIFY_ROOT(HttpStatus.BAD_REQUEST, "최고 관리자 계정은 권한을 변경할 수 없습니다."),
     CANNOT_ASSIGN_ROOT_ROLE(HttpStatus.BAD_REQUEST, "해당 권한은 부여할 수 없습니다."),

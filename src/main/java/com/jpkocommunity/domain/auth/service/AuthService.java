@@ -9,6 +9,7 @@ import com.jpkocommunity.domain.auth.entity.VerificationToken;
 import com.jpkocommunity.domain.auth.entity.VerificationTokenType;
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.auth.repository.VerificationTokenRepository;
+import com.jpkocommunity.domain.level.service.LevelService;
 import com.jpkocommunity.domain.point.dto.response.CheckInOutcome;
 import com.jpkocommunity.domain.point.service.CheckInService;
 import com.jpkocommunity.domain.user.entity.User;
@@ -46,6 +47,7 @@ public class AuthService {
     private final VerificationTokenProperties verificationTokenProperties;
     private final ApplicationEventPublisher eventPublisher;
     private final CheckInService checkInService;
+    private final LevelService levelService;
 
     // TODO: 이메일 반복 요청 방어 처리 필요
     @Transactional
@@ -106,6 +108,7 @@ public class AuthService {
             throw new CustomException(resolveDuplicate(e));
         }
 
+        levelService.createUserLevel(user);
         verificationTokenRepository.delete(verificationToken);
 
         TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);

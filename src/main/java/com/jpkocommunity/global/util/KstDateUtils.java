@@ -20,4 +20,9 @@ public class KstDateUtils {
     public LocalDateTime now() {
         return LocalDateTime.now(KST);
     }
+
+    // 오늘 날짜 (KST 기준)
+    public LocalDate today() {
+        return LocalDate.now(KST);
+    }
 }

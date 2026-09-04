@@ -5,6 +5,8 @@ import com.jpkocommunity.domain.category.repository.CategoryRepository;
 import com.jpkocommunity.domain.comment.entity.Comment;
 import com.jpkocommunity.domain.comment.entity.CommentTargetType;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
+import com.jpkocommunity.domain.level.entity.UserLevel;
+import com.jpkocommunity.domain.level.repository.UserLevelRepository;
 import com.jpkocommunity.domain.like.entity.Like;
 import com.jpkocommunity.domain.like.entity.LikeType;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
@@ -42,6 +44,7 @@ public class DevDataInitializer implements CommandLineRunner {
     private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
     private final NoticeRepository noticeRepository;
+    private final UserLevelRepository userLevelRepository;
     private final PointRepository pointRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager em; // createdAt 날짜 조작용
@@ -67,6 +70,7 @@ public class DevDataInitializer implements CommandLineRunner {
 
         List<User>     users      = initUsers();
         initPoints(users);
+        initUserLevels(users);
         List<Category> categories = initCategories();
         initNotices(users);
         List<Post>     posts      = initPosts(users, categories);
@@ -137,6 +141,13 @@ public class DevDataInitializer implements CommandLineRunner {
         }
 
         log.info("포인트 계좌 {}개 생성", users.size());
+    }
+
+    private void initUserLevels(List<User> users) {
+        for (User user : users) {
+            userLevelRepository.save(UserLevel.builder().user(user).build());
+        }
+        log.info("유저 레벨 {}개 생성", users.size());
     }
 
     private void saveAccount(User user, long balance) {

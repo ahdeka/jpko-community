@@ -1,8 +1,6 @@
 package com.jpkocommunity.domain.user.dto.response;
 
-import com.jpkocommunity.domain.comment.entity.Comment;
 import com.jpkocommunity.domain.user.entity.User;
-import com.jpkocommunity.domain.user.entity.UserGrade;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 
@@ -14,8 +12,6 @@ public record AdminUserResponse(
         String nickname,
         UserRole role,
         UserStatus status,
-        UserGrade grade,
-        String displayGradeName,
         boolean emailVerified,
         LocalDateTime createdAt,
         // 정지 중일 때의 해제 예정 시각. null이면 정지가 아니거나 ROOT가 건 무기한 정지다
@@ -25,8 +21,7 @@ public record AdminUserResponse(
     public static AdminUserResponse from(User user) {
         return new AdminUserResponse(
                 user.getId(), user.getEmail(), user.getNickname(),
-                user.getRole(), user.getStatus(), user.getGrade(),
-                user.getGrade().getDisplayGradeName(),
+                user.getRole(), user.getStatus(),
                 user.isEmailVerified(), user.getCreatedAt(),
                 user.getSuspendedUntil()
         );

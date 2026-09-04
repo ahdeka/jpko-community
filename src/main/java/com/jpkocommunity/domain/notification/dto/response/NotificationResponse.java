@@ -17,7 +17,7 @@ public record NotificationResponse(
         String commentContent, // COMMENT_REWARD처럼 어떤 댓글로 받았는지 보여줘야 하는 타입 전용. 그 외 타입은 null
         boolean isRead,
         LocalDateTime createdAt,
-        Long amount             // POINT_STOLEN 외 타입은 null
+        Long amount             // 타입별 의미가 다름
 ) {
     public static NotificationResponse from(Notification n) {
         boolean anonymous = isAnonymousComment(n);

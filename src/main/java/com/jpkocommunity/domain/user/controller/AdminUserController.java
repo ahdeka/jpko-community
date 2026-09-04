@@ -1,6 +1,5 @@
 package com.jpkocommunity.domain.user.controller;
 
-import com.jpkocommunity.domain.user.dto.request.UpdateUserGradeRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdateUserRoleRequest;
 import com.jpkocommunity.domain.user.dto.request.UpdateUserStatusRequest;
 import com.jpkocommunity.domain.user.dto.response.AdminUserResponse;
@@ -43,16 +42,6 @@ public class AdminUserController {
     ) {
         userService.updateStatus(userId, request.status(), request.suspendedUntil(), authUser.userId());
         return ResponseEntity.ok(ApiResponse.ok("계정 상태가 변경되었습니다."));
-    }
-
-    @PatchMapping("/{userId}/grade")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ROOT')")
-    public ResponseEntity<ApiResponse<Void>> updateGrade(
-            @PathVariable Long userId,
-            @Valid @RequestBody UpdateUserGradeRequest request
-    ) {
-        userService.updateGrade(userId, request.grade());
-        return ResponseEntity.ok(ApiResponse.ok("사용자 등급이 변경되었습니다."));
     }
 
     @PatchMapping("/{userId}/role")

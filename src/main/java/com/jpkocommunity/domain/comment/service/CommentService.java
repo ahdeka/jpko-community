@@ -9,6 +9,8 @@ import com.jpkocommunity.domain.comment.entity.CommentTargetType;
 import com.jpkocommunity.domain.comment.entity.Commentable;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.image.service.ImageService;
+import com.jpkocommunity.domain.level.entity.ExpAction;
+import com.jpkocommunity.domain.level.service.LevelService;
 import com.jpkocommunity.domain.notice.service.NoticeService;
 import com.jpkocommunity.domain.notification.entity.NotificationType;
 import com.jpkocommunity.domain.notification.event.NotificationEvent;
@@ -55,6 +57,7 @@ public class CommentService {
     private final PointProperties pointProperties;
     private final PointService pointService;
     private final NoticeService noticeService;
+    private final LevelService levelService;
     private final NotificationRepository notificationRepository;
 
     public CommentPageResponse getComments(CommentTargetType type, Long targetId, Long currentUserId, Pageable pageable) {
@@ -82,6 +85,7 @@ public class CommentService {
         if (type == CommentTargetType.POST) {
             publishNotificationEvent(comment, target, parent, userId);
             grantCommentPointIfEligible(userId, target, comment, targetId);
+            grantCommentExpIfEligible(userId, target);
         }
 
         return request.parentId() == null
@@ -219,6 +223,12 @@ public class CommentService {
         int point = pointProperties.getPoints().get("create-comment");
         pointService.grantPointByActivity(userId, point, "Comment: " + comment.getId(),
                 postId, comment.getId(), GrantType.COMMENT);
+    }
+
+    private void grantCommentExpIfEligible(Long userId, Commentable target) {
+        if (target.getAuthor().getId().equals(userId)) return;
+
+        levelService.gainExp(userId, ExpAction.CREATE_COMMENT);
     }
 
     // Throttling 검증

@@ -8,5 +8,6 @@ public enum NotificationType {
     POINT_STOLEN,   // 룰렛 대결에서 패배해 포인트를 뺏김
     POINT_WON,       // 룰렛 대결에서 승리해 포인트를 얻음
     POST_REWARD,
-    COMMENT_REWARD
+    COMMENT_REWARD,
+    LEVEL_UP
 }

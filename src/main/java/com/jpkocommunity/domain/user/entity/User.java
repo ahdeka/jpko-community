@@ -38,10 +38,6 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 20)
     private UserStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private UserGrade grade;
-
     @Column(length = 200)
     private String bio;
 
@@ -75,7 +71,6 @@ public class User extends BaseEntity {
         this.loginId = loginId;
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
-        this.grade = UserGrade.ASHIGARU;
         this.emailVerified = false;
         LocalDateTime now = LocalDateTime.now();
         this.termsAgreedAt = now;
@@ -114,10 +109,6 @@ public class User extends BaseEntity {
 
     public void verifyEmail() {
         this.emailVerified = true;
-    }
-
-    public void updateGrade(UserGrade grade) {
-        this.grade = grade;
     }
 
     public void suspend(LocalDateTime suspendedUntil) {

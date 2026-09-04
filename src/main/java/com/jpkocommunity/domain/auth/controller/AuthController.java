@@ -6,7 +6,6 @@ import com.jpkocommunity.domain.auth.dto.response.PreSignupVerifyResponse;
 import com.jpkocommunity.domain.auth.dto.response.UserInfoResponse;
 import com.jpkocommunity.domain.auth.service.AuthService;
 import com.jpkocommunity.domain.auth.service.TurnstileService;
-import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.properties.JwtProperties;
 import com.jpkocommunity.global.exception.CustomException;
@@ -37,11 +36,10 @@ public class AuthController {
     private final TurnstileService turnstileService;
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<UserInfoResponse>> me(@AuthenticationPrincipal AuthUser authUser) {
-        User user = userService.findById(authUser.userId());
-        return ResponseEntity.ok(ApiResponse.ok(
-                UserInfoResponse.from(user)
-        ));
+    public ResponseEntity<ApiResponse<UserInfoResponse>> me(
+            @AuthenticationPrincipal AuthUser authUser
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.getMyInfo(authUser.userId())));
     }
 
     @PostMapping("/signup/init")

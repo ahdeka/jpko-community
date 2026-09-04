@@ -40,6 +40,9 @@ out/
 .env
 application-dev.yaml
 
+### JVM crash logs ###
+hs_err_pid*.log
+replay_pid*.log
 
 ### DOCS ###
 docs/

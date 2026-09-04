@@ -9,5 +9,5 @@ public record NotificationEvent(
         Long postId,
         Long commentId,
         boolean isAnonymous,
-        Long amount // POINT_STOLEN 외 타입은 null
+        Long amount // 타입별 의미가 다름
 ) {}

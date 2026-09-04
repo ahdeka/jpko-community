@@ -1,8 +1,11 @@
 package com.jpkocommunity.domain.user.service;
 
+import com.jpkocommunity.domain.auth.dto.response.UserInfoResponse;
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.comment.repository.CommentRepository;
 import com.jpkocommunity.domain.comment.repository.PostCommentCount;
+import com.jpkocommunity.domain.level.entity.UserLevel;
+import com.jpkocommunity.domain.level.repository.UserLevelRepository;
 import com.jpkocommunity.domain.like.repository.LikeRepository;
 import com.jpkocommunity.domain.like.repository.PostLikeCount;
 import com.jpkocommunity.domain.post.entity.Post;
@@ -15,7 +18,6 @@ import com.jpkocommunity.domain.user.dto.request.UpdatePasswordRequest;
 import com.jpkocommunity.domain.user.dto.request.WithdrawRequest;
 import com.jpkocommunity.domain.user.dto.response.*;
 import com.jpkocommunity.domain.user.entity.User;
-import com.jpkocommunity.domain.user.entity.UserGrade;
 import com.jpkocommunity.domain.user.entity.UserRole;
 import com.jpkocommunity.domain.user.entity.UserStatus;
 import com.jpkocommunity.domain.user.event.UserWithdrawnEvent;
@@ -50,6 +52,7 @@ public class UserService {
     private final CommentRepository commentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LikeRepository likeRepository;
+    private final UserLevelRepository userLevelRepository;
 
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
@@ -68,6 +71,10 @@ public class UserService {
         return userRepository.findRandomActiveUserIdExcluding(excludeUserId);
     }
 
+    public UserInfoResponse getMyInfo(Long userId) {
+        User user = findById(userId);
+        return UserInfoResponse.from(user, expOf(userId));
+    }
 
     // =========== 공개 프로필 기능 ==========
 
@@ -80,7 +87,8 @@ public class UserService {
     }
 
     public UserProfileResponse getUserProfile(String nickname) {
-        return UserProfileResponse.from(findPublicUserByNickname(nickname));
+        User user = findPublicUserByNickname(nickname);
+        return UserProfileResponse.from(user, expOf(user.getId()));
     }
 
     public Page<UserPostResponse> getUserPosts(String nickname, Pageable pageable) {
@@ -250,18 +258,6 @@ public class UserService {
         return SuspensionStatusResponse.suspended(user.getSuspendedUntil());
     }
 
-    @Transactional
-    public void updateGrade(Long userId, UserGrade grade) {
-        User user = findById(userId);
-        validateWithdrawUser(user);
-
-        if (grade == UserGrade.SHOGUN && user.getRole() != UserRole.ADMIN) {
-            throw new CustomException(ErrorCode.SHOGUN_REQUIRES_ADMIN_ROLE);
-        }
-
-        user.updateGrade(grade);
-    }
-
     // ========== 최고 관리자 기능 ==========
 
     @Transactional
@@ -301,6 +297,12 @@ public class UserService {
         if (user.isDeleted()) {
             throw new CustomException(ErrorCode.ALREADY_WITHDRAWN);
         }
+    }
+
+    private long expOf(Long userId) {
+        return userLevelRepository.findByUserId(userId)
+                .map(UserLevel::getExp)
+                .orElse(0L);
     }
 
 }

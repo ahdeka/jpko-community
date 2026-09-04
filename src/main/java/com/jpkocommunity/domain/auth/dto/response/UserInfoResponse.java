@@ -1,7 +1,7 @@
 package com.jpkocommunity.domain.auth.dto.response;
 
+import com.jpkocommunity.domain.level.dto.response.UserLevelResponse;
 import com.jpkocommunity.domain.user.entity.User;
-import com.jpkocommunity.domain.user.entity.UserGrade;
 import com.jpkocommunity.domain.user.entity.UserRole;
 
 public record UserInfoResponse(
@@ -11,10 +11,10 @@ public record UserInfoResponse(
         UserRole role,
         String bio,
         boolean emailVerified,
-        UserGrade grade,
+        UserLevelResponse level,
         boolean needsOnboarding
 ) {
-    public static UserInfoResponse from(User user) {
+    public static UserInfoResponse from(User user, long exp) {
         return new UserInfoResponse(
                 user.getId(),
                 user.getEmail(),
@@ -22,7 +22,7 @@ public record UserInfoResponse(
                 user.getRole(),
                 user.getBio(),
                 user.isEmailVerified(),
-                user.getGrade(),
+                UserLevelResponse.of(exp),
                 !user.isFullyOnboarded()
         );
     }
