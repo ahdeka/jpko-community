@@ -74,10 +74,6 @@ public class Comment extends BaseEntity {
 
     // ========== 비즈니스 메서드 ==========
 
-    public void update(String content) {
-        this.content = content;
-    }
-
     public void delete() {
         this.deletedAt = LocalDateTime.now();
     }

@@ -1,7 +1,6 @@
 package com.jpkocommunity.domain.comment.service;
 
 import com.jpkocommunity.domain.comment.dto.request.CommentCreateRequest;
-import com.jpkocommunity.domain.comment.dto.request.CommentUpdateRequest;
 import com.jpkocommunity.domain.comment.dto.response.CommentPageResponse;
 import com.jpkocommunity.domain.comment.dto.response.CommentResponse;
 import com.jpkocommunity.domain.comment.entity.Comment;
@@ -38,9 +37,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -62,9 +60,17 @@ public class CommentService {
 
     public CommentPageResponse getComments(CommentTargetType type, Long targetId, Long currentUserId, Pageable pageable) {
         loadTarget(type, targetId);
-        Page<CommentResponse> page = commentRepository.findTopLevelByTarget(type, targetId, pageable)
-                .map(comment -> CommentResponse.from(comment, currentUserId));
+        Page<Comment> comments = commentRepository.findTopLevelByTarget(type, targetId, pageable);
+
+        Set<Long> authorIds = comments.getContent().stream()
+                .flatMap(c -> Stream.concat(Stream.of(c), c.getReplies().stream()))
+                .map(c -> c.getUser().getId())
+                .collect(Collectors.toSet());
+        Map<Long, Integer> authorLevels = levelService.levelsOf(authorIds);
+
+        Page<CommentResponse> page = comments.map(c -> CommentResponse.from(c, currentUserId, authorLevels));
         long total = commentRepository.countByTarget(type, targetId);
+
         return CommentPageResponse.of(page, total);
     }
 
@@ -87,10 +93,11 @@ public class CommentService {
             grantCommentPointIfEligible(userId, target, comment, targetId);
             grantCommentExpIfEligible(userId, target);
         }
+        Map<Long, Integer> levels = Map.of(userId, levelService.levelOf(userId));
 
         return request.parentId() == null
-                ? CommentResponse.from(comment, userId)
-                : CommentResponse.fromReply(comment, userId);
+                ? CommentResponse.from(comment, userId, levels)
+                : CommentResponse.fromReply(comment, userId, levels);
     }
 
     private Commentable loadTarget(CommentTargetType type, Long targetId) {
@@ -98,19 +105,6 @@ public class CommentService {
             case POST -> postService.findActivePostById(targetId);
             case NOTICE -> noticeService.findActiveNotice(targetId);
         };
-    }
-
-    @Transactional
-    public CommentResponse updateComment(AuthUser authUser, Long commentId,
-                                         CommentUpdateRequest request) {
-        Comment comment = findActiveComment(commentId);
-
-        if (!comment.getUser().getId().equals(authUser.userId())) {
-            throw new CustomException(ErrorCode.FORBIDDEN);
-        }
-
-        comment.update(request.content());
-        return CommentResponse.from(comment, authUser.userId());
     }
 
     @Transactional

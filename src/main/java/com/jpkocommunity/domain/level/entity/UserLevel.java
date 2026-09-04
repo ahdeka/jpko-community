@@ -30,9 +30,9 @@ public class UserLevel extends BaseEntity {
     private LocalDate expEarnedDate;
 
     @Builder
-    public UserLevel(User user) {
+    public UserLevel(User user, Long exp) {
         this.user = user;
-        this.exp = 0L;
+        this.exp = exp != null ? exp : 0L;
         this.expEarnedToday = 0L;
     }
 

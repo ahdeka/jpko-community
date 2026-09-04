@@ -5,10 +5,12 @@ import com.jpkocommunity.domain.user.entity.UserRole;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public record CommentResponse(
         Long id,
         String author,
+        Integer authorLevel,
         boolean adminAuthor,
         boolean rootAuthor,
         boolean anonymous,
@@ -20,10 +22,11 @@ public record CommentResponse(
         List<CommentResponse> replies  // 대댓글은 항상 빈 리스트
 ) {
     // 최상위 댓글 (replies 포함)
-    public static CommentResponse from(Comment comment, Long currentUserId) {
+    public static CommentResponse from(Comment comment, Long currentUserId, Map<Long, Integer> authorLevels) {
         return new CommentResponse(
                 comment.getId(),
                 resolveAuthor(comment),
+                resolveAuthorLevel(comment, authorLevels),
                 resolveAdminAuthor(comment),
                 resolveRootAuthor(comment),
                 comment.isAnonymous(),
@@ -33,16 +36,17 @@ public record CommentResponse(
                 comment.isDeleted(),
                 comment.getCreatedAt(),
                 comment.getReplies().stream()
-                        .map(reply -> CommentResponse.fromReply(reply, currentUserId))
+                        .map(reply -> CommentResponse.fromReply(reply, currentUserId, authorLevels))
                         .toList()
         );
     }
 
     // 대댓글 (replies 없음 - 1단계만 지원)
-    public static CommentResponse fromReply(Comment comment, Long currentUserId) {
+    public static CommentResponse fromReply(Comment comment, Long currentUserId, Map<Long, Integer> authorLevels) {
         return new CommentResponse(
                 comment.getId(),
                 resolveAuthor(comment),
+                resolveAuthorLevel(comment, authorLevels),
                 resolveAdminAuthor(comment),
                 resolveRootAuthor(comment),
                 comment.isAnonymous(),
@@ -53,6 +57,11 @@ public record CommentResponse(
                 comment.getCreatedAt(),
                 List.of()
         );
+    }
+
+    private static Integer resolveAuthorLevel(Comment comment, Map<Long, Integer> authorLevels) {
+        if (comment.isDeleted() || comment.isAnonymous() || comment.getUser().isDeleted()) return null;
+        return authorLevels.getOrDefault(comment.getUser().getId(), 0);
     }
 
     private static String resolveContent(Comment comment) {

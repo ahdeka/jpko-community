@@ -1,7 +1,6 @@
 package com.jpkocommunity.domain.comment.controller;
 
 import com.jpkocommunity.domain.comment.dto.request.CommentCreateRequest;
-import com.jpkocommunity.domain.comment.dto.request.CommentUpdateRequest;
 import com.jpkocommunity.domain.comment.dto.response.CommentPageResponse;
 import com.jpkocommunity.domain.comment.dto.response.CommentResponse;
 import com.jpkocommunity.domain.comment.entity.CommentTargetType;
@@ -70,16 +69,6 @@ public class CommentController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("댓글이 등록되었습니다.",
                         commentService.createComment(authUser.userId(), CommentTargetType.NOTICE, noticeId, request, ipAddress)));
-    }
-
-    @PutMapping("/api/comments/{commentId}")
-    public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
-            @AuthenticationPrincipal AuthUser authUser,
-            @PathVariable Long commentId,
-            @Valid @RequestBody CommentUpdateRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(
-                commentService.updateComment(authUser, commentId, request)));
     }
 
     @DeleteMapping("/api/comments/{commentId}")

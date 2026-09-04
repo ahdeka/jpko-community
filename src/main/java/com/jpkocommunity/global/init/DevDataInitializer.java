@@ -144,8 +144,10 @@ public class DevDataInitializer implements CommandLineRunner {
     }
 
     private void initUserLevels(List<User> users) {
-        for (User user : users) {
-            userLevelRepository.save(UserLevel.builder().user(user).build());
+        long[] activeExp = {0, 1200, 4800, 5200, 9900, 10100, 14500, 15200, 22000, 31000};
+        for (int i = 0; i < users.size(); i++) {
+            long exp = i < activeExp.length ? activeExp[i] : random.nextInt(20000);
+            userLevelRepository.save(UserLevel.builder().user(users.get(i)).exp(exp).build());
         }
         log.info("유저 레벨 {}개 생성", users.size());
     }

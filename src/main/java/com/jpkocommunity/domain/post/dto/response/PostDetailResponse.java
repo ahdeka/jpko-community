@@ -11,6 +11,7 @@ public record PostDetailResponse(
         String title,
         String content,
         String author,
+        Integer authorLevel,
         boolean adminAuthor,
         boolean rootAuthor,
         boolean anonymous,
@@ -24,13 +25,14 @@ public record PostDetailResponse(
     // 조회수 증가를 벌크 UPDATE로 처리하면 로드된 엔티티에는 +1이 반영되지 않으므로,
     // 표시용 조회수를 명시적으로 전달받아야 정확한 값이 응답된다.
     public static PostDetailResponse from(
-            Post post, int viewCount, long likeCount, long dislikeCount, Long currentUserId) {
+            Post post, int viewCount, long likeCount, long dislikeCount, Long currentUserId, Integer authorLevel) {
         return new PostDetailResponse(
                 post.getId(),
                 post.getCategory().getName(),
                 post.getTitle(),
                 post.getContent(),
                 resolveAuthor(post),
+                resolveAuthorLevel(post, authorLevel),
                 resolveAdminAuthor(post),
                 resolveRootAuthor(post),
                 post.isAnonymous(),
@@ -40,6 +42,11 @@ public record PostDetailResponse(
                 dislikeCount,
                 post.getCreatedAt()
         );
+    }
+
+    private static Integer resolveAuthorLevel(Post post, Integer level) {
+        if (post.isAnonymous() || post.getUser().isDeleted()) return null;
+        return level != null ? level : 0;
     }
 
     private static String resolveAuthor(Post post) {

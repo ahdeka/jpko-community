@@ -92,12 +92,17 @@ public class PostService {
         Map<Long, Long> likeCounts = likeRepository.countLikesByPostIdIn(postIds).stream()
                 .collect(Collectors.toMap(PostLikeCount::getPostId, PostLikeCount::getLikeCount));
 
+        Map<Long, Integer> authorLevels = levelService.levelsOf(
+                posts.stream().map(post -> post.getUser().getId()).collect(Collectors.toSet())
+        );
+
         return posts.stream()
                 .map(post -> PostSummaryResponse.from(
                         post,
                         commentCounts.getOrDefault(post.getId(), 0L),
                         likeCounts.getOrDefault(post.getId(), 0L),
-                        imageService.hasImage(post.getContent())
+                        imageService.hasImage(post.getContent()),
+                        authorLevels.get(post.getUser().getId())
                 ))
                 .toList();
     }
@@ -184,8 +189,9 @@ public class PostService {
 
         long likeCount = likeRepository.countByPostIdAndType(postId, LikeType.LIKE);
         long dislikeCount = likeRepository.countByPostIdAndType(postId, LikeType.DISLIKE);
+        int authorLevel = levelService.levelOf(post.getUser().getId());
 
-        return PostDetailResponse.from(post, viewCount, likeCount, dislikeCount, currentUserId);
+        return PostDetailResponse.from(post, viewCount, likeCount, dislikeCount, currentUserId, authorLevel);
     }
 
     @Transactional
