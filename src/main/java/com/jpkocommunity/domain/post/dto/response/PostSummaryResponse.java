@@ -1,5 +1,6 @@
 package com.jpkocommunity.domain.post.dto.response;
 
+import com.jpkocommunity.domain.level.service.LevelPolicy;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.user.entity.UserRole;
 
@@ -40,7 +41,7 @@ public record PostSummaryResponse(
 
     private static Integer resolveAuthorLevel(Post post, Integer level) {
         if (post.isAnonymous() || post.getUser().isDeleted()) return null;
-        return level != null ? level : 0;
+        return level != null ? level : LevelPolicy.MIN_LEVEL;
     }
 
     private static String resolveAuthor(Post post) {

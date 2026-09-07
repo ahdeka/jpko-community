@@ -1,6 +1,7 @@
 package com.jpkocommunity.domain.comment.dto.response;
 
 import com.jpkocommunity.domain.comment.entity.Comment;
+import com.jpkocommunity.domain.level.service.LevelPolicy;
 import com.jpkocommunity.domain.user.entity.UserRole;
 
 import java.time.LocalDateTime;
@@ -61,7 +62,7 @@ public record CommentResponse(
 
     private static Integer resolveAuthorLevel(Comment comment, Map<Long, Integer> authorLevels) {
         if (comment.isDeleted() || comment.isAnonymous() || comment.getUser().isDeleted()) return null;
-        return authorLevels.getOrDefault(comment.getUser().getId(), 0);
+        return authorLevels.getOrDefault(comment.getUser().getId(), LevelPolicy.MIN_LEVEL);
     }
 
     private static String resolveContent(Comment comment) {

@@ -48,7 +48,7 @@ public class LevelService {
     public int levelOf(Long userId) {
         return userLevelRepository.findByUserId(userId)
                 .map(ul -> LevelPolicy.levelOfExp(ul.getExp()))
-                .orElse(0);
+                .orElse(LevelPolicy.MIN_LEVEL);
     }
 
     public void createUserLevel(User user) {
