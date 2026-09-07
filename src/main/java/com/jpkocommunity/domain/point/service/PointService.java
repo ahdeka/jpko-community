@@ -60,11 +60,6 @@ public class PointService {
             return null;
         }
 
-        // 포인트 리워드는 이메일 인증을 받은 유저만
-        if (!userService.findById(userId).isEmailVerified()) {
-            return null;
-        }
-
         Map<Long, LockedAccount> accounts = lockAccounts(null, userId);
         LockedAccount system = accounts.get(null);
         LockedAccount target = accounts.get(userId);

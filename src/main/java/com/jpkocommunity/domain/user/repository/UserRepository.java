@@ -40,9 +40,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByLoginId(String loginId);
 
-    // 매 요청마다 JwtAuthenticationFilter가 status/온보딩/role/정지기한을 최신값으로 재확인하는 데 쓴다.
-    @Query("SELECT u.status AS status, u.loginId AS loginId, u.emailVerified AS emailVerified, u.role AS role, " +
-            "u.suspendedUntil AS suspendedUntil FROM User u WHERE u.id = :userId")
+    // 매 요청마다 JwtAuthenticationFilter가 status/role을 최신값으로 재확인하는 데 쓴다.
+    @Query("SELECT u.status AS status, u.role AS role FROM User u WHERE u.id = :userId")
     Optional<UserAuthProjection> findAuthProjectionById(Long userId);
 
     // Admin 기능
@@ -58,12 +57,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // COUNT로 대상 수를 센 뒤 그 범위 안에서 OFFSET만 무작위로 골라 정렬 없이 1건만 읽는다.
     @Query(value = """
             SELECT u.id FROM users u
-            WHERE u.status = 'ACTIVE' AND u.role <> 'ROOT' AND u.id <> :excludeUserId
-              AND u.email_verified = true AND u.roulette_status = true
+            WHERE u.status = 'ACTIVE' AND u.role <> 'ROOT' AND u.id <> :excludeUserId AND u.roulette_status = true
             OFFSET floor(random() * (
                 SELECT COUNT(*) FROM users u2
                 WHERE u2.status = 'ACTIVE' AND u2.role <> 'ROOT' AND u2.id <> :excludeUserId
-                  AND u2.email_verified = true AND u2.roulette_status = true
+                  AND u2.roulette_status = true
             ))::bigint
             LIMIT 1
             """, nativeQuery = true)

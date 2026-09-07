@@ -18,7 +18,6 @@ public class VerificationEmailEventListener {
     @TransactionalEventListener(phase = AFTER_COMMIT)
     public void handle(VerificationEmailEvent event) {
         switch (event.type()) {
-            case EMAIL_VERIFICATION -> emailService.sendVerificationEmail(event.email(), event.token());
             case PASSWORD_RESET -> emailService.sendPasswordResetEmail(event.email(), event.token());
             case PRE_SIGNUP -> emailService.sendPreSignupEmail(event.email(), event.token());
             case EMAIL_CHANGE -> emailService.sendChangeEmail(event.email(), event.token());

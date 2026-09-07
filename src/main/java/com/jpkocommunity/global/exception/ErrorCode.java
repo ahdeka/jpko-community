@@ -23,15 +23,12 @@ public enum ErrorCode {
     TARGET_NOT_ADMIN(HttpStatus.BAD_REQUEST, "ADMIN 권한을 가진 계정이 아닙니다."),
     SUSPEND_DURATION_REQUIRED(HttpStatus.BAD_REQUEST, "ADMIN 권한으로는 기한이 있는 정지만 가능합니다."),
     SUSPEND_DURATION_TOO_LONG(HttpStatus.BAD_REQUEST, "정지 기한이 허용된 최대 기간을 초과했습니다."),
-    ALREADY_ASSIGN_LOGIN_ID(HttpStatus.CONFLICT, "이미 로그인 아이디가 설정된 계정입니다."), // TODO 마이그레이션 끝나면 정리될 에러 코드
-    EMAIL_VERIFICATION_REQUIRED(HttpStatus.FORBIDDEN, "이메일 인증을 먼저 완료해주세요."), // TODO 마이그레이션 끝나면 정리될 에러 코드
     DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
-    ONBOARDING_INCOMPLETE(HttpStatus.FORBIDDEN, "계정 설정을 완료해야 이 기능을 사용할 수 있습니다."), // TODO 마이그레이션 끝나면 정리될 에러 코드
 
     // Auth
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "만료된 토큰입니다."),
-    WRONG_PASSWORD(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
+    WRONG_PASSWORD(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     CAPTCHA_FAILED(HttpStatus.BAD_REQUEST, "보안 문자 인증에 실패했습니다. 다시 시도해주세요."),
@@ -102,7 +99,6 @@ public enum ErrorCode {
     USER_ID_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다."),
 
     // Roulette
-    UNAUTHORIZED_ROULETTE(HttpStatus.UNAUTHORIZED, "룰렛 기능은 이메일 인증을 해야합니다."),
     INVALID_BET_AMOUNT(HttpStatus.BAD_REQUEST, "배팅액이 설정된 단위·범위를 벗어났습니다."),
     ROULETTE_OPPONENT_NOT_FOUND(HttpStatus.CONFLICT, "대결할 상대를 찾을 수 없습니다."),
     SELF_OPPONENT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "본인을 상대로 지정할 수 없습니다."),
@@ -110,11 +106,7 @@ public enum ErrorCode {
     ROULETTE_CONSENT_REQUIRED(HttpStatus.FORBIDDEN, "룰렛 참여에 동의해야 합니다."),
 
     // Pachinko
-    UNAUTHORIZED_PACHINKO(HttpStatus.UNAUTHORIZED, "파칭코 기능은 이메일 인증을 해야합니다."),
     INVALID_BALL_COUNT(HttpStatus.BAD_REQUEST, "구슬 개수가 설정된 범위를 벗어났습니다."),
-
-    // Slot
-    UNAUTHORIZED_SLOT(HttpStatus.UNAUTHORIZED, "슬롯머신 기능은 이메일 인증을 해야합니다."),
 
     CONFLICTING_REQUEST(HttpStatus.CONFLICT, "다른 요청과 충돌했습니다. 다시 시도해주세요.");
 

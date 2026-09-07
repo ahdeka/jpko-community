@@ -3,7 +3,6 @@ package com.jpkocommunity.domain.point.service;
 import com.jpkocommunity.domain.point.dto.LockedAccount;
 import com.jpkocommunity.domain.point.dto.response.SlotPlayResponse;
 import com.jpkocommunity.domain.point.entity.TransactionType;
-import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.properties.SlotProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
@@ -19,17 +18,12 @@ import java.util.Map;
 public class SlotService {
 
     private final PointService pointService;
-    private final UserService userService;
     private final SlotProperties slotProperties;
 
     @Transactional
     public SlotPlayResponse play(Long userId, long betAmount) {
         if (!slotProperties.isValidBet(betAmount)) {
             throw new CustomException(ErrorCode.INVALID_BET_AMOUNT);
-        }
-
-        if (!userService.findById(userId).isEmailVerified()) {
-            throw new CustomException(ErrorCode.UNAUTHORIZED_SLOT);
         }
 
         long fee = Math.round(betAmount * slotProperties.feeRate());

@@ -11,8 +11,7 @@ public record UserInfoResponse(
         UserRole role,
         String bio,
         boolean emailVerified,
-        UserLevelResponse level,
-        boolean needsOnboarding
+        UserLevelResponse level
 ) {
     public static UserInfoResponse from(User user, long exp) {
         return new UserInfoResponse(
@@ -22,8 +21,7 @@ public record UserInfoResponse(
                 user.getRole(),
                 user.getBio(),
                 user.isEmailVerified(),
-                UserLevelResponse.of(exp),
-                !user.isFullyOnboarded()
+                UserLevelResponse.of(exp)
         );
     }
 }

@@ -39,60 +39,6 @@ public class EmailService {
         }
     }
 
-    public void sendVerificationEmail(String toEmail, String token) {
-        String link = mailProperties.baseUrl() + "/verify-email?token=" + token;
-
-        String htmlBody = """
-                <!DOCTYPE html>
-                <html>
-                <body style="font-family: Arial, sans-serif; line-height:1.6; color:#333;">
-                    <h2>JPKO Community 이메일 인증</h2>
-                    <p>안녕하세요.</p>
-                    <p>
-                        JPKO Community 회원가입을 위해 이메일 인증이 필요합니다.
-                        아래 버튼을 눌러 인증을 완료해주세요.
-                    </p>
-                    <p style="margin:30px 0;">
-                        <a href="%s"
-                           style="
-                                background:#2563eb;
-                                color:#ffffff;
-                                padding:12px 24px;
-                                text-decoration:none;
-                                border-radius:6px;
-                                display:inline-block;
-                           ">
-                            이메일 인증하기
-                        </a>
-                    </p>
-                    <p>위 버튼이 동작하지 않는 경우 아래 주소를 브라우저에 직접 붙여넣어 주세요.</p>
-                    <p><a href="%s">%s</a></p>
-                    <hr>
-                    <p>• 인증 링크는 <strong>24시간 동안</strong> 유효합니다.</p>
-                    <p>• 본인이 요청하지 않았다면 이 메일은 무시하셔도 됩니다.</p>
-                    <p>감사합니다.<br>JPKO Community</p>
-                </body>
-                </html>
-                """.formatted(link, link, link);
-
-        String textBody = """
-                JPKO Community
-                
-                회원가입을 위해 이메일 인증을 진행해주세요.
-                
-                아래 링크를 클릭해주세요:
-                %s
-                
-                • 링크는 24시간 동안 유효합니다.
-                • 요청하지 않았다면 이 메일을 무시해주세요.
-                
-                감사합니다.
-                JPKO Community
-                """.formatted(link);
-
-        send(toEmail, "[JPKO Community] 이메일 인증을 완료해주세요", htmlBody, textBody);
-    }
-
     public void sendPasswordResetEmail(String toEmail, String token) {
         String link = mailProperties.baseUrl() + "/reset-password?token=" + token;
 

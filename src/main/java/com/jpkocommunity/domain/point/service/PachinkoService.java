@@ -4,7 +4,6 @@ import com.jpkocommunity.domain.point.dto.LockedAccount;
 import com.jpkocommunity.domain.point.dto.response.PachinkoBallResult;
 import com.jpkocommunity.domain.point.dto.response.PachinkoPlayResponse;
 import com.jpkocommunity.domain.point.entity.TransactionType;
-import com.jpkocommunity.domain.user.service.UserService;
 import com.jpkocommunity.global.config.properties.PachinkoProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
@@ -24,17 +23,12 @@ import java.util.Map;
 public class PachinkoService {
 
     private final PointService pointService;
-    private final UserService userService;
     private final PachinkoProperties pachinkoProperties;
 
     @Transactional
     public PachinkoPlayResponse play(Long userId, int ballCount) {
         if (!pachinkoProperties.isValidBallCount(ballCount)) {
             throw new CustomException(ErrorCode.INVALID_BALL_COUNT);
-        }
-
-        if (!userService.findById(userId).isEmailVerified()) {
-            throw new CustomException(ErrorCode.UNAUTHORIZED_PACHINKO);
         }
 
         long ballPrice = pachinkoProperties.ballPrice();

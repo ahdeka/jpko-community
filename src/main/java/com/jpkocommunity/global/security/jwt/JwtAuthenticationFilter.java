@@ -8,7 +8,6 @@ import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.response.ApiResponse;
-import com.jpkocommunity.global.security.OnboardingAllowedPaths;
 import com.jpkocommunity.global.security.PublicAuthPaths;
 import com.jpkocommunity.global.security.SuspendAllowedPaths;
 import com.jpkocommunity.global.security.auth.AuthUser;
@@ -29,7 +28,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -42,9 +40,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
-
-    // 온보딩전 계정들은 읽기만 허용 TODO 마이그레이션 끝나면 정리
-    private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
     // EXCLUDED_PATHS 요청은 필터 자체를 건너뜀
     @Override
@@ -71,7 +66,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 여기서 DB로 다시 확인한 최신값을 쓴다 — 그래야 권한 변경(경매 만료, ROOT의 즉시
             // 박탈 등)이 토큰 만료(최대 1시간)를 기다리지 않고 바로 다음 요청부터 반영된다.
             UserAuthProjection auth = userRepository.findAuthProjectionById(userId)
-                    .orElseThrow(() -> new CustomException(ErrorCode.ONBOARDING_INCOMPLETE));
+                    .orElseThrow(() -> new CustomException(ErrorCode.INVALID_TOKEN));
             UserRole role = auth.getRole();
 
             // SUSPENDED(관리자 정지)는 DELETED와 달리 완전히 막지 않는다 — 정지 사유·기한 확인과
@@ -80,14 +75,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     && SuspendAllowedPaths.PATHS.contains(request.getRequestURI());
             if (auth.getStatus() != UserStatus.ACTIVE && !isSuspendedButAllowed) {
                 throw new CustomException(ErrorCode.SUSPENDED_ACCOUNT);
-            }
-
-            // 온보딩 완료 판정 TODO 마이그레이션 끝나면 정리
-            boolean fullyOnboarded = auth.getLoginId() != null && auth.isEmailVerified();
-            boolean isWriteMethod = WRITE_METHODS.contains(request.getMethod());
-
-            if (!fullyOnboarded && isWriteMethod && !OnboardingAllowedPaths.PATHS.contains(request.getRequestURI())) {
-                throw new CustomException(ErrorCode.ONBOARDING_INCOMPLETE);
             }
 
             // 클레임으로 인증 객체 생성 (상태는 위에서 DB 확인)

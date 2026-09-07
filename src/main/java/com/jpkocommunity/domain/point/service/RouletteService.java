@@ -48,9 +48,6 @@ public class RouletteService {
         }
 
         User self = userService.findById(userId);
-        if (!self.isEmailVerified()) {
-            throw new CustomException(ErrorCode.UNAUTHORIZED_ROULETTE);
-        }
         if (!self.isRouletteStatus()) {
             throw new CustomException(ErrorCode.ROULETTE_CONSENT_REQUIRED);
         }
@@ -166,7 +163,6 @@ public class RouletteService {
         }
         return opponent.getStatus() == UserStatus.ACTIVE
                 && opponent.getRole() != UserRole.ROOT
-                && opponent.isEmailVerified()
                 && opponent.isRouletteStatus();
     }
 

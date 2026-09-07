@@ -120,14 +120,12 @@ public class DevDataInitializer implements CommandLineRunner {
     }
 
     private User createUser(String email, String nickname, String loginId) {
-        User user = userRepository.save(User.builder()
+        return userRepository.save(User.builder()
                 .email(email)
                 .password(passwordEncoder.encode("test1234"))
                 .nickname(nickname)
                 .loginId(loginId)
                 .build());
-        user.verifyEmail();
-        return user;
     }
 
     private void initPoints(List<User> users) {

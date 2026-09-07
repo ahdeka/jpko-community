@@ -99,7 +99,6 @@ public class AuthService {
                 .nickname(request.nickname())
                 .loginId(request.loginId())
                 .build();
-        user.verifyEmail();
 
         try {
             userRepository.saveAndFlush(user);
@@ -127,22 +126,11 @@ public class AuthService {
     }
 
     @Transactional
-    public void completeOnBoarding(Long userId, SignupMigrationRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        validateOnboarding(user, request);
-
-        user.assignLoginId(request.loginId());
-        user.updatePassword(passwordEncoder.encode(request.password()));
-    }
-
-    @Transactional
     public void requestEmailChange(Long userId, EmailChangeRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        if (request.email().equals(user.getEmail()) && user.isEmailVerified()) {
+        if (request.email().equals(user.getEmail())) {
             throw new CustomException(ErrorCode.ALREADY_VERIFIED_EMAIL);
         }
         if (userRepository.existsByEmailAndIdNot(request.email(), userId)) {
@@ -197,7 +185,6 @@ public class AuthService {
     @Transactional
     public LoginResult login(LoginRequest request, String deviceInfo, String ipAddress) {
         User user = userRepository.findByLoginId(request.loginId())
-                .or(() -> userRepository.findByEmail(request.loginId()))
                 .orElseThrow(() -> new CustomException(ErrorCode.WRONG_PASSWORD));
 
         validateLoginInfo(user, request);
@@ -228,8 +215,7 @@ public class AuthService {
                 new LoginResponse(
                         user.getNickname(),
                         user.getRole(),
-                        LoginResponse.CheckInInfo.from(checkInOutcome),
-                        !user.isFullyOnboarded()
+                        LoginResponse.CheckInInfo.from(checkInOutcome)
                 ),
                 tokens.accessToken(),
                 tokens.refreshToken()
@@ -336,95 +322,11 @@ public class AuthService {
         }
     }
 
-    private void validateOnboarding(User user, SignupMigrationRequest request) {
-        if (!user.isEmailVerified()) {
-            throw new CustomException(ErrorCode.EMAIL_VERIFICATION_REQUIRED);
-        }
-
-        if (user.getLoginId() != null) {
-            throw new CustomException(ErrorCode.ALREADY_ASSIGN_LOGIN_ID);
-        }
-
-        if (!request.password().equals(request.passwordConfirm())) {
-            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
-        }
-
-        if (userRepository.existsByLoginId(request.loginId())) {
-            throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
-        }
-    }
-
-    // ========== 이메일 인증 ==========
-
-    @Transactional
-    public void sendVerificationEmail(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        if (user.isEmailVerified()) {
-            throw new CustomException(ErrorCode.ALREADY_VERIFIED_EMAIL);
-        }
-
-        // 최초 인증 요첨 시점에만 MX 레코드 체크
-        if (!emailDomainValidator.hasMxRecord(user.getEmail())) {
-            throw new CustomException(ErrorCode.INVALID_EMAIL_DOMAIN);
-        }
-
-        String token = issueToken(user.getId(), VerificationTokenType.EMAIL_VERIFICATION,
-                verificationTokenProperties.emailVerificationExpiration());
-
-
-        // 이메일 전송은 이벤트로 처리하여 비동기화 (트랜잭션과 분리)
-        eventPublisher.publishEvent(
-                new VerificationEmailEvent(user.getEmail(), token, VerificationTokenType.EMAIL_VERIFICATION));
-    }
-
-    @Transactional
-    public void resendVerificationEmailByEmail(String email) {
-        userRepository.findByEmail(email).ifPresent(user -> {
-            if (user.isEmailVerified()) {
-                return;
-            }
-
-            if (!emailDomainValidator.hasMxRecord(email)) {
-                return;
-            }
-
-            String token = issueToken(user.getId(), VerificationTokenType.EMAIL_VERIFICATION,
-                    verificationTokenProperties.emailVerificationExpiration());
-
-            eventPublisher.publishEvent(
-                    new VerificationEmailEvent(user.getEmail(), token, VerificationTokenType.EMAIL_VERIFICATION));
-        });
-    }
-
-    @Transactional
-    public void verifyEmail(String token) {
-        VerificationToken verificationToken = verificationTokenRepository.findByToken(token)
-                .filter(t -> t.getType() == VerificationTokenType.EMAIL_VERIFICATION)
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_VERIFICATION_TOKEN));
-
-        if (verificationToken.isExpired()) {
-            verificationTokenRepository.delete(verificationToken);
-            throw new CustomException(ErrorCode.EXPIRED_VERIFICATION_TOKEN);
-        }
-
-        User user = userRepository.findById(verificationToken.getUserId())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        user.verifyEmail();
-        verificationTokenRepository.delete(verificationToken);
-    }
-
     // ========== 비밀번호 재설정 ==========
 
     @Transactional
     public void requestPasswordReset(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
-            if (!user.isEmailVerified()) {
-                return;
-            }
-
             // 비밀번호 재설정은 MX 재확인 없음
             String token = issueToken(user.getId(), VerificationTokenType.PASSWORD_RESET,
                     verificationTokenProperties.passwordResetExpiration());

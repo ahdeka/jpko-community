@@ -1,8 +1,6 @@
 package com.jpkocommunity.domain.user.entity;
 
 import com.jpkocommunity.global.entity.BaseEntity;
-import com.jpkocommunity.global.exception.CustomException;
-import com.jpkocommunity.global.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -71,7 +69,7 @@ public class User extends BaseEntity {
         this.loginId = loginId;
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
-        this.emailVerified = false;
+        this.emailVerified = true;
         LocalDateTime now = LocalDateTime.now();
         this.termsAgreedAt = now;
         this.privacyAgreedAt = now;
@@ -84,31 +82,12 @@ public class User extends BaseEntity {
         this.nickname = nickname;
     }
 
-    // TODO 26-feature 마이그레이션 끝나면 정리될 구문
-    public void assignLoginId(String loginId) {
-        if (this.loginId != null) {
-            throw new CustomException(ErrorCode.ALREADY_ASSIGN_LOGIN_ID);
-        }
-        this.loginId = loginId;
-    }
-
-    // TODO 26-feature 마이그레이션 끝나면 정리될 구문
-    public boolean isFullyOnboarded() {
-        return this.loginId != null && this.emailVerified;
-    }
-
-    // email 교체 + 인증 완료 TODO 마이그레이션 끝나면 정리
     public void changeEmail(String newEmail) {
         this.email = newEmail;
-        this.emailVerified = true;
     }
 
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
-    }
-
-    public void verifyEmail() {
-        this.emailVerified = true;
     }
 
     public void suspend(LocalDateTime suspendedUntil) {

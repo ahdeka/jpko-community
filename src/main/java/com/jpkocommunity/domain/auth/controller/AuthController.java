@@ -75,25 +75,14 @@ public class AuthController {
         cookieUtils.add(response, "accessToken", result.accessToken(), jwtProperties.accessTokenMaxAgeSeconds());
         cookieUtils.add(response, "refreshToken", result.refreshToken(), jwtProperties.refreshTokenMaxAgeSeconds());
 
-        // signup()의 트랜잭션이 커밋된 뒤(=위 리턴 시점)에만 출첵을 걸 수 있다 — AuthService.checkInAfterSignup 참고.
         LoginResponse.CheckInInfo checkIn = authService.checkInAfterSignup(result.userId());
         LoginResponse body = new LoginResponse(
                 result.response().nickname(),
                 result.response().role(),
-                checkIn,
-                result.response().needsOnboarding());
+                checkIn);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("회원가입이 완료되었습니다.", body));
-    }
-
-    @PatchMapping("/complete-onboarding")
-    public ResponseEntity<ApiResponse<Void>> completeOnboarding(
-            @AuthenticationPrincipal AuthUser authUser,
-            @Valid @RequestBody SignupMigrationRequest request
-    ) {
-        authService.completeOnBoarding(authUser.userId(), request);
-        return ResponseEntity.ok(ApiResponse.ok("계정 전환이 완료되었습니다."));
     }
 
     @PatchMapping("/email")
@@ -155,40 +144,13 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok("로그아웃이 완료되었습니다."));
     }
 
-    @PostMapping("/email-verification/request")
-    public ResponseEntity<ApiResponse<Void>> requestEmailVerification(
-            @AuthenticationPrincipal AuthUser authUser
-    ) {
-        authService.sendVerificationEmail(authUser.userId());
-        return ResponseEntity.ok(ApiResponse.ok("인증 메일이 발송되었습니다."));
-    }
-
-    @PostMapping("/email-verification/resend")
-    public ResponseEntity<ApiResponse<Void>> resendVerificationEmail(
-            @Valid @RequestBody PasswordResetRequest request
-    ) {
-        authService.resendVerificationEmailByEmail(request.email());
-        return ResponseEntity.ok(ApiResponse.ok(
-                "입력하신 이메일이 가입되어 있고 미인증 상태라면, 인증 메일을 보내드렸습니다."
-        ));
-    }
-
-    @PostMapping("/email-verification/confirm")
-    public ResponseEntity<ApiResponse<Void>> confirmEmailVerification(
-            @RequestParam String token
-    ) {
-        authService.verifyEmail(token);
-        return ResponseEntity.ok(ApiResponse.ok("이메일 인증이 완료되었습니다."));
-    }
-
     @PostMapping("/password-reset/request")
     public ResponseEntity<ApiResponse<Void>> requestPasswordReset(
             @Valid @RequestBody PasswordResetRequest request
     ) {
         authService.requestPasswordReset(request.email());
         return ResponseEntity.ok(ApiResponse.ok(
-                "입력하신 이메일이 가입되어 있고 인증된 상태라면, 재설정 링크를 보내드렸습니다." +
-                        "메일이 오지 않는다면 이메일 인증이 필요한 상태일 수 있습니다."
+                "입력하신 이메일이 가입되어 있다면, 재설정 링크를 보내드렸습니다."
         ));
     }
 

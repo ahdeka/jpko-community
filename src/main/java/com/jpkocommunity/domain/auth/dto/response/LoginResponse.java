@@ -6,8 +6,7 @@ import com.jpkocommunity.domain.user.entity.UserRole;
 public record LoginResponse(
         String nickname,
         UserRole role,
-        CheckInInfo checkIn,
-        boolean needsOnboarding
+        CheckInInfo checkIn
 ) {
 
     // 로그인(및 회원가입 직후 자동 로그인) 시 출첵 결과. 오늘 이미 했으면 checkedIn=false
