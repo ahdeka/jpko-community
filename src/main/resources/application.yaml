@@ -24,9 +24,9 @@ app:
     cwebp-path: cwebp
     ffmpeg-path: ffmpeg
   points:
-    create-post: 50
-    create-comment: 10
-    daily-activity-limit: 1000 # 활동 보상으로 일일 받을 포인트 총량
+    create-post: 1000
+    create-comment: 100
+    daily-activity-limit: 10000 # 활동 보상으로 일일 받을 포인트 총량
   checkin:
     unit: 10 # 지급액은 항상 이 값의 배수로만 나온다
     ranges:
