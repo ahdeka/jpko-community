@@ -4,6 +4,7 @@ package com.jpkocommunity.domain.comment.entity;
 import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.global.entity.BaseEntity;
+import com.jpkocommunity.global.util.IpUtils;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -86,13 +87,7 @@ public class Comment extends BaseEntity {
         return this.targetType == type && this.targetId.equals(id);
     }
 
-    // Post와 동일한 마스킹 로직
     public String getMaskedIp() {
-        if (ipAddress == null || ipAddress.isBlank()) return "알 수 없음";
-
-        if (ipAddress.equals("0:0:0:0:0:0:0:1") || ipAddress.equals("::1")) return "127.0";
-        String[] parts = ipAddress.split("\\.");
-        if (parts.length >= 2) return parts[0] + "." + parts[1];
-        return "알 수 없음";
+        return IpUtils.mask(ipAddress);
     }
 }
