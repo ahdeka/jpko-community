@@ -98,6 +98,9 @@ public enum ErrorCode {
     SYSTEM_ACCOUNT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "시스템 포인트 계정을 찾을 수 없습니다."),
     USER_ID_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다."),
 
+    // CheckIn
+    ALREADY_CHECKED_IN(HttpStatus.CONFLICT, "오늘은 이미 출석했습니다."),
+
     // Roulette
     INVALID_BET_AMOUNT(HttpStatus.BAD_REQUEST, "배팅액이 설정된 단위·범위를 벗어났습니다."),
     ROULETTE_OPPONENT_NOT_FOUND(HttpStatus.CONFLICT, "대결할 상대를 찾을 수 없습니다."),

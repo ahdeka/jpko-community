@@ -28,17 +28,14 @@ app:
     create-comment: 100
     daily-activity-limit: 10000 # 활동 보상으로 일일 받을 포인트 총량
   checkin:
-    unit: 10 # 지급액은 항상 이 값의 배수로만 나온다
-    ranges:
-      - min-amount: 0
-        max-amount: 0
-        weight: 25   # 25% 확률로 본전
-      - min-amount: 50
-        max-amount: 500
-        weight: 65   # 65% 확률로 소소하게 획득
-      - min-amount: 550
-        max-amount: 1000
-        weight: 10   # 10% 확률로 크게 획득
+    amount: 1000  # 고정 지급 포인트
+    monthly-bonuses: # 누적 출석 보너스 포인트 횟수 기준
+      - count: 7
+        bonus: 3000
+      - count: 15
+        bonus: 5000
+      - count: 25
+        bonus: 10000
   roulette:
     bet-unit: 100
     min-bet: 100
@@ -46,9 +43,9 @@ app:
     win-probability: 0.5
     fee-rate: 0.05
   pachinko:
-    ball-price: 50            # 구슬 1개당 가격
+    ball-price: 100            # 구슬 1개당 가격
     min-balls: 1
-    max-balls: 10000          # 한 판에 쏠 수 있는 최대 구슬 개수(연출·남용 방지용 상한)
+    max-balls: 1000          # 한 판에 쏠 수 있는 최대 구슬 개수(연출·남용 방지용 상한)
     fee-rate: 0.03            # 배당표 자체가 이미 하우스 엣지를 크게 갖고 있어 룰렛보다 낮게 잡음
     rows: 8                   # 9개 슬롯(0~8)
     right-probability: 0.5    # 못 하나당 우측으로 튕길 확률 — 의도적으로 클라이언트에 노출 안 함
@@ -92,8 +89,9 @@ app:
       min-engagement: 1       # 좋아요/댓글 0인 글은 주간 인기글에서 제외
   exp:
     daily-limit: 500          # 하루에 활동으로 얻을 수 있는 exp 최대치
-    create-post: 50
-    create-comment: 10
+    create-post: 100
+    create-comment: 20
+    check-in: 100 # 일일 상한 제외
 
 server:
   port: 8080

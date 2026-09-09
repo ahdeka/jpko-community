@@ -1,21 +1,22 @@
 package com.jpkocommunity.domain.auth.service;
 
-import com.jpkocommunity.domain.auth.dto.request.*;
+import com.jpkocommunity.domain.auth.dto.request.EmailChangeRequest;
+import com.jpkocommunity.domain.auth.dto.request.LoginRequest;
+import com.jpkocommunity.domain.auth.dto.request.SignupCompleteRequest;
+import com.jpkocommunity.domain.auth.dto.request.SignupInitRequest;
 import com.jpkocommunity.domain.auth.dto.response.LoginResponse;
 import com.jpkocommunity.domain.auth.dto.response.PreSignupVerifyResponse;
 import com.jpkocommunity.domain.auth.entity.RefreshToken;
-import com.jpkocommunity.domain.auth.event.VerificationEmailEvent;
 import com.jpkocommunity.domain.auth.entity.VerificationToken;
 import com.jpkocommunity.domain.auth.entity.VerificationTokenType;
+import com.jpkocommunity.domain.auth.event.VerificationEmailEvent;
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.auth.repository.VerificationTokenRepository;
 import com.jpkocommunity.domain.level.service.LevelService;
-import com.jpkocommunity.domain.point.dto.response.CheckInOutcome;
-import com.jpkocommunity.domain.point.service.CheckInService;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.repository.UserRepository;
-import com.jpkocommunity.global.config.properties.JwtProperties;
 import com.jpkocommunity.global.config.VerificationTokenProperties;
+import com.jpkocommunity.global.config.properties.JwtProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.jwt.JwtProvider;
@@ -46,10 +47,13 @@ public class AuthService {
     private final EmailDomainValidator emailDomainValidator;
     private final VerificationTokenProperties verificationTokenProperties;
     private final ApplicationEventPublisher eventPublisher;
-    private final CheckInService checkInService;
     private final LevelService levelService;
 
     // TODO: 이메일 반복 요청 방어 처리 필요
+
+    /**
+     * 회원가입
+     */
     @Transactional
     public void initSignup(SignupInitRequest request) {
         if (userRepository.existsByEmail(request.email())) {
@@ -87,6 +91,9 @@ public class AuthService {
         return new PreSignupVerifyResponse(verificationToken.getEmail());
     }
 
+    /**
+     * 회원가입 완료
+     */
     @Transactional
     public LoginResult completeSignup(SignupCompleteRequest request, String deviceInfo, String ipAddress) {
         VerificationToken verificationToken = getPreSignupToken(request.token());
@@ -111,7 +118,7 @@ public class AuthService {
         verificationTokenRepository.delete(verificationToken);
 
         TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);
-        return toLoginResult(user.getId(), user, tokens, CheckInOutcome.none());
+        return toLoginResult(user.getId(), user, tokens);
     }
 
     private ErrorCode resolveDuplicate(DataIntegrityViolationException e) {
@@ -188,35 +195,15 @@ public class AuthService {
                 .orElseThrow(() -> new CustomException(ErrorCode.WRONG_PASSWORD));
 
         validateLoginInfo(user, request);
-
-        // 토큰 발급을 먼저 끝낸 뒤에 출첵을 처리한다. 반대 순서(출첵 먼저)로 하면
-        // 출첵은 이미 커밋됐는데 토큰 저장이 실패해 로그인 자체는 실패하는 불일치가 생길 수 있다.
-        // 이 순서면 토큰 발급이 실패할 경우 출첵은 아예 시도되지 않고, 출첵이 실패해도 로그인은 이미 발급된 상태다.
         TokenPair tokens = issueTokens(user, deviceInfo, ipAddress);
-        CheckInOutcome checkInOutcome = checkInService.checkInIfEligible(user.getId());
 
-        return toLoginResult(user.getId(), user, tokens, checkInOutcome);
+        return toLoginResult(user.getId(), user, tokens);
     }
 
-    // 회원가입 트랜잭션이 커밋된 뒤(AuthController가 signup() 호출에서 리턴받은 다음) 호출해야 한다.
-    // 실패해도 회원가입 응답 자체는 깨지지 않도록 여기서 흡수한다.
-    public LoginResponse.CheckInInfo checkInAfterSignup(Long userId) {
-        try {
-            return LoginResponse.CheckInInfo.from(checkInService.checkInIfEligible(userId));
-        } catch (Exception e) {
-            log.warn("[출첵] 회원가입 직후 출첵 처리 실패. userId={}", userId, e);
-            return LoginResponse.CheckInInfo.from(CheckInOutcome.none());
-        }
-    }
-
-    private LoginResult toLoginResult(Long userId, User user, TokenPair tokens, CheckInOutcome checkInOutcome) {
+    private LoginResult toLoginResult(Long userId, User user, TokenPair tokens) {
         return new LoginResult(
                 userId,
-                new LoginResponse(
-                        user.getNickname(),
-                        user.getRole(),
-                        LoginResponse.CheckInInfo.from(checkInOutcome)
-                ),
+                new LoginResponse(user.getNickname(), user.getRole()),
                 tokens.accessToken(),
                 tokens.refreshToken()
         );

@@ -10,13 +10,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record LevelProperties(
         long dailyLimit,
         long createPost,
-        long createComment
+        long createComment,
+        long checkIn
 ) {
     public LevelProperties {
         if (dailyLimit < 0) {
             throw new IllegalArgumentException("app.exp.daily-limit는 음수일 수 없습니다: " + dailyLimit);
         }
-        if (createPost < 0 || createComment < 0) {
+        if (createPost < 0 || createComment < 0 || checkIn < 0) {
             throw new IllegalArgumentException("app.exp의 활동별 획득량은 음수일 수 없습니다.");
         }
     }
@@ -25,6 +26,7 @@ public record LevelProperties(
         return switch (action) {
             case CREATE_POST -> createPost;
             case CREATE_COMMENT -> createComment;
+            case CHECK_IN -> checkIn;
         };
     }
 }

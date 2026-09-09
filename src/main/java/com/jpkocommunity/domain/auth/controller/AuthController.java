@@ -42,6 +42,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(userService.getMyInfo(authUser.userId())));
     }
 
+    // 회원가입 - 이메일 인증 메일 발송
     @PostMapping("/signup/init")
     public ResponseEntity<ApiResponse<Void>> initSignup(
             @Valid @RequestBody SignupInitRequest request,
@@ -54,6 +55,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok("인증 메일을 보냈습니다. 메일에서 나머지 절차를 진행해주세요."));
     }
 
+    // 회원가입 - 이메일 인증 토큰 검증
     @GetMapping("/signup/verify")
     public ResponseEntity<ApiResponse<PreSignupVerifyResponse>> verifySignupToken(
             @RequestParam String token
@@ -61,6 +63,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(authService.verifyPreSignupToken(token)));
     }
 
+    // 회원가입 - 완료
     @PostMapping("/signup/complete")
     public ResponseEntity<ApiResponse<LoginResponse>> completeSignup(
             @Valid @RequestBody SignupCompleteRequest request,
@@ -75,14 +78,8 @@ public class AuthController {
         cookieUtils.add(response, "accessToken", result.accessToken(), jwtProperties.accessTokenMaxAgeSeconds());
         cookieUtils.add(response, "refreshToken", result.refreshToken(), jwtProperties.refreshTokenMaxAgeSeconds());
 
-        LoginResponse.CheckInInfo checkIn = authService.checkInAfterSignup(result.userId());
-        LoginResponse body = new LoginResponse(
-                result.response().nickname(),
-                result.response().role(),
-                checkIn);
-
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created("회원가입이 완료되었습니다.", body));
+                .body(ApiResponse.created("회원가입이 완료되었습니다.", result.response()));
     }
 
     @PatchMapping("/email")

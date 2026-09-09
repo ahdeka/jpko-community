@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -57,24 +58,29 @@ public class LevelService {
                 .build());
     }
 
-    public void gainExp(Long userId, ExpAction action) {
+    public long gainExp(Long userId, ExpAction action) {
+        long amount = levelProperties.expOf(action);
+        return applyExp(userId, action.isDailyLimited()
+                ? ul -> ul.gainExp(amount, levelProperties.dailyLimit(), kstDateUtils.today())
+                : ul -> ul.gainExpIgnoringDailyLimit(amount));
+    }
+
+    // ========== private 메서드 ==========
+
+    // 락 -> 경험치 지급 -> 레벨업 알림(가능하다면)
+    private long applyExp(Long userId, ToLongFunction<UserLevel> grant) {
         UserLevel userLevel = userLevelRepository.findByUserIdForUpdate(userId).orElse(null);
 
         if (userLevel == null) {
             log.warn("[유저레벨] 유저 레벨 정보를 찾을 수 없음. userId: {}", userId);
-            return;
+            return 0;
         }
 
         long expBefore = userLevel.getExp();
-
-        long grantedExp = userLevel.gainExp(
-                levelProperties.expOf(action),
-                levelProperties.dailyLimit(),
-                kstDateUtils.today()
-        );
+        long granted = grant.applyAsLong(userLevel);
 
         // 일일 상한에 걸려 exp가 0으로 들어온 경우
-        if (grantedExp == 0) return;
+        if (granted == 0) return 0;
 
         int previousLevel = LevelPolicy.levelOfExp(expBefore);
         int currentLevel = LevelPolicy.levelOfExp(userLevel.getExp());
@@ -85,5 +91,6 @@ public class LevelService {
                     userId, null, NotificationType.LEVEL_UP, null, null, false, (long) currentLevel
             ));
         }
+        return granted;
     }
 }

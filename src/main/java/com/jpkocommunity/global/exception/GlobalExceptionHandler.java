@@ -1,6 +1,8 @@
 package com.jpkocommunity.global.exception;
 
 import com.jpkocommunity.global.response.ApiResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -47,6 +49,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.error(ErrorCode.INVALID_INPUT, responseMessage));
+    }
+
+    // 400 - 유효성 검증 실패 (@RequestParam/@PathVariable의 @Min, @Max 등)
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException e) {
+        String message = e.getConstraintViolations().stream()
+                .findFirst()
+                .map(ConstraintViolation::getMessage)
+                .orElse("유효성 검증에 실패했습니다.");
+        log.warn("ConstraintViolation: {}", e.getMessage());
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.error(ErrorCode.INVALID_INPUT, message));
     }
 
     // 400 - JSON 파싱 실패

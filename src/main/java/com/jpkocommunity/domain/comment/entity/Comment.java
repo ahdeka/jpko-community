@@ -1,7 +1,6 @@
 // src/main/java/com/jpkocommunity/domain/comment/entity/Comment.java
 package com.jpkocommunity.domain.comment.entity;
 
-import com.jpkocommunity.domain.post.entity.Post;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.global.entity.BaseEntity;
 import com.jpkocommunity.global.util.IpUtils;

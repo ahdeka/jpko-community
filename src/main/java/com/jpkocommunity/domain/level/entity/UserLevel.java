@@ -53,4 +53,11 @@ public class UserLevel extends BaseEntity {
         this.expEarnedToday += grantable;
         return grantable;
     }
+
+    // 일일 한도 무시하고 경험치 획득 가능한 메서드
+    public long gainExpIgnoringDailyLimit(long expAmount) {
+        if (expAmount <= 0) return 0;
+        this.exp += expAmount;
+        return expAmount;
+    }
 }

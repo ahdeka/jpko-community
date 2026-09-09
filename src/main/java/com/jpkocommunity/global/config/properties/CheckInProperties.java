@@ -3,58 +3,45 @@ package com.jpkocommunity.global.config.properties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 매일 로그인 출첵 설정. 지급액은 여러 구간(range)으로 나뉘고, 구간마다 가중치(확률)가 다르다.
- * 각 구간 안에서는 unit 단위로만 균등 랜덤 지급된다(예: unit=50이면 -300, -250, ... 500처럼 50의 배수만 나옴).
+ * 매일 로그인 출첵 설정
+ * 그 달의 누적 출석 횟수가 출석 마일스톤에 도달하면 보너스가 붙도록
  */
 @ConfigurationProperties(prefix = "app.checkin")
-public record CheckInProperties(long unit, List<Range> ranges) {
+public record CheckInProperties(
+        long amount,
+        List<MonthlyBonus> monthlyBonuses
+) {
+
+    public record MonthlyBonus(int count, long bonus) {}
 
     public CheckInProperties {
-        if (unit <= 0) {
-            throw new IllegalArgumentException("app.checkin.unit은 0보다 커야 합니다: " + unit);
+        monthlyBonuses = monthlyBonuses == null
+                ? List.of()
+                : List.copyOf(monthlyBonuses);
+        if (amount <= 0) {
+            throw new IllegalArgumentException("app.checkin.amount는 0보다 커야 합니다: " + amount);
         }
-        if (ranges == null || ranges.isEmpty()) {
-            throw new IllegalArgumentException("app.checkin.ranges는 최소 1개 이상이어야 합니다.");
-        }
-        for (Range r : ranges) {
-            if (r.minAmount() > r.maxAmount()) {
+        for (MonthlyBonus b : monthlyBonuses) {
+            // 2월을 위해서
+            if (b.count() < 1 || b.count() >= 28) {
                 throw new IllegalArgumentException(
-                        "app.checkin.ranges의 min-amount(%d)는 max-amount(%d)보다 클 수 없습니다"
-                                .formatted(r.minAmount(), r.maxAmount()));
+                        "app.checkin.monthly-bonuses의 count는 1~27이어야 합니다: " + b.count());
             }
-            if (r.minAmount() % unit != 0 || r.maxAmount() % unit != 0) {
+            if (b.bonus() < 0) {
                 throw new IllegalArgumentException(
-                        "app.checkin.ranges의 min-amount/max-amount는 unit(%d)의 배수여야 합니다: [%d, %d]"
-                                .formatted(unit, r.minAmount(), r.maxAmount()));
-            }
-            if (r.weight() <= 0) {
-                throw new IllegalArgumentException("app.checkin.ranges의 weight는 0보다 커야 합니다: " + r.weight());
+                        "app.checkin.monthly-bonuses의 bonus는 음수일 수 없습니다: " + b.bonus());
             }
         }
     }
 
-    public record Range(long minAmount, long maxAmount, double weight) {}
-
-    // 구간을 가중치(weight) 비례로 하나 고른 뒤, 그 구간 안에서 unit 단위로 균등 랜덤 금액을 뽑는다.
-    public long rollAmount() {
-        double totalWeight = ranges.stream().mapToDouble(Range::weight).sum();
-        double roll = ThreadLocalRandom.current().nextDouble(0, totalWeight);
-
-        double cumulative = 0;
-        for (Range r : ranges) {
-            cumulative += r.weight();
-            if (roll < cumulative) {
-                return rollWithinRange(r);
-            }
-        }
-        return rollWithinRange(ranges.get(ranges.size() - 1)); // 부동소수점 오차로 못 걸렸을 때의 폴백
-    }
-
-    private long rollWithinRange(Range r) {
-        long steps = (r.maxAmount() - r.minAmount()) / unit;
-        return r.minAmount() + unit * ThreadLocalRandom.current().nextLong(0, steps + 1);
+    // 이 달 n번째 출석에 붙는 보너스
+    public long bonusOf(int monthlyCount) {
+        return monthlyBonuses.stream()
+                .filter(m -> m.count() == monthlyCount)
+                .mapToLong(MonthlyBonus::bonus)
+                .findFirst()
+                .orElse(0L);
     }
 }
