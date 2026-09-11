@@ -4,7 +4,6 @@ import com.jpkocommunity.global.config.properties.SlotProperties;
 
 import java.util.List;
 
-// 슬롯머신 베팅 제약 + 심볼별 트리플 배당표. 각 심볼의 등장 가중치(weight)는 의도적으로 노출하지 않는다.
 public record SlotConfigResponse(
         long betUnit,
         long minBet,
@@ -12,13 +11,14 @@ public record SlotConfigResponse(
         double feeRate,
         List<SymbolInfo> symbols
 ) {
-    public record SymbolInfo(String name, double multiplier) {}
+    public record SymbolInfo(String name, double multiplier, double tripleProbability) {}
 
     public static SlotConfigResponse from(SlotProperties properties) {
+        double totalWeight = properties.symbols().stream().mapToDouble(SlotProperties.Symbol::weight).sum();
         return new SlotConfigResponse(
                 properties.betUnit(), properties.minBet(), properties.maxBet(), properties.feeRate(),
                 properties.symbols().stream()
-                        .map(s -> new SymbolInfo(s.name(), s.multiplier()))
+                        .map(s -> new SymbolInfo(s.name(), s.multiplier(), Math.pow(s.weight() / totalWeight, 3)))
                         .toList());
     }
 }
