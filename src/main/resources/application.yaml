@@ -37,8 +37,8 @@ app:
       - count: 25
         bonus: 10000
   roulette:
-    bet-unit: 100
-    min-bet: 100
+    bet-unit: 1000
+    min-bet: 1000
     max-bet: 10000
     win-probability: 0.5
     fee-rate: 0.05
@@ -51,20 +51,20 @@ app:
     right-probability: 0.5    # 못 하나당 우측으로 튕길 확률 — 의도적으로 클라이언트에 노출 안 함
     slot-multipliers: [150.0, 2.0, 0.5, 0.1, 0.0, 0.1, 0.5, 2.0, 30.0]
   slot:
-    bet-unit: 100
-    min-bet: 100
+    bet-unit: 1000
+    min-bet: 1000
     max-bet: 10000
     fee-rate: 0.03
     symbols:
       - name: CHERRY
         weight: 60
-        multiplier: 1.5
+        multiplier: 2.0
       - name: BELL
         weight: 25
-        multiplier: 20.0
+        multiplier: 15.0
       - name: BAR
         weight: 10
-        multiplier: 250.0
+        multiplier: 222.0
       - name: SEVEN
         weight: 5
         multiplier: 777.0
