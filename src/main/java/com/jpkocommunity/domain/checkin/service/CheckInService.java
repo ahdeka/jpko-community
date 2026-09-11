@@ -10,6 +10,7 @@ import com.jpkocommunity.domain.point.dto.LockedAccount;
 import com.jpkocommunity.domain.point.entity.TransactionType;
 import com.jpkocommunity.domain.point.service.PointService;
 import com.jpkocommunity.global.config.properties.CheckInProperties;
+import com.jpkocommunity.global.config.properties.LevelProperties;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.util.KstDateUtils;
@@ -32,6 +33,7 @@ public class CheckInService {
     private final PointService pointService;
     private final LevelService levelService;
     private final CheckInProperties checkInProperties;
+    private final LevelProperties levelProperties;
     private final KstDateUtils kstDateUtils;
 
     /**
@@ -103,9 +105,12 @@ public class CheckInService {
                 target.getYear(),
                 target.getMonthValue(),
                 target.lengthOfMonth(),
+                today,
                 checkedInDays,
                 monthlyCount,
                 checkedInToday,
+                checkInProperties.amount(),
+                levelProperties.expOf(ExpAction.CHECK_IN),
                 milestones);
     }
 

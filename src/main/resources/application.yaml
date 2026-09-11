@@ -53,7 +53,7 @@ app:
   slot:
     bet-unit: 100
     min-bet: 100
-    max-bet: 1000
+    max-bet: 10000
     fee-rate: 0.03
     symbols:
       - name: CHERRY
