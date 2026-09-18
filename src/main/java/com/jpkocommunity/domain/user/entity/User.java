@@ -50,6 +50,9 @@ public class User extends BaseEntity {
     @Column
     private LocalDateTime deletedAt;
 
+    @Column
+    private LocalDateTime nicknameUpdatedAt;
+
     // 정지 기한. NULL이면 무기한 정지(기존 ADMIN/ROOT 기본 동작).
     // 경매로 획득한 ADMIN 권한이 정지시킬 때는 반드시 값이 있어야 한다.
     @Column
@@ -78,8 +81,11 @@ public class User extends BaseEntity {
 
     // ========== 비즈니스 메서드 ==========
 
+    private static final int NICKNAME_CHANGE_COOLDOWN_DAYS = 30;
+
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+        this.nicknameUpdatedAt = LocalDateTime.now();
     }
 
     public void changeEmail(String newEmail) {
@@ -131,5 +137,14 @@ public class User extends BaseEntity {
 
     public boolean isDeleted() {
         return this.status == UserStatus.DELETED;
+    }
+
+    public boolean isNicknameChangeable(LocalDateTime now) {
+        return nicknameUpdatedAt == null
+                || nicknameUpdatedAt.plusDays(NICKNAME_CHANGE_COOLDOWN_DAYS).isBefore(now);
+    }
+
+    public LocalDateTime getNicknameChangeableAt() {
+        return nicknameUpdatedAt == null ? null : nicknameUpdatedAt.plusDays(NICKNAME_CHANGE_COOLDOWN_DAYS);
     }
 }

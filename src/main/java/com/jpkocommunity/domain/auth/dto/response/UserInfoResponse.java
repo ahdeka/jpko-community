@@ -4,6 +4,8 @@ import com.jpkocommunity.domain.level.dto.response.UserLevelResponse;
 import com.jpkocommunity.domain.user.entity.User;
 import com.jpkocommunity.domain.user.entity.UserRole;
 
+import java.time.LocalDateTime;
+
 public record UserInfoResponse(
         Long id,
         String email,
@@ -11,6 +13,7 @@ public record UserInfoResponse(
         UserRole role,
         String bio,
         boolean emailVerified,
+        LocalDateTime nicknameChangeableAt,
         UserLevelResponse level
 ) {
     public static UserInfoResponse from(User user, long exp) {
@@ -21,6 +24,7 @@ public record UserInfoResponse(
                 user.getRole(),
                 user.getBio(),
                 user.isEmailVerified(),
+                user.getNicknameChangeableAt(),
                 UserLevelResponse.of(exp)
         );
     }
