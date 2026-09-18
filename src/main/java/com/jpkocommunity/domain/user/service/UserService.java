@@ -24,6 +24,7 @@ import com.jpkocommunity.domain.user.event.UserWithdrawnEvent;
 import com.jpkocommunity.domain.user.repository.UserRepository;
 import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
+import com.jpkocommunity.global.util.NicknamePolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -129,18 +130,8 @@ public class UserService {
     public void updateNickname(Long userId, UpdateNicknameRequest request) {
         User user = findById(userId);
         String newNickname = request.nickname();
-
-        if (user.getNickname().equals(newNickname)) {
-            throw new CustomException(ErrorCode.SAME_AS_CURRENT_NICKNAME);
-        }
-
-        // TODO 닉네임 변경 쿨타임 주기 메서드 작성하기
-
-        if (userRepository.existsByNicknameIgnoreCaseAndIdNot(newNickname, userId)) {
-            throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
-        }
-
-        user.updateNickname(request.nickname());
+        validateNewNickname(user, newNickname);
+        user.updateNickname(newNickname);
 
         try {
             userRepository.flush();
@@ -164,19 +155,7 @@ public class UserService {
     @Transactional
     public void updatePassword(Long userId, UpdatePasswordRequest request) {
         User user = findById(userId);
-
-        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
-            throw new CustomException(ErrorCode.WRONG_PASSWORD);
-        }
-
-        if (!request.newPassword().equals(request.newPasswordConfirm())) {
-            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
-        }
-
-        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
-            throw new CustomException(ErrorCode.SAME_AS_CURRENT_PASSWORD);
-        }
-
+        validateNewPassword(request, user);
         user.updatePassword(passwordEncoder.encode(request.newPassword()));
 
         // 사용자 비밀번호 변경 시, 기존 refresh token 삭제
@@ -297,6 +276,34 @@ public class UserService {
         if (user.isDeleted()) {
             throw new CustomException(ErrorCode.ALREADY_WITHDRAWN);
         }
+    }
+
+    private void validateNewPassword(UpdatePasswordRequest request, User user) {
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new CustomException(ErrorCode.WRONG_PASSWORD);
+        }
+        if (!request.newPassword().equals(request.newPasswordConfirm())) {
+            throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
+        }
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new CustomException(ErrorCode.SAME_AS_CURRENT_PASSWORD);
+        }
+    }
+
+    private void validateNewNickname(User user, String newNickname) {
+        if (user.getNickname().equals(newNickname)) {
+            throw new CustomException(ErrorCode.SAME_AS_CURRENT_NICKNAME);
+        }
+        if (NicknamePolicy.isBlackList(newNickname)) {
+            throw new CustomException(ErrorCode.BLACKLIST_NICKNAME);
+        }
+        if (!user.isNicknameChangeable(LocalDateTime.now())) {
+            throw new CustomException(ErrorCode.NICKNAME_CHANGE_COOLDOWN);
+        }
+        if (userRepository.existsByNicknameIgnoreCaseAndIdNot(newNickname, user.getId())) {
+            throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+        }
+
     }
 
     private long expOf(Long userId) {

@@ -21,6 +21,7 @@ import com.jpkocommunity.global.exception.CustomException;
 import com.jpkocommunity.global.exception.ErrorCode;
 import com.jpkocommunity.global.security.jwt.JwtProvider;
 import com.jpkocommunity.global.util.EmailDomainValidator;
+import com.jpkocommunity.global.util.NicknamePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -287,6 +288,9 @@ public class AuthService {
         }
         if (!request.password().equals(request.passwordConfirm())) {
             throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
+        }
+        if (NicknamePolicy.isBlackList(request.nickname())) {
+            throw new CustomException(ErrorCode.BLACKLIST_NICKNAME);
         }
         if (userRepository.existsByLoginId(request.loginId())) {
             throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
