@@ -1,2 +1,0 @@
-blank_issues_enabled: false   # 템플릿 없이 빈 이슈 만드는 옵션을 없앰 → 무조건 템플릿 거치게 강제
-contact_links: []

@@ -121,6 +121,8 @@ public class User extends BaseEntity {
         this.deletedAt = LocalDateTime.now();
         this.nickname = "탈퇴회원#" + getId();
         this.email = "deleted_" + getId() + "_" + java.util.UUID.randomUUID() + "@jpkocommunity.local";
+        this.loginId = "del-" + getId();
+        this.password = null;
     }
 
     public String getDisplayNickname() {
