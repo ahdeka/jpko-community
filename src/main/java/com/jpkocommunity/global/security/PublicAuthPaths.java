@@ -17,6 +17,6 @@ public final class PublicAuthPaths {
             "/api/auth/logout",
             "/api/auth/password-reset/confirm",
             "/api/auth/email/confirm",
-            "/api/auth/found-account"
+            "/api/auth/find-account"
     );
 }
