@@ -9,6 +9,7 @@ import com.jpkocommunity.domain.auth.dto.response.PreSignupVerifyResponse;
 import com.jpkocommunity.domain.auth.entity.RefreshToken;
 import com.jpkocommunity.domain.auth.entity.VerificationToken;
 import com.jpkocommunity.domain.auth.entity.VerificationTokenType;
+import com.jpkocommunity.domain.auth.event.FoundAccountEmailEvent;
 import com.jpkocommunity.domain.auth.event.VerificationEmailEvent;
 import com.jpkocommunity.domain.auth.repository.RefreshTokenRepository;
 import com.jpkocommunity.domain.auth.repository.VerificationTokenRepository;
@@ -313,19 +314,31 @@ public class AuthService {
         }
     }
 
-    // ========== 비밀번호 재설정 ==========
-
+    // ========== 아이디/비밀번호 찾기 ==========
     @Transactional
-    public void requestPasswordReset(String email) {
-        userRepository.findByEmail(email).ifPresent(user -> {
-            // 비밀번호 재설정은 MX 재확인 없음
-            String token = issueToken(user.getId(), VerificationTokenType.PASSWORD_RESET,
-                    verificationTokenProperties.passwordResetExpiration());
-
-            eventPublisher.publishEvent(
-                    new VerificationEmailEvent(user.getEmail(), token, VerificationTokenType.PASSWORD_RESET));
-        });
+    public void findAccount(String email, String ipAddress) {
+        userRepository.findByEmail(email)
+                .filter(user -> !user.isDeleted())
+                .ifPresentOrElse(
+                        user -> publishRecoveryMail(user, ipAddress),
+                        () -> publishNotFoundMail(email, ipAddress)
+                );
     }
+
+    private void publishRecoveryMail(User user, String ipAddress) {
+        String token = issueToken(user.getId(), VerificationTokenType.PASSWORD_RESET,
+                verificationTokenProperties.passwordResetExpiration());
+        eventPublisher.publishEvent(
+                FoundAccountEmailEvent.found(user.getEmail(), user.getLoginId(), token, ipAddress));
+    }
+    private void publishNotFoundMail(String email, String ipAddress) {
+        if (!emailDomainValidator.hasMxRecord(email)) {
+            return;
+        }
+        eventPublisher.publishEvent(FoundAccountEmailEvent.notFound(email, ipAddress));
+    }
+
+    // ========== 비밀번호 재설정 ==========
 
     @Transactional
     public void resetPassword(String token, String newPassword, String newPasswordConfirm) {

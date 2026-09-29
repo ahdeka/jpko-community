@@ -141,14 +141,15 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok("로그아웃이 완료되었습니다."));
     }
 
-    @PostMapping("/password-reset/request")
-    public ResponseEntity<ApiResponse<Void>> requestPasswordReset(
-            @Valid @RequestBody PasswordResetRequest request
+    @PostMapping("/find-account")
+    public ResponseEntity<ApiResponse<Void>> findAccount(
+            @Valid @RequestBody FindAccountRequest request,
+            HttpServletRequest servletRequest
     ) {
-        authService.requestPasswordReset(request.email());
-        return ResponseEntity.ok(ApiResponse.ok(
-                "입력하신 이메일이 가입되어 있다면, 재설정 링크를 보내드렸습니다."
-        ));
+        String ipAddress = ipUtils.getClientIp(servletRequest);
+        turnstileService.verify(request.turnstileToken(), ipAddress);
+        authService.findAccount(request.email(), ipAddress);
+        return ResponseEntity.ok(ApiResponse.ok("입력하신 이메일로 안내 메일을 보내드렸습니다."));
     }
 
     @PostMapping("/password-reset/confirm")
