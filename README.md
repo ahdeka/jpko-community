@@ -15,13 +15,15 @@
 
 ## 스크린샷
 
-| 메인 | 게시글 상세 |
+| 메인 | 카테고리 |
 |---|---|
-| ![메인](docs/screenshots/home.png) | ![게시글](docs/screenshots/post-detail.png) |
+| ![메인](docs/screenshots/home.png) | ![카테고리](docs/screenshots/category.png) |
 
-| 글쓰기 (이미지·동영상 업로드) | 관리자 (신고 처리) |
+| 게시글 상세 | 관리자 대시보드 |
 |---|---|
-| ![글쓰기](docs/screenshots/post-editor.png) | ![관리자](docs/screenshots/admin-reports.png) |
+| ![게시글](docs/screenshots/post-detail.png) | ![관리자](docs/screenshots/admin-dashboard.png) |
+
+> 회원 닉네임과 IP 표시는 개인정보 보호를 위해 모자이크 처리했습니다.
 
 ---
 
