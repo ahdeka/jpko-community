@@ -1,60 +1,78 @@
 # jpkocommunity — Backend
 
-일본 취업 · 워킹홀리데이 · 유학 · 일본생활 · 여행에 관심 있는 한국인을 위한 커뮤니티 서비스의 백엔드입니다.
-기획부터 설계, 개발, AWS 인프라 구축, 배포, 운영까지 1인으로 진행했습니다.
+**日本語** | [한국어](README.ko.md)
 
-> **📦 운영 종료 안내**
-> 이 서비스는 2026년 6월부터 11월까지 실제로 운영되었고, **2026-11-25에 운영을 종료**했습니다.
-> 게시글은 작성자 정보를 제거한 읽기 전용 아카이브로 보존되어 있으며, 회원 개인정보는 종료일에 모두 파기했습니다.
-> 이 레포는 개발 기록으로 남겨둡니다.
+日本での就職・ワーキングホリデー・留学・日本生活・旅行に関心のある韓国人向けコミュニティサービスのバックエンドです。
+企画から設計、開発、AWS インフラ構築、デプロイ、運用までを1人で行いました。
 
-- 프론트엔드: [ahdeka/jpko-community-frontend](https://github.com/ahdeka/jpko-community-frontend)
-- 서비스: https://www.jpkocommunity.site (아카이브)
+> **📦 運用終了のお知らせ**
+> 本サービスは2026年6月から11月まで実際に運用し、**2026-11-25 に運用を終了**しました。
+> 投稿は作成者情報を除いた読み取り専用のアーカイブとして保存し、会員の個人情報は終了日にすべて破棄しました。
+> このリポジトリは開発記録として残しています。
 
----
-
-## 스크린샷
-
-| 메인 | 카테고리 |
-|---|---|
-| ![메인](docs/screenshots/home.png) | ![카테고리](docs/screenshots/category.png) |
-
-| 게시글 상세 | 관리자 대시보드 |
-|---|---|
-| ![게시글](docs/screenshots/post-detail.png) | ![관리자](docs/screenshots/admin-dashboard.png) |
-
-> 회원 닉네임과 IP 표시는 개인정보 보호를 위해 모자이크 처리했습니다.
+- フロントエンド: [ahdeka/jpko-community-frontend](https://github.com/ahdeka/jpko-community-frontend)
+- サービス: https://www.jpkocommunity.site (アーカイブ)
 
 ---
 
-## 기술 스택
+## 設計書
 
-| 영역 | 기술 |
+運用終了前に、実装コードと本番環境をもとに日本の SI 形式で作成した設計資料です。資料内の画面の文言はサービスの表示言語である韓国語です。
+
+| 資料 | 内容 | 形式 |
+| --- | --- | --- |
+| [基本設計書](docs/design/basic-design.pdf) | システム構成図、ソフトウェア構成、ER 図、認証方式、非機能設計、デプロイ方式、外部連携 | PDF |
+| [詳細設計書](docs/design/detailed-design.pdf) | 会員登録(メール先行認証)、トークンとマルチデバイス、メディア変換、連続投稿の制限、ポイント台帳と排他制御、人気投稿、コメント削除と退会 | PDF |
+| [API仕様書](docs/design/api-spec.pdf) | REST API 76本の入出力・エラー・権限 | PDF |
+| [画面遷移図](docs/design/screen-transition.pdf) | 全画面の遷移図、遷移一覧、アクセス制御 | PDF |
+| [画面設計書](docs/design/screen-design.pdf) | 31画面と共通部品の画面イメージ・項目定義 | PDF |
+| [テーブル定義書](docs/design/table-definition.xlsx) | 15テーブルのカラム・インデックス・制約、コード定義、マイグレーション履歴 | Excel |
+| [機能一覧](docs/design/function-list.xlsx) | 機能51件、画面一覧、バッチ一覧 | Excel |
+
+---
+
+## スクリーンショット
+
+| メイン | カテゴリ |
+|---|---|
+| ![メイン](docs/screenshots/home.png) | ![カテゴリ](docs/screenshots/category.png) |
+
+| 投稿詳細 | 管理ダッシュボード |
+|---|---|
+| ![投稿](docs/screenshots/post-detail.png) | ![管理](docs/screenshots/admin-dashboard.png) |
+
+> 会員のニックネームと IP の表示は、個人情報保護のためモザイク処理しています。
+
+---
+
+## 技術スタック
+
+| 領域 | 技術 |
 |---|---|
 | Language / Framework | Java 21, Spring Boot 3.5, Spring Security, Spring Data JPA |
-| Auth | JWT (Access 1h / Refresh 7d), HttpOnly Cookie, Refresh Token DB 저장 (멀티 디바이스) |
+| Auth | JWT (Access 1h / Refresh 7d), HttpOnly Cookie, Refresh Token の DB 保存(マルチデバイス) |
 | DB | PostgreSQL 16, Flyway (V1 ~ V55) |
 | Infra | AWS EC2 (t3.micro), ECR, S3 + CloudFront (OAC), SES, SSM (Parameter Store / Session Manager / Run Command) |
-| Web Server | Nginx (리버스 프록시, `limit_req` rate limiting), Let's Encrypt |
+| Web Server | Nginx (リバースプロキシ、`limit_req` によるレート制限), Let's Encrypt |
 | CI/CD | GitHub Actions (OIDC) → ECR → SSM Run Command |
-| 기타 | Cloudflare Turnstile, ffmpeg / gif2webp, jsoup |
+| その他 | Cloudflare Turnstile, ffmpeg / cwebp / gif2webp, jsoup |
 
-## 아키텍처
+## アーキテクチャ
 
 ```mermaid
 flowchart LR
-    U[사용자] -->|www| V[Vercel<br/>Next.js]
+    U[利用者] -->|www| V[Vercel<br/>Next.js]
     U -->|api| N[Nginx<br/>HTTPS · rate limit]
-    U -->|이미지| CF[CloudFront<br/>Referer 검사]
-    CF -->|OAC| S3[(S3<br/>이미지)]
+    U -->|画像| CF[CloudFront<br/>Referer 検査]
+    CF -->|OAC| S3[(S3<br/>画像)]
 
     subgraph EC2 [EC2 t3.micro · Docker Compose]
         N --> APP[Spring Boot]
         APP --> PG[(PostgreSQL)]
     end
 
-    APP -->|업로드| S3
-    APP -->|인증 메일| SES[SES]
+    APP -->|アップロード| S3
+    APP -->|認証メール| SES[SES]
 
     GH[GitHub Actions] -->|OIDC| ECR[ECR]
     GH -->|SSM Run Command| EC2
@@ -62,90 +80,90 @@ flowchart LR
 
 ---
 
-## 주요 기능
+## 主な機能
 
-- **게시판**: 6개 카테고리, 검색, 인기글, 공지사항, 조회수 어뷰징 방지
-- **댓글**: 게시글과 공지에 공통으로 쓰는 폴리모픽 구조 (`target_type` + `target_id`), 댓글 이미지
-- **회원**: 이메일 인증 후 가입, 아이디/비밀번호 찾기, 이메일 변경 재인증, 공개 프로필, 레벨 시스템
-- **업로드**: 이미지 최대 10장, 동영상 최대 2개, 서버 측 포맷 변환
-- **커뮤니티 관리**: 게시글 · 댓글 · 유저 신고, 관리자 처리, 기간 정지
-- **알림**: 댓글, 좋아요, 레벨업, 콘텐츠 삭제 등
-- **기타**: 포인트, 출석체크, 미니게임
-
----
-
-## 설계하면서 고민한 것들
-
-### 1. 가입 전 이메일 인증 (하드 게이팅)
-처음에는 가입 후 미인증 상태로 User를 만들었는데, 미인증 계정이 쌓이고 모든 기능에 "인증했는가" 분기가 필요해졌습니다.
-그래서 **인증이 끝나야 User row를 생성**하는 방식으로 바꿨습니다. 인증 전에는 별도의 pre-signup 토큰만 존재합니다. (V22, V52)
-
-### 2. 도배 방지를 애플리케이션 락 없이
-같은 유저가 동시에 여러 요청을 보내면 "최근 N초 내 작성 여부" 검사를 모두 통과할 수 있습니다.
-Redis 같은 분산 락을 추가하는 대신, **PostgreSQL `pg_advisory_xact_lock`**으로 유저 단위 직렬화를 했습니다. 트랜잭션이 끝나면 락도 자동으로 풀립니다.
-제한 값은 `application.yaml` 한 곳에서 관리합니다 (SSOT).
-
-### 3. 업로드 파일 검증과 변환
-- 확장자나 Content-Type은 클라이언트가 바꿀 수 있어서, **매직바이트**로 실제 파일 형식을 검증합니다.
-- 용량을 줄이기 위해 서버에서 변환합니다. jpg/png → webp, gif → webp, mov/mp4 → H.264 720p.
-- 변환기는 `MediaConverter` 인터페이스로 분리해 형식별로 교체할 수 있게 했고, 메모리가 1GB인 t3.micro에서 ffmpeg가 동시에 돌지 않도록 세마포어로 1개씩 처리합니다.
-
-### 4. 트래픽 비용 방어
-1인 운영에서 가장 무서운 건 예상하지 못한 과금이었습니다.
-- S3는 직접 접근을 막고 **CloudFront + OAC**로만 제공합니다.
-- CloudFront Functions로 **Referer를 검사해 외부 핫링킹을 차단**합니다.
-- API는 Nginx `limit_req`로 rate limiting을 합니다. (애플리케이션 레벨 Bucket4j는 검토 후 보류)
-
-### 5. 스키마 변경 이력 관리
-초기에는 `ddl-auto: update`를 썼지만 운영 DB에 무엇이 언제 바뀌었는지 추적할 수 없었습니다.
-**Flyway**로 전환한 뒤 55개의 마이그레이션으로 모든 변경을 기록했습니다. 기능을 걷어낼 때도 테이블 DROP까지 마이그레이션으로 남겼습니다. (V46)
-
-### 6. 배포 파이프라인
-- GitHub Actions에서 **OIDC**로 AWS 역할을 받아, 장기 Access Key를 GitHub에 저장하지 않습니다.
-- 이미지는 ECR에 올리고, EC2에는 **SSM Run Command**로 배포 명령을 보냅니다. SSH 포트(22)는 닫았습니다.
-- 배포 후 헬스체크에 실패하면 **이전 이미지로 자동 롤백**합니다 (`deploy.sh`).
-- DB 접속도 SSM 포트포워딩으로만 합니다.
-
-### 7. 개인정보 최소 보관
-- 조회수 중복 방지에 쓴 IP는 스케줄러로 주기적으로 삭제합니다.
-- 탈퇴한 회원의 로그인 정보는 마이그레이션으로 정리했습니다. (V54)
+- **掲示板**: 6カテゴリ、検索、人気投稿、お知らせ、閲覧数の水増し防止
+- **コメント**: 投稿とお知らせで共通に使うポリモーフィック構造(`target_type` + `target_id`)、コメント画像
+- **会員**: メール認証後の登録、ID・パスワード検索、メールアドレス変更時の再認証、公開プロフィール、レベル制度
+- **アップロード**: 画像は最大10枚、動画は最大3本、サーバー側での形式変換
+- **コミュニティ管理**: 投稿・コメント・ユーザーの通報、管理者による処理、期間付き利用停止
+- **通知**: コメント、推薦、レベルアップ、コンテンツ削除など(SSE でリアルタイム配信)
+- **その他**: ポイント、出席、ミニゲーム
 
 ---
 
-## 프로젝트 구조
+## 設計で工夫した点
+
+### 1. 登録前のメール認証(ハードゲーティング)
+当初は登録後に未認証状態の User を作っていましたが、未認証アカウントが溜まり、すべての機能に「認証済みか」の分岐が必要になりました。
+そこで **認証が終わってから User の行を作る** 方式に変えました。認証前は別の pre-signup トークンだけが存在します。(V22, V52)
+
+### 2. 連続投稿の防止をアプリケーションロックなしで
+同じユーザーが同時に複数のリクエストを送ると、「直近 N 秒以内に投稿したか」の確認をすべて通過してしまいます。
+Redis などの分散ロックを追加する代わりに、**PostgreSQL の `pg_advisory_xact_lock`** でユーザー単位に直列化しました。トランザクションが終わるとロックも自動で外れます。
+制限値は `application.yaml` の1か所で管理しています(SSOT)。
+
+### 3. アップロードファイルの検証と変換
+- 拡張子や Content-Type はクライアントが変えられるため、**マジックバイト** で実際のファイル形式を検証します。
+- 容量を減らすためにサーバーで変換します。jpg → WebP、gif → アニメーション WebP、mov/mp4 → H.264 720p。
+- 変換器は `MediaConverter` インターフェースで分離して形式ごとに差し替えられるようにし、メモリ 1GB の t3.micro で ffmpeg が同時に動かないよう、セマフォで1件ずつ処理します。
+
+### 4. 通信費用の防御
+1人で運用するうえで一番怖かったのは、予期しない課金でした。
+- S3 への直接アクセスを閉じ、**CloudFront + OAC** 経由でのみ配信します。
+- CloudFront Functions で **Referer を検査し、外部サイトからの直リンクを遮断** します。
+- API は Nginx の `limit_req` でレート制限しています。(アプリケーションレベルの Bucket4j は検討のうえ見送り)
+
+### 5. スキーマ変更履歴の管理
+初期は `ddl-auto: update` を使っていましたが、本番 DB で何がいつ変わったのかを追えませんでした。
+**Flyway** に移行してから、55本のマイグレーションですべての変更を記録しました。機能を取り除くときも、テーブルの DROP までマイグレーションとして残しています。(V46)
+
+### 6. デプロイパイプライン
+- GitHub Actions から **OIDC** で AWS のロールを受け取り、長期のアクセスキーを GitHub に保存しません。
+- イメージは ECR に上げ、EC2 には **SSM Run Command** でデプロイ命令を送ります。SSH ポート(22)は閉じています。
+- デプロイ後のヘルスチェックに失敗すると、**直前のイメージへ自動でロールバック** します(`deploy.sh`)。
+- DB への接続も SSM のポートフォワーディングでのみ行います。
+
+### 7. 個人情報の最小保管
+- 投稿者の IP は、6か月を過ぎたものをスケジューラで匿名化します。
+- 退会した会員のログイン情報はマイグレーションで整理しました。(V54)
+
+---
+
+## プロジェクト構成
 
 ```
 src/main/java/com/jpkocommunity
-├── domain                 # 도메인별 controller / service / repository / entity / dto
-│   ├── auth               # 로그인, 가입, 토큰, 이메일 인증
-│   ├── user · level       # 회원, 레벨
+├── domain                 # ドメイン別の controller / service / repository / entity / dto
+│   ├── auth               # ログイン、登録、トークン、メール認証
+│   ├── user · level       # 会員、レベル
 │   ├── post · comment · like · category · notice
-│   ├── report             # 신고, 정지
+│   ├── report             # 通報、利用停止
 │   ├── notification
-│   └── point · checkin    # 포인트, 출석
+│   └── point · checkin    # ポイント、出席
 └── global
-    ├── security           # JWT 필터, 공개 경로 정의
-    ├── infra              # S3, 미디어 변환
-    ├── config             # 설정 프로퍼티 (SSOT)
+    ├── security           # JWT フィルター、公開パスの定義
+    ├── infra              # S3、メディア変換
+    ├── config             # 設定プロパティ(SSOT)
     └── exception · response · scheduler
 ```
 
-## 로컬 실행
+## ローカル実行
 
 ```bash
 # 1. DB
 docker compose up -d
 
-# 2. 앱 (필수 환경변수: DB_USER, DB_PASSWORD, JWT_SECRET)
+# 2. アプリ(必須の環境変数: DB_USER, DB_PASSWORD, JWT_SECRET)
 ./gradlew bootRun
 ```
 
-S3, SES, Turnstile 관련 값이 없으면 업로드와 메일 발송 기능은 동작하지 않습니다.
+S3、SES、Turnstile 関連の値がない場合、アップロードとメール送信は動作しません。
 
 ---
 
-## 회고
+## 振り返り
 
-- **잘한 것**: 비용과 보안을 처음부터 같이 고민했습니다. 운영 기간 동안 월 비용은 $15~20 수준을 유지했고, 과금 사고는 없었습니다.
-- **아쉬운 것**: 포인트 · 경매 · 미니게임 같은 부가 기능을 너무 일찍 넣었다가 다시 걷어냈습니다 (V25~V46). 핵심인 정보 공유 기능에 먼저 집중했어야 했습니다.
-- **배운 것**: 기능을 만드는 것보다 1인이 계속 운영할 수 있는 구조를 만드는 게 더 어렵다는 것.
+- **良かった点**: 費用とセキュリティを最初から一緒に考えました。運用期間中の月額費用は $15~20 程度に抑え、課金事故はありませんでした。
+- **反省点**: ショップ・オークション・ポイント送金のような付加機能を早く入れすぎて、後で取り除きました(V25~V46)。中心となる情報共有の機能に先に集中すべきでした。
+- **学んだこと**: 機能を作ることより、1人で運用し続けられる構造を作るほうが難しいということ。
