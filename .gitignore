@@ -45,6 +45,7 @@ hs_err_pid*.log
 replay_pid*.log
 
 ### DOCS ###
-# 개인 문서는 제외하되, README용 스크린샷만 커밋
+# 개인 문서는 제외하되, README용 스크린샷과 설계 문서만 커밋
 docs/*
 !docs/screenshots/
+!docs/design/
